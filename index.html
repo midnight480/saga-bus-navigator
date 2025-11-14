@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="description" content="佐賀市内バス時刻表検索 - 佐賀市営バス、祐徳バス、西鉄バスの時刻表を横断検索">
+  <title>佐賀バスナビ - 時刻表検索</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
+  
+  <!-- Apple Touch Icon -->
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0066cc">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1 class="header-title">佐賀バスナビ</h1>
+      <p class="header-subtitle">時刻表検索</p>
+    </header>
+
+    <!-- Search Form -->
+    <main class="main">
+      <section class="search-section">
+        <h2 class="section-title">検索条件</h2>
+        
+        <!-- Error Message Area -->
+        <div id="error-message" class="error-message" role="alert" aria-live="polite" style="display: none;"></div>
+        
+        <form id="search-form" class="search-form">
+          <!-- Departure Stop -->
+          <div class="form-group">
+            <label for="departure-stop" class="form-label">乗車バス停</label>
+            <div class="autocomplete-wrapper">
+              <input 
+                type="text" 
+                id="departure-stop" 
+                class="form-input" 
+                placeholder="バス停名を入力"
+                autocomplete="off"
+                aria-describedby="departure-stop-help"
+                disabled
+              >
+              <ul id="departure-suggestions" class="suggestions-list" role="listbox"></ul>
+            </div>
+            <small id="departure-stop-help" class="form-help">1文字以上入力すると候補が表示されます</small>
+          </div>
+
+          <!-- Arrival Stop -->
+          <div class="form-group">
+            <label for="arrival-stop" class="form-label">降車バス停</label>
+            <div class="autocomplete-wrapper">
+              <input 
+                type="text" 
+                id="arrival-stop" 
+                class="form-input" 
+                placeholder="バス停名を入力"
+                autocomplete="off"
+                aria-describedby="arrival-stop-help"
+                disabled
+              >
+              <ul id="arrival-suggestions" class="suggestions-list" role="listbox"></ul>
+            </div>
+            <small id="arrival-stop-help" class="form-help">1文字以上入力すると候補が表示されます</small>
+          </div>
+
+          <!-- Weekday Type Selection -->
+          <div class="form-group">
+            <fieldset class="weekday-options">
+              <legend class="form-label">曜日区分</legend>
+              
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input type="radio" name="weekday-option" value="auto" class="radio-input" checked disabled>
+                  <span class="radio-text">自動判定</span>
+                </label>
+                
+                <label class="radio-label">
+                  <input type="radio" name="weekday-option" value="平日" class="radio-input" disabled>
+                  <span class="radio-text">平日</span>
+                </label>
+                
+                <label class="radio-label">
+                  <input type="radio" name="weekday-option" value="土日祝" class="radio-input" disabled>
+                  <span class="radio-text">土日祝</span>
+                </label>
+              </div>
+            </fieldset>
+          </div>
+
+          <!-- Time Selection -->
+          <div class="form-group">
+            <fieldset class="time-options">
+              <legend class="form-label">検索条件</legend>
+              
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input type="radio" name="time-option" value="departure-time" class="radio-input" disabled>
+                  <span class="radio-text">出発時刻指定</span>
+                </label>
+                
+                <label class="radio-label">
+                  <input type="radio" name="time-option" value="arrival-time" class="radio-input" disabled>
+                  <span class="radio-text">到着時刻指定</span>
+                </label>
+                
+                <label class="radio-label">
+                  <input type="radio" name="time-option" value="now" class="radio-input" checked disabled>
+                  <span class="radio-text">今すぐ</span>
+                </label>
+                
+                <label class="radio-label">
+                  <input type="radio" name="time-option" value="first-bus" class="radio-input" disabled>
+                  <span class="radio-text">始発</span>
+                </label>
+                
+                <label class="radio-label">
+                  <input type="radio" name="time-option" value="last-bus" class="radio-input" disabled>
+                  <span class="radio-text">終電</span>
+                </label>
+              </div>
+
+              <!-- Time Picker (shown when departure-time or arrival-time is selected) -->
+              <div id="time-picker" class="time-picker">
+                <label for="time-hour" class="time-label">時刻</label>
+                <div class="time-inputs">
+                  <input 
+                    type="number" 
+                    id="time-hour" 
+                    class="time-input" 
+                    min="0" 
+                    max="23" 
+                    placeholder="時"
+                    aria-label="時"
+                    disabled
+                  >
+                  <span class="time-separator">:</span>
+                  <input 
+                    type="number" 
+                    id="time-minute" 
+                    class="time-input" 
+                    min="0" 
+                    max="59" 
+                    placeholder="分"
+                    aria-label="分"
+                    disabled
+                  >
+                </div>
+              </div>
+            </fieldset>
+          </div>
+
+          <!-- Search Button -->
+          <button type="submit" id="search-button" class="btn btn-primary" disabled>
+            検索
+          </button>
+        </form>
+      </section>
+
+      <!-- Results Section -->
+      <section class="results-section">
+        <h2 class="section-title">検索結果</h2>
+        
+        <!-- Loading Indicator -->
+        <div id="loading" class="loading" style="display: block;">
+          <div class="loading-spinner"></div>
+          <p class="loading-text">データを読み込んでいます...</p>
+        </div>
+        
+        <!-- Results List -->
+        <div id="results-container" class="results-container">
+          <p class="results-placeholder" style="display: none;">検索条件を入力して検索ボタンを押してください</p>
+        </div>
+        
+        <!-- Load More Button -->
+        <button id="load-more" class="btn btn-secondary" style="display: none;">
+          もっと見る
+        </button>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p class="footer-text">
+        &copy; 2025 佐賀バスナビ | 
+        <a href="#" class="footer-link">使い方</a> | 
+        <a href="#" class="footer-link">お問い合わせ</a>
+      </p>
+    </footer>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/utils.js"></script>
+  <script src="/js/data-loader.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

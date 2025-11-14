@@ -1,0 +1,8 @@
+路線名,路線番号,運行会社,バス停順序,バス停名
+路線N-FUKUOKA,N-FUKUOKA,西鉄バス,1,佐賀駅バスセンター
+路線N-FUKUOKA,N-FUKUOKA,西鉄バス,2,佐賀県庁前
+路線N-FUKUOKA,N-FUKUOKA,西鉄バス,3,福岡（天神）バスセンター
+路線N-AIRPORT,N-AIRPORT,西鉄バス,1,佐賀駅バスセンター
+路線N-AIRPORT,N-AIRPORT,西鉄バス,2,福岡空港
+路線N-TOSU,N-TOSU,西鉄バス,1,佐賀駅バスセンター
+路線N-TOSU,N-TOSU,西鉄バス,2,鳥栖駅

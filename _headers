@@ -1,0 +1,27 @@
+/*
+  # セキュリティヘッダー設定（Cloudflare Pages用）
+  
+  # Content Security Policy (CSP)
+  # - default-src 'self': デフォルトは同一オリジンのみ
+  # - script-src 'self': スクリプトは同一オリジンのみ（インラインスクリプト禁止）
+  # - style-src 'self' 'unsafe-inline': スタイルは同一オリジン + インラインCSS許可
+  # - img-src 'self' data:: 画像は同一オリジン + data:スキーム
+  # - connect-src 'self' https://ntp-a1.nict.go.jp https://holidays-jp.github.io: 外部API接続許可
+  # - font-src 'self': フォントは同一オリジンのみ
+  # - object-src 'none': Flash等のプラグイン禁止
+  # - base-uri 'self': base要素は同一オリジンのみ
+  # - form-action 'self': フォーム送信は同一オリジンのみ
+  # - frame-ancestors 'none': iframe埋め込み禁止
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://ntp-a1.nict.go.jp https://holidays-jp.github.io; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';
+  
+  # X-Frame-Options: iframe埋め込み禁止（クリックジャッキング対策）
+  X-Frame-Options: DENY
+  
+  # X-Content-Type-Options: MIMEタイプスニッフィング防止
+  X-Content-Type-Options: nosniff
+  
+  # Referrer-Policy: リファラー情報の送信を制限
+  Referrer-Policy: strict-origin-when-cross-origin
+  
+  # Permissions-Policy: 不要な機能を無効化
+  Permissions-Policy: geolocation=(), microphone=(), camera=()

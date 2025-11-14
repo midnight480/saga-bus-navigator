@@ -40,3 +40,6 @@ playwright/.cache/
 # Temporary files
 *.tmp
 .cache/
+
+# Icons (keep generated icons, ignore scripts)
+# アイコン生成スクリプトは保持、生成されたアイコンファイルはコミット対象
