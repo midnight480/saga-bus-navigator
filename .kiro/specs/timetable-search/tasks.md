@@ -161,7 +161,7 @@
   - PRの説明に実装内容とテスト結果を記載
   - _Requirements: 該当なし（開発フロー）_
 
-- [-] 19. Cloudflare Pagesにデプロイ
+- [x] 19. Cloudflare Pagesにデプロイ
   - PRをマージしてmainブランチに反映
   - Cloudflare Pagesプロジェクトを作成
   - GitHubリポジトリ（mainブランチ）と連携
