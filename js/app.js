@@ -335,6 +335,11 @@ class UIController {
     this.timeMinuteInput = null;
     this.selectedTimeOption = 'now'; // デフォルトは「今すぐ」
     this.currentTime = null; // NTPから取得した現在時刻
+    
+    // 地図選択モード関連
+    this.mapSelectionButtons = null;
+    this.isMapSelectionActive = false;
+    this.currentMapSelectionType = null; // 'departure' | 'arrival'
   }
 
   /**
@@ -360,12 +365,19 @@ class UIController {
     this.timeHourInput = document.getElementById('time-hour');
     this.timeMinuteInput = document.getElementById('time-minute');
     
+    // 地図選択ボタンのDOM要素
+    this.mapSelectionButtons = {
+      departure: document.getElementById('map-select-departure'),
+      arrival: document.getElementById('map-select-arrival')
+    };
+    
     // イベントリスナーの設定
     this.setupAutocomplete();
     this.setupClickOutside();
     this.setupWeekdaySelection();
     this.setupTimeSelection();
     this.setupSearchButton();
+    this.setupMapSelectionButtons();
   }
 
   /**
@@ -1064,11 +1076,127 @@ class UIController {
       detailsContainer.appendChild(viaStops);
     }
     
+    // 「地図で表示」ボタンを追加
+    const mapButton = document.createElement('button');
+    mapButton.className = 'map-display-button';
+    mapButton.textContent = '地図で表示';
+    mapButton.setAttribute('type', 'button');
+    mapButton.setAttribute('aria-label', `${result.departureStop}から${result.arrivalStop}への経路を地図で表示`);
+    
+    // ボタンクリック時のイベントハンドラー
+    mapButton.addEventListener('click', () => {
+      this.handleMapDisplayButtonClick(result);
+    });
+    
+    detailsContainer.appendChild(mapButton);
+    
     // リストアイテムに追加
     li.appendChild(timeContainer);
     li.appendChild(detailsContainer);
     
     return li;
+  }
+  
+  /**
+   * 「地図で表示」ボタンクリック時の処理
+   * @param {object} result - 検索結果オブジェクト
+   */
+  handleMapDisplayButtonClick(result) {
+    console.log('[UIController] 地図で表示ボタンがクリックされました:', result);
+    
+    // MapControllerが初期化されているか確認
+    if (!window.mapController) {
+      console.error('[UIController] MapControllerが初期化されていません');
+      this.displayError('地図機能が利用できません');
+      return;
+    }
+    
+    // 経路データを構築
+    const routeData = this.buildRouteDataFromResult(result);
+    
+    if (!routeData) {
+      console.error('[UIController] 経路データの構築に失敗しました');
+      this.displayError('経路情報が不足しています');
+      return;
+    }
+    
+    // MapControllerに経路表示を依頼
+    window.mapController.displayRoute(routeData);
+    
+    // 地図エリアにスクロール
+    const mapContainer = document.getElementById('map-container');
+    if (mapContainer) {
+      mapContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+  
+  /**
+   * 検索結果から経路データを構築
+   * @param {object} result - 検索結果オブジェクト
+   * @returns {object|null} 経路データ、または構築失敗時はnull
+   */
+  buildRouteDataFromResult(result) {
+    // 乗車バス停の座標を取得
+    const departureStop = this.busStops.find(stop => stop.name === result.departureStop);
+    if (!departureStop) {
+      console.error('[UIController] 乗車バス停が見つかりません:', result.departureStop);
+      return null;
+    }
+    
+    // 降車バス停の座標を取得
+    const arrivalStop = this.busStops.find(stop => stop.name === result.arrivalStop);
+    if (!arrivalStop) {
+      console.error('[UIController] 降車バス停が見つかりません:', result.arrivalStop);
+      return null;
+    }
+    
+    // 経由バス停の座標を取得
+    const viaStops = [];
+    if (result.viaStops && result.viaStops.length > 0) {
+      for (const viaStop of result.viaStops) {
+        const stop = this.busStops.find(s => s.name === viaStop.name);
+        if (stop) {
+          viaStops.push({
+            name: stop.name,
+            lat: stop.lat,
+            lng: stop.lng,
+            time: viaStop.time
+          });
+        } else {
+          console.warn('[UIController] 経由バス停が見つかりません:', viaStop.name);
+        }
+      }
+    }
+    
+    // 経路の座標配列を構築（乗車 → 経由 → 降車の順）
+    const routeCoordinates = [
+      [departureStop.lat, departureStop.lng]
+    ];
+    
+    viaStops.forEach(stop => {
+      routeCoordinates.push([stop.lat, stop.lng]);
+    });
+    
+    routeCoordinates.push([arrivalStop.lat, arrivalStop.lng]);
+    
+    return {
+      departureStop: {
+        name: departureStop.name,
+        lat: departureStop.lat,
+        lng: departureStop.lng,
+        time: result.departureTime
+      },
+      arrivalStop: {
+        name: arrivalStop.name,
+        lat: arrivalStop.lat,
+        lng: arrivalStop.lng,
+        time: result.arrivalTime
+      },
+      viaStops: viaStops,
+      routeCoordinates: routeCoordinates,
+      routeName: result.routeName,
+      operator: result.operator
+    };
   }
 
   /**
@@ -1078,6 +1206,151 @@ class UIController {
   displayLoading(show) {
     const loading = document.getElementById('loading');
     loading.style.display = show ? 'block' : 'none';
+  }
+
+  /**
+   * 地図選択ボタンのイベントリスナー設定
+   */
+  setupMapSelectionButtons() {
+    // 乗車バス停の地図選択ボタン
+    if (this.mapSelectionButtons.departure) {
+      this.mapSelectionButtons.departure.addEventListener('click', () => {
+        // 既に選択モードがアクティブで、同じタイプの場合は中止
+        if (this.isMapSelectionActive && this.currentMapSelectionType === 'departure') {
+          this.stopMapSelection();
+        } else {
+          this.startMapSelection('departure');
+        }
+      });
+    }
+    
+    // 降車バス停の地図選択ボタン
+    if (this.mapSelectionButtons.arrival) {
+      this.mapSelectionButtons.arrival.addEventListener('click', () => {
+        // 既に選択モードがアクティブで、同じタイプの場合は中止
+        if (this.isMapSelectionActive && this.currentMapSelectionType === 'arrival') {
+          this.stopMapSelection();
+        } else {
+          this.startMapSelection('arrival');
+        }
+      });
+    }
+  }
+  
+  /**
+   * 地図からバス停選択モードを開始
+   * @param {string} type - 選択タイプ ('departure' | 'arrival')
+   */
+  startMapSelection(type) {
+    if (!['departure', 'arrival'].includes(type)) {
+      console.error('[UIController] 不正な選択タイプ:', type);
+      return;
+    }
+    
+    // 既に選択モードがアクティブな場合は一旦停止
+    if (this.isMapSelectionActive) {
+      this.stopMapSelection();
+    }
+    
+    // 選択モードをアクティブに設定
+    this.isMapSelectionActive = true;
+    this.currentMapSelectionType = type;
+    
+    // MapControllerに選択モードを設定
+    if (window.mapController) {
+      window.mapController.setSelectionMode(type);
+    }
+    
+    // ボタンの表示を更新
+    this.updateMapSelectionButtonState(type, true);
+    
+    // 地図エリアにスクロール
+    const mapContainer = document.getElementById('map-container');
+    if (mapContainer) {
+      mapContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    console.log('[UIController] 地図選択モードを開始:', type);
+  }
+  
+  /**
+   * 地図からバス停選択モードを終了
+   */
+  stopMapSelection() {
+    if (!this.isMapSelectionActive) {
+      return;
+    }
+    
+    // 選択モードを非アクティブに設定
+    this.isMapSelectionActive = false;
+    const previousType = this.currentMapSelectionType;
+    this.currentMapSelectionType = null;
+    
+    // MapControllerの選択モードを解除
+    if (window.mapController) {
+      window.mapController.setSelectionMode('none');
+    }
+    
+    // ボタンの表示を更新
+    if (previousType) {
+      this.updateMapSelectionButtonState(previousType, false);
+    }
+    
+    console.log('[UIController] 地図選択モードを終了');
+  }
+  
+  /**
+   * 地図選択ボタンの状態を更新
+   * @param {string} type - 選択タイプ ('departure' | 'arrival')
+   * @param {boolean} isActive - アクティブ状態
+   */
+  updateMapSelectionButtonState(type, isActive) {
+    const button = this.mapSelectionButtons[type];
+    if (!button) return;
+    
+    if (isActive) {
+      button.textContent = '選択を中止';
+      button.classList.add('map-selection-active');
+    } else {
+      button.textContent = '地図から選択';
+      button.classList.remove('map-selection-active');
+    }
+  }
+  
+  /**
+   * 地図からバス停が選択されたときの処理
+   * @param {string} type - 選択タイプ ('departure' | 'arrival')
+   * @param {string} stopName - バス停名
+   */
+  handleMapStopSelection(type, stopName) {
+    console.log('[UIController] 地図からバス停が選択されました:', type, stopName);
+    
+    // バス停名の検証
+    if (!this.validateBusStopName(stopName)) {
+      this.displayError('無効なバス停が選択されました');
+      return;
+    }
+    
+    // 検索フォームに自動入力
+    if (type === 'departure') {
+      this.selectedDepartureStop = stopName;
+      this.departureInput.value = stopName;
+    } else if (type === 'arrival') {
+      this.selectedArrivalStop = stopName;
+      this.arrivalInput.value = stopName;
+    }
+    
+    // 同一バス停チェック
+    this.validateStops();
+    
+    // 検索ボタンの状態を更新
+    this.updateSearchButton();
+    
+    // 選択モードを終了
+    this.stopMapSelection();
+    
+    // エラーメッセージをクリア
+    this.clearError();
   }
 
   /**
@@ -1199,6 +1472,8 @@ function disableUI() {
   const timeOptions = document.querySelectorAll('input[name="time-option"]');
   const timeHourInput = document.getElementById('time-hour');
   const timeMinuteInput = document.getElementById('time-minute');
+  const mapSelectDeparture = document.getElementById('map-select-departure');
+  const mapSelectArrival = document.getElementById('map-select-arrival');
   
   if (departureInput) departureInput.disabled = true;
   if (arrivalInput) arrivalInput.disabled = true;
@@ -1214,6 +1489,8 @@ function disableUI() {
   
   if (timeHourInput) timeHourInput.disabled = true;
   if (timeMinuteInput) timeMinuteInput.disabled = true;
+  if (mapSelectDeparture) mapSelectDeparture.disabled = true;
+  if (mapSelectArrival) mapSelectArrival.disabled = true;
 }
 
 /**
@@ -1227,6 +1504,8 @@ function enableUI() {
   const timeOptions = document.querySelectorAll('input[name="time-option"]');
   const timeHourInput = document.getElementById('time-hour');
   const timeMinuteInput = document.getElementById('time-minute');
+  const mapSelectDeparture = document.getElementById('map-select-departure');
+  const mapSelectArrival = document.getElementById('map-select-arrival');
   
   if (departureInput) departureInput.disabled = false;
   if (arrivalInput) arrivalInput.disabled = false;
@@ -1242,6 +1521,8 @@ function enableUI() {
   
   if (timeHourInput) timeHourInput.disabled = false;
   if (timeMinuteInput) timeMinuteInput.disabled = false;
+  if (mapSelectDeparture) mapSelectDeparture.disabled = false;
+  if (mapSelectArrival) mapSelectArrival.disabled = false;
 }
 
 /**
@@ -1333,6 +1614,28 @@ async function initializeApp() {
     window.uiController.initialize(dataLoader.busStops);
     
     console.log('UIの初期化が完了しました');
+    
+    // MapControllerの初期化
+    const mapStartTime = performance.now();
+    window.mapController = new MapController();
+    window.mapController.initialize('map-container', dataLoader.busStops);
+    
+    // バス停マーカーを表示
+    window.mapController.displayAllStops();
+    
+    // MapControllerのコールバックを設定（地図からバス停選択時）
+    window.mapController.setOnStopSelectedCallback((type, stopName) => {
+      window.uiController.handleMapStopSelection(type, stopName);
+    });
+    
+    const mapLoadTime = performance.now() - mapStartTime;
+    console.log(`MapControllerの初期化が完了しました（${mapLoadTime.toFixed(2)}ms）`);
+    
+    // パフォーマンス統計を出力（デバッグ用）
+    if (window.mapController) {
+      const stats = window.mapController.getPerformanceStats();
+      console.log('[MapController] パフォーマンス統計:', stats);
+    }
     
     // UIを有効化
     enableUI();
