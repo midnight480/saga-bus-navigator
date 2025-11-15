@@ -8,7 +8,7 @@ Cloudflare Pages用のセキュリティヘッダーを設定しました。
 
 #### Content Security Policy (CSP)
 - `default-src 'self'`: デフォルトは同一オリジンのみ許可
-- `script-src 'self'`: スクリプトは同一オリジンのみ（インラインスクリプト禁止）
+- `script-src 'self' https://static.cloudflareinsights.com`: スクリプトは同一オリジン + Cloudflare Insights許可
 - `style-src 'self' 'unsafe-inline'`: スタイルは同一オリジン + インラインCSS許可
 - `img-src 'self' data:`: 画像は同一オリジン + data:スキーム許可
 - `connect-src 'self' https://ntp-a1.nict.go.jp https://holidays-jp.github.io`: 外部API接続許可
@@ -100,16 +100,95 @@ validateTime(hour, minute) {
 }
 ```
 
-### 4. HTTPS強制
+### 4. Cloudflare Insights（Web Analytics）
+
+#### 概要
+Cloudflare Pagesが提供するアクセス解析機能です。アプリケーションに自動的にスクリプトを挿入し、ユーザーの利用状況を収集します。
+
+#### 現在の設定
+Cloudflare Insightsは**有効**になっており、CSP設定で`https://static.cloudflareinsights.com`からのスクリプト読み込みを許可しています。
+
+#### 選択肢1: Cloudflare Insightsを使用する（現在の設定）
+
+**メリット:**
+- アクセス解析データを取得できる
+- ユーザーの利用状況を把握し、アプリケーション改善に活用できる
+- Cloudflare Pagesとの統合が容易（追加設定不要）
+- プライバシーに配慮した解析（Cloudflare公式サービス）
+- 無料で利用可能
+
+**デメリット:**
+- 外部スクリプトの読み込みが発生する
+- CSP設定に`https://static.cloudflareinsights.com`を追加する必要がある
+- わずかなパフォーマンスオーバーヘッド（スクリプトサイズ: 約10KB）
+
+**セキュリティ考慮事項:**
+- Cloudflareは信頼できるプロバイダー
+- HTTPS通信で暗号化
+- 最小権限の原則に従い、特定ドメインのみ許可
+
+#### 選択肢2: Cloudflare Insightsを無効化する
+
+**メリット:**
+- 外部スクリプトの読み込みがゼロになる
+- CSP設定をより厳格に保てる
+- わずかなパフォーマンス向上
+
+**デメリット:**
+- アクセス解析データが取得できない
+- ユーザー行動の把握が困難
+- アプリケーション改善の判断材料が減る
+
+**無効化手順:**
+
+1. **Cloudflare Dashboardにログイン**
+   - https://dash.cloudflare.com/ にアクセス
+
+2. **プロジェクト設定を開く**
+   - Pages → 該当プロジェクト（saga-bus-navigator）を選択
+   - Settings タブをクリック
+
+3. **Web Analyticsを無効化**
+   - "Web Analytics" セクションを探す
+   - トグルスイッチをOFFにする
+   - 変更を保存
+
+4. **CSP設定を更新（オプション）**
+   - `_headers`ファイルから`https://static.cloudflareinsights.com`を削除
+   - より厳格なCSP設定に戻す
+   ```
+   Content-Security-Policy: default-src 'self'; script-src 'self'; ...
+   ```
+
+5. **動作確認**
+   - ブラウザコンソールでCSP違反エラーが表示されないことを確認
+   - アプリケーションが正常に動作することを確認
+
+#### 推奨設定
+
+**現在の設定（Cloudflare Insights有効）を推奨します。**
+
+理由:
+- アクセス解析はアプリケーション改善に有用
+- セキュリティリスクは最小限（Cloudflare公式サービス）
+- パフォーマンスへの影響は軽微
+- プライバシーに配慮した解析が可能
+
+ただし、以下の場合は無効化を検討してください:
+- アクセス解析が不要な場合
+- より厳格なセキュリティポリシーが必要な場合
+- パフォーマンスを最優先する場合
+
+### 5. HTTPS強制
 
 Cloudflare Pagesは自動的にHTTPS対応し、HTTP → HTTPSの自動リダイレクトを行います。
 
-### 5. CORS対策
+### 6. CORS対策
 
 - CSVファイルは同一オリジン（saga-bus.midnight480.com）から読み込み
 - 外部API（NTP、祝日カレンダー）は読み取り専用で使用
 
-### 6. 依存関係の脆弱性チェック
+### 7. 依存関係の脆弱性チェック
 
 定期的に`npm audit`を実行して、依存関係の脆弱性をチェックします。
 
@@ -122,6 +201,7 @@ npm audit fix
 
 - [x] textContent/createElementを使用（innerHTML禁止）
 - [x] CSPヘッダー設定
+- [x] Cloudflare Insights対応（CSP設定で許可）
 - [x] HTTPS強制（Cloudflare Pages自動対応）
 - [x] 入力検証実装（バス停名、時刻）
 - [x] 外部APIは読み取り専用
