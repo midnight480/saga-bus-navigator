@@ -28,7 +28,8 @@
 ## 🛠️ 技術スタック
 
 - **フロントエンド**: HTML5, CSS3, Vanilla JavaScript
-- **データ形式**: CSV（UTF-8、総サイズ約180KB）
+- **データ形式**: GTFS（General Transit Feed Specification）標準形式
+- **データ処理**: JSZip（ブラウザ上でのZIP解凍）
 - **時刻取得**: NTP over HTTP（ntp.nict.jp）
 - **ホスティング**: Cloudflare Pages
 - **テスト**: Vitest（単体テスト）、Playwright（E2Eテスト）
@@ -50,11 +51,36 @@ cd saga-bus-navigator
 # 依存関係をインストール
 npm install
 
+# GTFSデータを配置
+# ./dataディレクトリにsaga-current.zipまたはsaga-YYYY-MM-DD.zip形式のGTFSファイルを配置
+
 # 開発サーバーを起動
 npm run dev
 ```
 
 ブラウザで `http://localhost:8080` を開きます。
+
+### GTFSデータの取得
+
+佐賀市のGTFSデータは以下から取得できます：
+
+- [佐賀市オープンデータポータル](https://www.city.saga.lg.jp/main/1316.html)
+- データ形式: GTFS標準形式（ZIP圧縮）
+- 更新頻度: ダイヤ改正時
+
+### データ更新手順
+
+1. 最新のGTFSデータ（saga-YYYY-MM-DD.zip）をダウンロード
+2. `./data/`ディレクトリに配置
+3. ファイル名を`saga-current.zip`にリネーム（推奨）
+4. アプリケーションを再読み込み
+
+アプリケーションは以下の優先順位でGTFSファイルを自動選択します：
+
+1. `saga-current.zip`（存在する場合）
+2. `saga-YYYY-MM-DD.zip`（最新の日付のファイル）
+
+複数のGTFSファイルを配置することで、過去データや未来データを保持できます。
 
 ## 🧪 テスト
 
@@ -144,9 +170,8 @@ saga-bus-navigator/
 │   ├── data-loader.js     # データローダー
 │   └── utils.js           # ユーティリティ
 ├── data/
-│   ├── master/            # マスタデータ
-│   ├── timetable/         # 時刻表データ
-│   └── fare/              # 運賃データ
+│   ├── saga-current.zip   # 現在のGTFSデータ（推奨）
+│   └── saga-*.zip         # その他のGTFSデータ（オプション）
 ├── icons/                 # アイコンファイル
 ├── tests/                 # 単体テスト
 └── e2e/                   # E2Eテスト
@@ -154,9 +179,21 @@ saga-bus-navigator/
 
 ## 📖 ドキュメント
 
-- [要件定義書](.kiro/specs/timetable-search/requirements.md)
-- [設計書](.kiro/specs/timetable-search/design.md)
-- [実装タスク](.kiro/specs/timetable-search/tasks.md)
+### 機能仕様
+
+- [時刻表検索 - 要件定義書](.kiro/specs/timetable-search/requirements.md)
+- [時刻表検索 - 設計書](.kiro/specs/timetable-search/design.md)
+- [時刻表検索 - 実装タスク](.kiro/specs/timetable-search/tasks.md)
+
+### GTFS移行
+
+- [GTFS移行 - 要件定義書](.kiro/specs/gtfs-loader-migration/requirements.md)
+- [GTFS移行 - 設計書](.kiro/specs/gtfs-loader-migration/design.md)
+- [GTFS移行 - 実装タスク](.kiro/specs/gtfs-loader-migration/tasks.md)
+- [GTFS移行ガイド](docs/GTFS_MIGRATION.md)
+
+### その他
+
 - [デプロイ手順](docs/deployment/DEPLOYMENT.md)
 - [プロジェクト構成](docs/FILES_STRUCTURE.md)
 - [セキュリティ](docs/SECURITY.md)
@@ -202,6 +239,13 @@ saga-bus-navigator/
 - holidays-jp.github.ioの祝日カレンダーAPI
 
 ## 📅 更新履歴
+
+### v2.0.0 (2025-11-15)
+
+- **GTFS標準形式への移行**: 独自CSV形式からGTFS標準形式に移行
+- **データ更新の簡素化**: GTFSファイルを配置するだけでデータ更新が可能
+- **自動ファイル選択**: 複数のGTFSファイルから最新データを自動選択
+- **パフォーマンス向上**: 並列読み込みとインデックス化による高速化
 
 ### v1.0.0 (2025-11-15)
 

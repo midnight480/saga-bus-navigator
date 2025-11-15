@@ -42,23 +42,11 @@ saga-bus-navigator/
 │   ├── test-bus-stop-search.spec.js
 │   ├── test-data-loader.spec.js
 │   └── test-time-selection.spec.js
-├── data/                           # データディレクトリ
-│   ├── master/                     # マスタデータ
-│   │   ├── bus_stop.csv           # バス停マスタ（110件、緯度経度付き）
-│   │   ├── bus_route_saga-city.csv # 佐賀市営バス路線（28路線）
-│   │   ├── bus_route_yutoku.csv    # 祐徳バス路線（15路線）
-│   │   └── bus_route_nishitetsu.csv # 西鉄バス路線（3路線）
-│   ├── timetable/                  # 時刻表データ
-│   │   ├── timetable_all_complete.csv # 統合時刻表（1,064件）★メイン
-│   │   ├── timetable_complete_with_stops.csv # 佐賀市営バス詳細
-│   │   ├── timetable_yutoku_complete.csv # 祐徳バス詳細
-│   │   └── timetable_nishitetsu_complete.csv # 西鉄バス詳細
-│   ├── transfer/                   # 乗り換えデータ
-│   │   ├── transfer_info.csv      # 乗り換え可能バス停（4箇所）
-│   │   └── walking_transfer.csv   # 徒歩乗り換え（2箇所）
-│   └── fare/                       # 運賃データ
-│       ├── fare_info.csv          # 距離帯別運賃表（14件）
-│       └── fare_major_routes.csv  # 主要区間運賃（10件）
+├── data/                           # データディレクトリ（GTFS形式）
+│   ├── saga-current.zip           # 現在のGTFSデータ（推奨）
+│   ├── saga-2025-12-01.zip        # 未来のGTFSデータ（オプション）
+│   ├── saga-2025-10-01.zip        # アーカイブデータ（オプション）
+│   └── README.md                  # データディレクトリの説明
 ├── css/                            # スタイルシート
 │   └── app.css
 ├── js/                             # JavaScriptファイル
@@ -78,15 +66,43 @@ saga-bus-navigator/
 
 ## データファイルの役割
 
-### メインデータ（ナビゲーション機能に必須）
-1. `data/master/bus_stop.csv` - バス停位置情報
-2. `data/timetable/timetable_all_complete.csv` - 統合時刻表
-3. `data/transfer/transfer_info.csv` - 乗り換え情報
-4. `data/fare/fare_major_routes.csv` - 運賃情報
+### GTFSデータ（GTFS標準形式）
 
-### 詳細データ（会社別分析用）
-- 各事業者の詳細時刻表
-- 路線マスタ（事業者別）
+アプリケーションは`./data`ディレクトリ内のGTFS ZIPファイルを自動的に検出して読み込みます。
+
+#### ファイル選択の優先順位
+
+1. **saga-current.zip**（推奨）
+   - 現在有効なGTFSデータ
+   - 存在する場合は常にこのファイルが使用される
+   - データ更新時はこのファイルを置き換える
+
+2. **saga-YYYY-MM-DD.zip**
+   - 日付付きGTFSデータ
+   - 複数存在する場合は最新の日付のファイルが使用される
+   - 過去データや未来データの保持に使用
+
+#### GTFS ZIPファイルの内容
+
+各ZIPファイルには以下のGTFS標準ファイルが含まれます：
+
+- **stops.txt**: バス停情報（stop_id, stop_name, stop_lat, stop_lon等）
+- **stop_times.txt**: 各便の停車時刻（trip_id, arrival_time, departure_time, stop_id等）
+- **routes.txt**: 路線情報（route_id, route_long_name, agency_id等）
+- **trips.txt**: 便情報（trip_id, route_id, service_id, trip_headsign等）
+- **calendar.txt**: 運行カレンダー（service_id, 曜日フラグ等）
+- **agency.txt**: 事業者情報（agency_id, agency_name等）
+- **fare_attributes.txt**: 運賃情報（fare_id, price等）
+- **feed_info.txt**: データセット情報（バージョン、公開日等）
+
+#### データ処理フロー
+
+1. アプリケーション起動時に`./data`ディレクトリをスキャン
+2. 優先順位に従ってGTFS ZIPファイルを選択
+3. JSZipライブラリでZIPファイルを解凍
+4. 各GTFSファイルをパースしてメモリにキャッシュ
+5. GTFS形式から既存アプリケーション形式に変換
+6. 検索機能で使用
 
 ### ドキュメント
 - `docs/` - プロジェクトドキュメント（要件定義、設計、デプロイ手順など）
@@ -101,9 +117,10 @@ saga-bus-navigator/
 
 ## ファイル命名規則
 
-### CSVファイル
-- スネークケース使用（例: `bus_stop.csv`, `timetable_all_complete.csv`）
-- 事業者プレフィックス: `saga-city`, `yutoku`, `nishitetsu`
+### GTFSファイル
+- **推奨**: `saga-current.zip` - 現在有効なデータ
+- **日付付き**: `saga-YYYY-MM-DD.zip` - 特定日付のデータ
+- **GTFS内部ファイル**: GTFS標準に準拠（stops.txt, routes.txt等）
 
 ### ドキュメント
 - 大文字スネークケース（例: `REQUIREMENT.md`, `FILES_STRUCTURE.md`）
@@ -122,7 +139,17 @@ saga-bus-navigator/
 
 ## データ整合性の原則
 
-- バス停IDは`bus_stop.csv`で定義されたものを使用
-- 路線IDは各`bus_route_*.csv`で定義されたものを使用
-- 時刻表の`stop_id`と`route_id`は必ずマスタに存在すること
-- 乗り換え情報の`from_stop_id`と`to_stop_id`は必ずバス停マスタに存在すること
+### GTFS標準準拠
+
+- **stops.txt**: バス停IDは`stop_id`で一意に識別
+- **routes.txt**: 路線IDは`route_id`で一意に識別
+- **trips.txt**: 便IDは`trip_id`で一意に識別
+- **stop_times.txt**: `trip_id`と`stop_id`は必ず対応するマスタに存在
+- **calendar.txt**: `service_id`で運行カレンダーを管理
+- **参照整合性**: 全ての外部キー参照は対応するマスタレコードが存在すること
+
+### データ変換
+
+- GTFSデータは読み込み時に既存アプリケーション形式に変換
+- 変換後のデータはメモリにキャッシュされ、検索機能で使用
+- キャッシュは`DataLoader.clearCache()`で明示的にクリア可能

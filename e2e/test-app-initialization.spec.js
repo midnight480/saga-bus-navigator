@@ -118,15 +118,15 @@ test.describe('アプリ初期化処理', () => {
 
 test.describe('データ読み込みエラー処理', () => {
   test('データ読み込み失敗時にエラーメッセージとリトライボタンが表示される', async ({ page }) => {
-    // ネットワークをブロックしてデータ読み込みを失敗させる
-    await page.route('**/data/**/*.csv', route => route.abort());
+    // ネットワークをブロックしてデータ読み込みを失敗させる（GTFS ZIPファイル）
+    await page.route('**/data/**/*.zip', route => route.abort());
 
     // ページを開く
     await page.goto('http://localhost:8080/');
 
-    // エラーメッセージが表示されるまで待つ（最大5秒）
+    // エラーメッセージが表示されるまで待つ（最大10秒）
     const errorMessage = page.locator('#error-message');
-    await expect(errorMessage).toBeVisible({ timeout: 5000 });
+    await expect(errorMessage).toBeVisible({ timeout: 10000 });
 
     // エラーメッセージの内容を確認
     const errorText = await errorMessage.textContent();
@@ -150,22 +150,22 @@ test.describe('データ読み込みエラー処理', () => {
   });
 
   test('リトライボタンをクリックするとページがリロードされる', async ({ page }) => {
-    // ネットワークをブロックしてデータ読み込みを失敗させる
-    await page.route('**/data/**/*.csv', route => route.abort());
+    // ネットワークをブロックしてデータ読み込みを失敗させる（GTFS ZIPファイル）
+    await page.route('**/data/**/*.zip', route => route.abort());
 
     // ページを開く
     await page.goto('http://localhost:8080/');
 
-    // エラーメッセージが表示されるまで待つ
+    // エラーメッセージが表示されるまで待つ（最大10秒）
     const errorMessage = page.locator('#error-message');
-    await expect(errorMessage).toBeVisible({ timeout: 5000 });
+    await expect(errorMessage).toBeVisible({ timeout: 10000 });
 
     // リトライボタンが表示されるまで待つ
     const retryButton = page.locator('#retry-button');
     await expect(retryButton).toBeVisible();
 
     // ネットワークブロックを解除
-    await page.unroute('**/data/**/*.csv');
+    await page.unroute('**/data/**/*.zip');
 
     // ページリロードを監視
     const navigationPromise = page.waitForNavigation();

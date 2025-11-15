@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSZip統合テスト</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .test-result {
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+  </style>
+</head>
+<body>
+  <h1>JSZip統合テスト</h1>
+  <div id="test-results"></div>
+
+  <!-- JSZip Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script>
+    const resultsContainer = document.getElementById('test-results');
+
+    function addResult(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = `test-result ${type}`;
+      div.textContent = message;
+      resultsContainer.appendChild(div);
+    }
+
+    // テスト1: JSZipライブラリの読み込み確認
+    addResult('テスト1: JSZipライブラリの読み込み確認', 'info');
+    if (typeof JSZip !== 'undefined') {
+      addResult('✓ JSZipライブラリが正常に読み込まれました', 'success');
+      addResult(`JSZipバージョン: ${JSZip.version || '不明'}`, 'info');
+    } else {
+      addResult('✗ JSZipライブラリの読み込みに失敗しました', 'error');
+    }
+
+    // テスト2: JSZipインスタンスの作成
+    addResult('テスト2: JSZipインスタンスの作成', 'info');
+    try {
+      const zip = new JSZip();
+      addResult('✓ JSZipインスタンスを正常に作成できました', 'success');
+    } catch (error) {
+      addResult(`✗ JSZipインスタンスの作成に失敗: ${error.message}`, 'error');
+    }
+
+    // テスト3: 基本的なZIP操作のテスト
+    addResult('テスト3: 基本的なZIP操作のテスト', 'info');
+    try {
+      const zip = new JSZip();
+      zip.file('test.txt', 'Hello, JSZip!');
+      
+      zip.generateAsync({type: 'blob'}).then(function(content) {
+        addResult('✓ ZIPファイルの生成に成功しました', 'success');
+        
+        // 生成したZIPを読み込んでテスト
+        JSZip.loadAsync(content).then(function(loadedZip) {
+          return loadedZip.file('test.txt').async('string');
+        }).then(function(text) {
+          if (text === 'Hello, JSZip!') {
+            addResult('✓ ZIPファイルの読み込みと解凍に成功しました', 'success');
+            addResult('すべてのテストが正常に完了しました！', 'success');
+          } else {
+            addResult('✗ ZIPファイルの内容が一致しません', 'error');
+          }
+        }).catch(function(error) {
+          addResult(`✗ ZIPファイルの読み込みに失敗: ${error.message}`, 'error');
+        });
+      }).catch(function(error) {
+        addResult(`✗ ZIPファイルの生成に失敗: ${error.message}`, 'error');
+      });
+    } catch (error) {
+      addResult(`✗ ZIP操作のテストに失敗: ${error.message}`, 'error');
+    }
+  </script>
+</body>
+</html>

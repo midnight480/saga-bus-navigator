@@ -856,14 +856,12 @@ class UIController {
     }
     
     if (option === 'now') {
-      if (!this.currentTime) {
-        return null;
-      }
-      
+      // 「今すぐ」の場合は、currentTimeがnullでもオプションを返す
+      // 実際の時刻はexecuteSearch()内で取得される
       return {
         type: 'now',
-        hour: this.currentTime.getHours(),
-        minute: this.currentTime.getMinutes()
+        hour: this.currentTime ? this.currentTime.getHours() : null,
+        minute: this.currentTime ? this.currentTime.getMinutes() : null
       };
     }
     
@@ -1132,19 +1130,19 @@ class UIController {
         return;
       }
       
+      // 「今すぐ」の場合は現在時刻を取得
+      if (timeOption.type === 'now' && (timeOption.hour === null || timeOption.minute === null)) {
+        await this.fetchCurrentTime();
+        timeOption.hour = this.currentTime.getHours();
+        timeOption.minute = this.currentTime.getMinutes();
+      }
+      
       // 時刻指定の場合は時刻の妥当性を検証
       if ((timeOption.type === 'departure-time' || timeOption.type === 'arrival-time') &&
           !this.validateTime(timeOption.hour, timeOption.minute)) {
         this.displayError('時刻を正しく入力してください（時: 0-23、分: 0-59）');
         this.displayLoading(false);
         return;
-      }
-      
-      // 「今すぐ」の場合は現在時刻を取得
-      if (timeOption.type === 'now' && !this.currentTime) {
-        await this.fetchCurrentTime();
-        timeOption.hour = this.currentTime.getHours();
-        timeOption.minute = this.currentTime.getMinutes();
       }
       
       // 曜日区分を取得
@@ -1301,12 +1299,12 @@ async function initializeApp() {
     // データローダーの初期化
     const dataLoader = new DataLoader();
     
-    // データの読み込み（3秒タイムアウト）
+    // データの読み込み（5秒タイムアウト）
     console.log('データを読み込んでいます...');
     
     const loadPromise = dataLoader.loadAllData();
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('データ読み込みがタイムアウトしました（3秒超過）')), 3000);
+      setTimeout(() => reject(new Error('データ読み込みがタイムアウトしました（5秒超過）')), 5000);
     });
     
     // タイムアウト付きでデータ読み込み
