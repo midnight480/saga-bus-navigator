@@ -128,6 +128,15 @@ saga-bus-navigator/
 ├── index.html              # メインHTML
 ├── manifest.json           # PWA設定
 ├── _headers                # セキュリティヘッダー
+├── docs/                   # ドキュメント
+│   ├── deployment/        # デプロイメント関連
+│   ├── REQUIREMENT.md     # 要件定義書
+│   ├── FILES_STRUCTURE.md # ファイル構成
+│   └── ...                # その他ドキュメント
+├── scripts/                # スクリプト
+│   ├── gtfs_loader.py     # GTFSローダー
+│   ├── update_gtfs.sh     # GTFS更新
+│   └── ...                # その他スクリプト
 ├── css/
 │   └── app.css            # スタイルシート
 ├── js/
@@ -148,8 +157,10 @@ saga-bus-navigator/
 - [要件定義書](.kiro/specs/timetable-search/requirements.md)
 - [設計書](.kiro/specs/timetable-search/design.md)
 - [実装タスク](.kiro/specs/timetable-search/tasks.md)
-- [デプロイ手順](DEPLOYMENT.md)
-- [プロジェクト構成](FILES_STRUCTURE.md)
+- [デプロイ手順](docs/deployment/DEPLOYMENT.md)
+- [プロジェクト構成](docs/FILES_STRUCTURE.md)
+- [セキュリティ](docs/SECURITY.md)
+- [レスポンシブデザイン](docs/RESPONSIVE_DESIGN.md)
 
 ## 🔐 セキュリティ
 
