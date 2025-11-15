@@ -687,8 +687,26 @@ class MapController {
         });
       }
       
+      // 時刻順にバス停を並べ替えて経路座標を構築
+      // 出発→経由地→到着の順序を時刻情報で保証する
+      const allStops = [
+        { ...routeData.departureStop, type: 'departure' },
+        ...(routeData.viaStops || []).map(stop => ({ ...stop, type: 'via' })),
+        { ...routeData.arrivalStop, type: 'arrival' }
+      ];
+      
+      // 時刻でソート（HH:MM形式の文字列比較）
+      allStops.sort((a, b) => {
+        const timeA = a.time || '00:00';
+        const timeB = b.time || '00:00';
+        return timeA.localeCompare(timeB);
+      });
+      
+      // ソート後の座標配列を作成
+      const sortedCoordinates = allStops.map(stop => [stop.lat, stop.lng]);
+      
       // 経路線を描画（青色）
-      const polyline = L.polyline(routeData.routeCoordinates, {
+      const polyline = L.polyline(sortedCoordinates, {
         color: '#2196F3',
         weight: 4,
         opacity: 0.7,
@@ -696,18 +714,21 @@ class MapController {
       });
       
       // 矢印を追加（進行方向を示す）
-      // Leaflet-polylineDecoratorプラグインを使用しない簡易実装
-      // 各セグメントの中点に矢印マーカーを配置
-      for (let i = 0; i < routeData.routeCoordinates.length - 1; i++) {
-        const start = routeData.routeCoordinates[i];
-        const end = routeData.routeCoordinates[i + 1];
+      // 時刻順にソートされた座標を使用するため、必ず出発→到着の方向になる
+      for (let i = 0; i < sortedCoordinates.length - 1; i++) {
+        const start = sortedCoordinates[i];
+        const end = sortedCoordinates[i + 1];
         
         // 中点を計算
         const midLat = (start[0] + end[0]) / 2;
         const midLng = (start[1] + end[1]) / 2;
         
-        // 角度を計算（北を0度として時計回り）
-        const angle = Math.atan2(end[1] - start[1], end[0] - start[0]) * 180 / Math.PI + 90;
+        // 角度を計算（進行方向を示す）
+        // Leafletの座標は[lat, lng]の順序
+        // Math.atan2(dy, dx)で東を0度とした角度を計算
+        // ▶アイコンは右向きなので、startからendへの方向に向けるため-90度を加算
+        // （90度ではなく-90度にすることで180度反転した正しい方向になる）
+        const angle = Math.atan2(end[1] - start[1], end[0] - start[0]) * 180 / Math.PI - 90;
         
         // 矢印アイコンを作成
         const arrowIcon = L.divIcon({
@@ -725,7 +746,7 @@ class MapController {
       this.routeLayer.addLayer(polyline);
       
       // 経路全体が見える範囲に自動ズーム
-      const bounds = L.latLngBounds(routeData.routeCoordinates);
+      const bounds = L.latLngBounds(sortedCoordinates);
       this.map.fitBounds(bounds, { 
         padding: [50, 50],
         maxZoom: 15
