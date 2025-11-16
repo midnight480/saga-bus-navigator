@@ -2,8 +2,11 @@
  * Cloudflare Functions: vehicle.pbプロキシ
  * 
  * 佐賀バスオープンデータのvehicle.pb（車両位置情報）を
+ * Protocol BuffersからデコードしてJSON形式で返す
  * CORSヘッダー付きでプロキシし、30秒間エッジキャッシュする
  */
+
+import { transit_realtime } from "gtfs-realtime-bindings";
 
 interface Env {
   // Cloudflare環境変数（必要に応じて追加）
@@ -12,7 +15,7 @@ interface Env {
 /**
  * OPTIONSリクエストハンドラー（CORSプリフライト対応）
  */
-export const onRequestOptions: PagesFunction<Env> = async () => {
+export const onRequestOptions = async () => {
   return new Response(null, {
     status: 204,
     headers: {
@@ -26,11 +29,11 @@ export const onRequestOptions: PagesFunction<Env> = async () => {
 };
 
 /**
- * GETリクエストハンドラー（vehicle.pbの取得とキャッシュ）
+ * GETリクエストハンドラー（vehicle.pbの取得、デコード、JSON形式で返却）
  */
-export const onRequestGet: PagesFunction<Env> = async (ctx) => {
+export const onRequestGet = async (ctx: any) => {
   const upstreamUrl = "http://opendata.sagabus.info/vehicle.pb";
-  const cache = caches.default;
+  const cache = (caches as any).default;
   
   // キャッシュキーとしてリクエストを作成
   const cacheKey = new Request(upstreamUrl, {
@@ -48,11 +51,11 @@ export const onRequestGet: PagesFunction<Env> = async (ctx) => {
       if (!upstreamResponse.ok) {
         // アップストリームエラー
         return new Response(
-          `Upstream error: ${upstreamResponse.status} ${upstreamResponse.statusText}`,
+          JSON.stringify({ error: `Upstream error: ${upstreamResponse.status} ${upstreamResponse.statusText}` }),
           { 
             status: 502,
             headers: {
-              "Content-Type": "text/plain; charset=utf-8",
+              "Content-Type": "application/json; charset=utf-8",
               "Access-Control-Allow-Origin": "https://saga-bus.midnight480.com",
               "Vary": "Origin",
             }
@@ -60,11 +63,21 @@ export const onRequestGet: PagesFunction<Env> = async (ctx) => {
         );
       }
 
+      // Protocol Buffersデータを取得
+      const arrayBuffer = await upstreamResponse.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      
+      // Protocol Buffersをデコード
+      const feedMessage = transit_realtime.FeedMessage.decode(uint8Array);
+      
+      // JSON形式に変換
+      const jsonData = feedMessage.toJSON();
+      
       // レスポンスを作成（CORSヘッダーとキャッシュ設定を追加）
-      response = new Response(upstreamResponse.body, {
+      response = new Response(JSON.stringify(jsonData), {
         status: 200,
         headers: {
-          "Content-Type": "application/x-protobuf",
+          "Content-Type": "application/json; charset=utf-8",
           "Cache-Control": "public, max-age=30, s-maxage=30",
           "Access-Control-Allow-Origin": "https://saga-bus.midnight480.com",
           "Vary": "Origin",
@@ -77,14 +90,14 @@ export const onRequestGet: PagesFunction<Env> = async (ctx) => {
 
     return response;
   } catch (error) {
-    // ネットワークエラーなど
-    console.error("Error fetching vehicle.pb:", error);
+    // ネットワークエラーやデコードエラーなど
+    console.error("Error fetching/decoding vehicle.pb:", error);
     return new Response(
-      `Proxy error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      JSON.stringify({ error: `Proxy error: ${error instanceof Error ? error.message : "Unknown error"}` }),
       {
         status: 502,
         headers: {
-          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Type": "application/json; charset=utf-8",
           "Access-Control-Allow-Origin": "https://saga-bus.midnight480.com",
           "Vary": "Origin",
         }

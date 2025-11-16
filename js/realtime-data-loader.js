@@ -69,11 +69,16 @@ class RealtimeDataLoader {
       const url = `${this.proxyBaseUrl}/vehicle`;
       const response = await this.fetchWithRetry(url);
       
-      const arrayBuffer = await response.arrayBuffer();
-      const decodedData = await this.decodeProtobuf(arrayBuffer, 'FeedMessage');
+      // JSON形式のレスポンスを取得
+      const jsonData = await response.json();
+      
+      // エラーチェック
+      if (jsonData.error) {
+        throw new Error(jsonData.error);
+      }
       
       // 内部データモデルに変換
-      const vehiclePositions = this.convertVehiclePositions(decodedData);
+      const vehiclePositions = this.convertVehiclePositions(jsonData);
       
       // キャッシュを更新
       this.vehiclePositions = vehiclePositions;
@@ -90,30 +95,6 @@ class RealtimeDataLoader {
     } catch (error) {
       console.error('[RealtimeDataLoader] Failed to fetch vehicle positions:', error);
       this.handleFetchError(error, 'vehicle');
-      throw error;
-    }
-  }
-
-  /**
-   * Protocol Buffersデータをデコード
-   * @param {ArrayBuffer} arrayBuffer - バイナリデータ
-   * @param {string} messageType - メッセージタイプ
-   * @returns {Promise<Object>} デコードされたデータ
-   */
-  async decodeProtobuf(arrayBuffer, messageType) {
-    try {
-      // gtfs-realtime-bindingsを使用してデコード
-      // ブラウザ環境ではgtfs-realtime-bindingsが利用可能であることを前提
-      if (typeof GtfsRealtimeBindings === 'undefined') {
-        throw new Error('gtfs-realtime-bindings is not loaded');
-      }
-      
-      const uint8Array = new Uint8Array(arrayBuffer);
-      const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(uint8Array);
-      
-      return feed;
-    } catch (error) {
-      console.error('[RealtimeDataLoader] Failed to decode protobuf:', error);
       throw error;
     }
   }
@@ -148,7 +129,7 @@ class RealtimeDataLoader {
         latitude: vehicle.position.latitude || null,
         longitude: vehicle.position.longitude || null,
         currentStopSequence: vehicle.currentStopSequence || null,
-        timestamp: vehicle.timestamp ? vehicle.timestamp.toNumber() : Date.now() / 1000,
+        timestamp: vehicle.timestamp ? (typeof vehicle.timestamp === 'number' ? vehicle.timestamp : vehicle.timestamp.toNumber?.() || Date.now() / 1000) : Date.now() / 1000,
         vehicleId: vehicle.vehicle?.id || null,
         vehicleLabel: vehicle.vehicle?.label || null
       };
@@ -175,11 +156,16 @@ class RealtimeDataLoader {
       const url = `${this.proxyBaseUrl}/route`;
       const response = await this.fetchWithRetry(url);
       
-      const arrayBuffer = await response.arrayBuffer();
-      const decodedData = await this.decodeProtobuf(arrayBuffer, 'FeedMessage');
+      // JSON形式のレスポンスを取得
+      const jsonData = await response.json();
+      
+      // エラーチェック
+      if (jsonData.error) {
+        throw new Error(jsonData.error);
+      }
       
       // 内部データモデルに変換
-      const tripUpdates = this.convertTripUpdates(decodedData);
+      const tripUpdates = this.convertTripUpdates(jsonData);
       
       // キャッシュを更新
       this.tripUpdates = tripUpdates;
@@ -258,11 +244,16 @@ class RealtimeDataLoader {
       const url = `${this.proxyBaseUrl}/alert`;
       const response = await this.fetchWithRetry(url);
       
-      const arrayBuffer = await response.arrayBuffer();
-      const decodedData = await this.decodeProtobuf(arrayBuffer, 'FeedMessage');
+      // JSON形式のレスポンスを取得
+      const jsonData = await response.json();
+      
+      // エラーチェック
+      if (jsonData.error) {
+        throw new Error(jsonData.error);
+      }
       
       // 内部データモデルに変換
-      const alerts = this.convertAlerts(decodedData);
+      const alerts = this.convertAlerts(jsonData);
       
       // キャッシュを更新
       this.alerts = alerts;
@@ -310,8 +301,8 @@ class RealtimeDataLoader {
       
       if (alert.activePeriod && alert.activePeriod.length > 0) {
         for (const period of alert.activePeriod) {
-          const start = period.start ? period.start.toNumber() : 0;
-          const end = period.end ? period.end.toNumber() : Number.MAX_SAFE_INTEGER;
+          const start = period.start ? (typeof period.start === 'number' ? period.start : period.start.toNumber?.() || 0) : 0;
+          const end = period.end ? (typeof period.end === 'number' ? period.end : period.end.toNumber?.() || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
           
           if (currentTime >= start && currentTime <= end) {
             isActive = true;
