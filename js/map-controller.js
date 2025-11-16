@@ -1300,7 +1300,7 @@ class MapController {
       finished: '#757575'      // グレー（運行終了）
     };
     
-    const color = statusColors[status] || statusColors.on_time;
+    const color = status ? (statusColors[status] || statusColors.on_time) : statusColors.on_time;
     
     // バスアイコンのSVG
     const svgIcon = `
@@ -1390,36 +1390,11 @@ class MapController {
    * @returns {string} ポップアップのHTMLコンテンツ
    */
   createVehiclePopupContent(status, tripInfo) {
-    // 運行状態に応じたメッセージと色
-    const statusMessages = {
-      before_start: { text: '運行開始前です', color: '#FFC107' },
-      on_time: { text: '定刻通りです', color: '#4CAF50' },
-      delayed: { text: `予定より${tripInfo.delayMinutes || 0}分遅れ`, color: '#F44336' },
-      finished: { text: '運行終了しました', color: '#757575' }
-    };
-    
-    const statusInfo = statusMessages[status] || statusMessages.on_time;
-    
     let content = `
       <div class="vehicle-popup">
         <h3 class="popup-title">${this.escapeHtml(tripInfo.routeName || '路線名不明')}</h3>
         <div class="popup-info">
           <p><strong>便ID:</strong> ${this.escapeHtml(tripInfo.tripId)}</p>
-          <p><strong>行き先:</strong> ${this.escapeHtml(tripInfo.headsign || '不明')}</p>
-          <p style="color: ${statusInfo.color}; font-weight: bold;">
-            ${this.escapeHtml(statusInfo.text)}
-          </p>
-    `;
-    
-    // 最終更新時刻を表示
-    if (tripInfo.lastUpdate) {
-      const updateTime = new Date(tripInfo.lastUpdate * 1000).toLocaleTimeString('ja-JP');
-      content += `
-          <p class="update-time"><small>最終更新: ${updateTime}</small></p>
-      `;
-    }
-    
-    content += `
         </div>
       </div>
     `;
@@ -1454,7 +1429,7 @@ class MapController {
         // 既存マーカーの位置を更新
         marker.setLatLng([lat, lng]);
         
-        // アイコンを更新（運行状態が変わった場合）
+        // アイコンを更新
         marker.setIcon(this.createVehicleIcon(status));
         
         // ポップアップの内容を更新
@@ -1463,7 +1438,6 @@ class MapController {
         
         console.log('[MapController] 車両マーカーを更新しました:', {
           tripId: tripId,
-          status: status,
           position: [lat, lng]
         });
       } else {
