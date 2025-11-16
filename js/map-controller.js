@@ -139,6 +139,7 @@ class MapController {
     
     let tileLoadErrorCount = 0;
     let currentTileLayer = null;
+    const TILE_ERROR_THRESHOLD = 5;
     
     // プライマリタイルレイヤーを作成
     currentTileLayer = L.tileLayer(primaryTileUrl, {
@@ -152,17 +153,34 @@ class MapController {
     currentTileLayer.on('tileerror', (error) => {
       tileLoadErrorCount++;
       
-      this.logError('地図タイルの読み込みに失敗しました', {
+      // エラーの詳細情報を収集
+      const errorDetails = {
         message: error.error ? error.error.message : 'Unknown error',
         tileUrl: error.tile ? error.tile.src : 'Unknown',
-        errorCount: tileLoadErrorCount
-      });
+        errorCount: tileLoadErrorCount,
+        userAgent: navigator.userAgent,
+        isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
+        timestamp: new Date().toISOString()
+      };
+      
+      this.logError('地図タイルの読み込みに失敗しました', errorDetails);
+      
+      // モバイル実機での診断情報を出力
+      if (errorDetails.isMobile) {
+        console.warn('[MapController] モバイル実機でのタイル読み込みエラー:', {
+          tileUrl: errorDetails.tileUrl,
+          errorCount: errorDetails.errorCount,
+          userAgent: errorDetails.userAgent,
+          suggestion: 'ネットワーク接続またはCSP設定を確認してください'
+        });
+      }
       
       // エラーが一定数を超えたら代替サーバーに切り替え
-      if (tileLoadErrorCount >= 5 && currentTileLayer._url === primaryTileUrl) {
+      if (tileLoadErrorCount >= TILE_ERROR_THRESHOLD && currentTileLayer._url === primaryTileUrl) {
         this.logError('代替タイルサーバーに切り替えます', {
           from: primaryTileUrl,
-          to: fallbackTileUrl
+          to: fallbackTileUrl,
+          errorCount: tileLoadErrorCount
         });
         
         // 現在のレイヤーを削除
@@ -172,7 +190,16 @@ class MapController {
         currentTileLayer = L.tileLayer(fallbackTileUrl, {
           attribution: '© OpenStreetMap contributors',
           maxZoom: 18,
-          minZoom: 10
+          minZoom: 10,
+          errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+        });
+        
+        // 代替サーバーでもエラーを監視
+        currentTileLayer.on('tileerror', (fallbackError) => {
+          this.logError('代替タイルサーバーでも読み込みに失敗しました', {
+            message: fallbackError.error ? fallbackError.error.message : 'Unknown error',
+            tileUrl: fallbackError.tile ? fallbackError.tile.src : 'Unknown'
+          });
         });
         
         currentTileLayer.addTo(this.map);
@@ -182,6 +209,15 @@ class MapController {
         
         // ユーザーに通知
         this.displayTileErrorNotification();
+      }
+    });
+    
+    // タイル読み込み成功を監視（エラーカウントをリセットするため）
+    currentTileLayer.on('tileload', () => {
+      // タイルが正常に読み込まれた場合は、エラーカウントをリセット
+      if (tileLoadErrorCount > 0) {
+        console.log(`[MapController] タイルが正常に読み込まれました。エラーカウントをリセットします（以前のエラー数: ${tileLoadErrorCount}）`);
+        tileLoadErrorCount = 0;
       }
     });
     
@@ -951,16 +987,90 @@ class MapController {
   getCurrentPosition() {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject(new Error('Geolocation APIがサポートされていません'));
+        const error = new Error('Geolocation APIがサポートされていません');
+        error.code = 'NOT_SUPPORTED';
+        reject(error);
         return;
       }
       
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      });
+      // Permissions-Policyのチェック（可能な場合）
+      if (navigator.permissions && navigator.permissions.query) {
+        navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+          if (result.state === 'denied') {
+            const error = new Error('位置情報の使用が許可されていません（Permissions-Policyにより無効化されています）');
+            error.code = 'PERMISSION_DENIED';
+            error.permissionsPolicyState = result.state;
+            reject(error);
+            return;
+          }
+          
+          // 許可されている場合は通常の位置情報取得を実行
+          this.requestCurrentPosition(resolve, reject);
+        }).catch(() => {
+          // permissions.queryが失敗した場合は通常の位置情報取得を実行
+          this.requestCurrentPosition(resolve, reject);
+        });
+      } else {
+        // permissions.queryがサポートされていない場合は通常の位置情報取得を実行
+        this.requestCurrentPosition(resolve, reject);
+      }
     });
+  }
+  
+  /**
+   * 実際の位置情報取得を実行する
+   * @param {Function} resolve - 成功時のコールバック
+   * @param {Function} reject - 失敗時のコールバック
+   */
+  requestCurrentPosition(resolve, reject) {
+    const options = {
+      enableHighAccuracy: true,
+      timeout: 15000, // モバイル実機ではタイムアウトを長めに設定
+      maximumAge: 0
+    };
+    
+    // モバイル実機での診断情報を出力
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      console.log('[MapController] モバイル実機での位置情報取得を開始します', {
+        userAgent: navigator.userAgent,
+        options: options
+      });
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (isMobile) {
+          console.log('[MapController] モバイル実機での位置情報取得に成功しました', {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
+        }
+        resolve(position);
+      },
+      (error) => {
+        // エラーに詳細情報を追加
+        const enhancedError = {
+          ...error,
+          userAgent: navigator.userAgent,
+          isMobile: isMobile,
+          timestamp: new Date().toISOString()
+        };
+        
+        if (isMobile) {
+          console.error('[MapController] モバイル実機での位置情報取得に失敗しました', enhancedError);
+          
+          // エラーコードに応じた診断情報を出力
+          if (error.code === error.PERMISSION_DENIED) {
+            console.warn('[MapController] 位置情報が拒否されました。ブラウザの設定またはPermissions-Policyを確認してください。');
+          }
+        }
+        
+        reject(enhancedError);
+      },
+      options
+    );
   }
   
   /**
