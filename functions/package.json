@@ -1,0 +1,11 @@
+{
+  "name": "saga-bus-navigator-functions",
+  "version": "1.0.0",
+  "description": "Cloudflare Pages Functions for Saga Bus Navigator",
+  "main": "index.js",
+  "dependencies": {
+    "gtfs-realtime-bindings": "^1.1.0",
+    "protobufjs": "^7.2.5"
+  }
+}
+
