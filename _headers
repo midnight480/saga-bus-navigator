@@ -23,5 +23,5 @@
   # Referrer-Policy: リファラー情報の送信を制限
   Referrer-Policy: strict-origin-when-cross-origin
   
-  # Permissions-Policy: 不要な機能を無効化
-  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  # Permissions-Policy: 不要な機能を無効化（位置情報は同一オリジンでのみ許可）
+  Permissions-Policy: geolocation=(self), microphone=(), camera=()
