@@ -20,9 +20,6 @@ class RealtimeVehicleController {
     this.dataLoader = dataLoader;
     this.realtimeDataLoader = realtimeDataLoader;
     
-    // 車両マーカー管理用のMap (tripId -> marker)
-    this.vehicleMarkers = new Map();
-    
     // 最終更新時刻の管理用のMap (tripId -> timestamp)
     this.lastUpdateTimes = new Map();
     
@@ -230,25 +227,16 @@ class RealtimeVehicleController {
       return;
     }
     
-    // 既存マーカーがある場合は位置を更新、ない場合は新規作成
-    const existingMarker = this.vehicleMarkers.get(tripId);
+    // tripInfoオブジェクトを作成
+    const tripInfo = {
+      tripId: tripId,
+      routeId: trip.route_id,
+      vehicleId: vehicleData.vehicleId,
+      vehicleLabel: vehicleData.vehicleLabel
+    };
     
-    if (existingMarker) {
-      // MapController.updateVehicleMarkerPosition()を呼び出す
-      this.mapController.updateVehicleMarkerPosition(existingMarker, lat, lng, status);
-    } else {
-      // MapController.createVehicleMarker()を呼び出す
-      const marker = this.mapController.createVehicleMarker(lat, lng, status, {
-        tripId: tripId,
-        routeId: trip.route_id,
-        vehicleId: vehicleData.vehicleId,
-        vehicleLabel: vehicleData.vehicleLabel
-      });
-      
-      if (marker) {
-        this.vehicleMarkers.set(tripId, marker);
-      }
-    }
+    // MapController.updateVehicleMarkerPosition()を呼び出す（既存マーカーの有無はMapController内でチェック）
+    this.mapController.updateVehicleMarkerPosition(tripId, lat, lng, status, tripInfo);
     
     // 最終更新時刻を記録
     this.lastUpdateTimes.set(tripId, Date.now());
@@ -460,18 +448,13 @@ class RealtimeVehicleController {
     
     // 古いマーカーを削除
     staleMarkers.forEach(tripId => {
-      const marker = this.vehicleMarkers.get(tripId);
+      // MapController.removeVehicleMarker()を呼び出して削除
+      this.mapController.removeVehicleMarker(tripId);
       
-      if (marker) {
-        // MapController.removeVehicleMarker()を呼び出して削除
-        this.mapController.removeVehicleMarker(marker);
-        
-        // 車両マーカー管理Mapから削除
-        this.vehicleMarkers.delete(tripId);
-        this.lastUpdateTimes.delete(tripId);
-        
-        console.log('[RealtimeVehicleController] 古い車両マーカーを削除しました:', tripId);
-      }
+      // 最終更新時刻の管理Mapから削除
+      this.lastUpdateTimes.delete(tripId);
+      
+      console.log('[RealtimeVehicleController] 古い車両マーカーを削除しました:', tripId);
     });
     
     if (staleMarkers.length > 0) {
