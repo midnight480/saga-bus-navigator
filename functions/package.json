@@ -1,0 +1,7 @@
+{
+  "name": "saga-bus-navigator-functions",
+  "version": "1.0.0",
+  "description": "Cloudflare Pages Functions for Saga Bus Navigator",
+  "dependencies": {}
+}
+

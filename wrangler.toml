@@ -4,6 +4,3 @@ node_compat = true
 [functions]
 node_compat = true
 
-[build]
-external = ["protobufjs"]
-
