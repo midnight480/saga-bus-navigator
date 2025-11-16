@@ -265,11 +265,14 @@
         <button type="button" class="footer-tab-button active" data-tab="usage" role="tab" aria-selected="true" aria-controls="usage-tab">
           使い方
         </button>
-        <button type="button" class="footer-tab-button" data-tab="acknowledgments" role="tab" aria-selected="false" aria-controls="acknowledgments-tab">
-          謝辞
+        <button type="button" class="footer-tab-button" data-tab="requirements" role="tab" aria-selected="false" aria-controls="requirements-tab">
+          動作環境
         </button>
         <button type="button" class="footer-tab-button" data-tab="terms" role="tab" aria-selected="false" aria-controls="terms-tab">
           利用規約
+        </button>
+        <button type="button" class="footer-tab-button" data-tab="acknowledgments" role="tab" aria-selected="false" aria-controls="acknowledgments-tab">
+          謝辞
         </button>
       </div>
       
@@ -349,36 +352,26 @@
           </section>
         </div>
         
-        <!-- 謝辞タブ -->
-        <div id="acknowledgments-tab" class="footer-tab-content" role="tabpanel" aria-labelledby="acknowledgments-tab-button" hidden>
-          <section class="acknowledgments-section">
-            <h3 class="acknowledgments-heading">データ提供元への謝辞</h3>
-            <p class="acknowledgments-text">このアプリケーションは、佐賀県が提供するオープンデータを利用しています。正確で最新のバス情報を公開していただいている佐賀県および関係事業者の皆様に深く感謝いたします。</p>
+        <!-- 動作環境タブ -->
+        <div id="requirements-tab" class="footer-tab-content" role="tabpanel" aria-labelledby="requirements-tab-button" hidden>
+          <section class="terms-section">
+            <h3 class="terms-heading">対応ブラウザ</h3>
+            <p class="terms-text">本サービスは以下のブラウザで動作確認を行っています。</p>
+            <ul class="terms-list">
+              <li>Google Chrome（最新版）</li>
+              <li>Microsoft Edge（最新版）</li>
+              <li>Mozilla Firefox（最新版）</li>
+            </ul>
           </section>
           
-          <section class="acknowledgments-section">
-            <h3 class="acknowledgments-heading">データ提供元</h3>
-            
-            <div class="acknowledgments-item">
-              <h4 class="acknowledgments-subheading">佐賀県バス情報</h4>
-              <p class="acknowledgments-text">佐賀県内のバス情報を提供しています。</p>
-              <p class="acknowledgments-link-wrapper">
-                <a href="https://www.sagabus.info/home" class="acknowledgments-link" target="_blank" rel="noopener noreferrer">https://www.sagabus.info/home</a>
-              </p>
-            </div>
-            
-            <div class="acknowledgments-item">
-              <h4 class="acknowledgments-subheading">オープンデータポータル</h4>
-              <p class="acknowledgments-text">GTFS形式のバスデータを公開しています。</p>
-              <p class="acknowledgments-link-wrapper">
-                <a href="http://opendata.sagabus.info/" class="acknowledgments-link" target="_blank" rel="noopener noreferrer">http://opendata.sagabus.info/</a>
-              </p>
-            </div>
+          <section class="terms-section">
+            <h3 class="terms-heading">モバイルデバイス</h3>
+            <p class="terms-text">モバイルデバイスでは、Android版Chrome、iOS版Chromeでの動作を確認しています。その他のブラウザや古いバージョンでは、一部機能が正常に動作しない場合があります。</p>
           </section>
           
-          <section class="acknowledgments-section">
-            <h3 class="acknowledgments-heading">GTFS形式について</h3>
-            <p class="acknowledgments-text">GTFS（General Transit Feed Specification）は、公共交通機関の時刻表と地理情報を記述するための標準形式です。本アプリケーションは、このGTFS形式のデータを利用して、リアルタイムで正確なバス情報を提供しています。</p>
+          <section class="terms-section">
+            <h3 class="terms-heading">Safariについて</h3>
+            <p class="terms-text">Safari（iOS版・macOS版）では、位置情報取得や地図表示が正常に動作しない場合があります。Safariをご利用の場合は、Chromeなどの他のブラウザをご利用ください。</p>
           </section>
         </div>
         
@@ -417,6 +410,39 @@
           <section class="terms-section">
             <h3 class="terms-heading">免責事項</h3>
             <p class="terms-text">本サービスの利用により生じたいかなる損害についても、当方は一切の責任を負いません。本サービスは「現状のまま」提供されるものであり、特定の目的への適合性について保証するものではありません。</p>
+          </section>
+        </div>
+        
+        <!-- 謝辞タブ -->
+        <div id="acknowledgments-tab" class="footer-tab-content" role="tabpanel" aria-labelledby="acknowledgments-tab-button" hidden>
+          <section class="acknowledgments-section">
+            <h3 class="acknowledgments-heading">データ提供元への謝辞</h3>
+            <p class="acknowledgments-text">このアプリケーションは、佐賀県が提供するオープンデータを利用しています。正確で最新のバス情報を公開していただいている佐賀県および関係事業者の皆様に深く感謝いたします。</p>
+          </section>
+          
+          <section class="acknowledgments-section">
+            <h3 class="acknowledgments-heading">データ提供元</h3>
+            
+            <div class="acknowledgments-item">
+              <h4 class="acknowledgments-subheading">佐賀県バス情報</h4>
+              <p class="acknowledgments-text">佐賀県内のバス情報を提供しています。</p>
+              <p class="acknowledgments-link-wrapper">
+                <a href="https://www.sagabus.info/home" class="acknowledgments-link" target="_blank" rel="noopener noreferrer">https://www.sagabus.info/home</a>
+              </p>
+            </div>
+            
+            <div class="acknowledgments-item">
+              <h4 class="acknowledgments-subheading">オープンデータポータル</h4>
+              <p class="acknowledgments-text">GTFS形式のバスデータを公開しています。</p>
+              <p class="acknowledgments-link-wrapper">
+                <a href="http://opendata.sagabus.info/" class="acknowledgments-link" target="_blank" rel="noopener noreferrer">http://opendata.sagabus.info/</a>
+              </p>
+            </div>
+          </section>
+          
+          <section class="acknowledgments-section">
+            <h3 class="acknowledgments-heading">GTFS形式について</h3>
+            <p class="acknowledgments-text">GTFS（General Transit Feed Specification）は、公共交通機関の時刻表と地理情報を記述するための標準形式です。本アプリケーションは、このGTFS形式のデータを利用して、リアルタイムで正確なバス情報を提供しています。</p>
           </section>
         </div>
       </div>
