@@ -226,13 +226,21 @@ class MapController {
           <div class="error-icon">⚠️</div>
           <h3>地図ライブラリの読み込みに失敗しました</h3>
           <p>地図を表示できません。ページを再読み込みしてください。</p>
-          <button class="retry-button" onclick="location.reload()">再読み込み</button>
+          <button class="retry-button" id="map-reload-button">再読み込み</button>
         </div>
       `;
       container.style.display = 'flex';
       container.style.alignItems = 'center';
       container.style.justifyContent = 'center';
       container.style.backgroundColor = '#f5f5f5';
+      
+      // 再読み込みボタンにイベントリスナーを設定
+      const reloadButton = container.querySelector('#map-reload-button');
+      if (reloadButton) {
+        reloadButton.addEventListener('click', () => {
+          location.reload();
+        });
+      }
     }
   }
 
@@ -373,6 +381,26 @@ class MapController {
             className: 'bus-stop-popup-container'
           });
           
+          // ポップアップが開かれたときにイベントリスナーを設定
+          marker.on('popupopen', () => {
+            const popup = marker.getPopup();
+            if (popup) {
+              const popupElement = popup.getElement();
+              if (popupElement) {
+                const timetableButton = popupElement.querySelector('.popup-button[data-stop-id]');
+                if (timetableButton) {
+                  const stopId = timetableButton.getAttribute('data-stop-id');
+                  // 既存のイベントリスナーを削除してから追加（重複防止）
+                  const newButton = timetableButton.cloneNode(true);
+                  timetableButton.parentNode.replaceChild(newButton, timetableButton);
+                  newButton.addEventListener('click', () => {
+                    this.showTimetable(stopId);
+                  });
+                }
+              }
+            }
+          });
+          
           // クリックイベントを設定
           marker.on('click', () => this.handleMarkerClick(stop));
           
@@ -478,7 +506,7 @@ class MapController {
     
     content += `
         </div>
-        <button class="popup-button" onclick="window.mapController.showTimetable('${this.escapeHtml(stop.id)}')">
+        <button class="popup-button" data-stop-id="${this.escapeHtml(stop.id)}">
           時刻表を見る
         </button>
       </div>
