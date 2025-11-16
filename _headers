@@ -3,7 +3,7 @@
   
   # Content Security Policy (CSP)
   # - default-src 'self': デフォルトは同一オリジンのみ
-  # - script-src 'self' https://static.cloudflareinsights.com https://cdn.jsdelivr.net: スクリプトは同一オリジン + Cloudflare Insights（アクセス解析）+ protobufjs（CDN）
+  # - script-src 'self' 'unsafe-eval' https://static.cloudflareinsights.com https://cdn.jsdelivr.net: スクリプトは同一オリジン + eval許可（protobufjs用）+ Cloudflare Insights（アクセス解析）+ protobufjs（CDN）
   # - style-src 'self' 'unsafe-inline': スタイルは同一オリジン + インラインCSS許可
   # - img-src 'self' data: https://*.tile.openstreetmap.org https://*.tile.openstreetmap.fr: 画像は同一オリジン + data:スキーム + OpenStreetMap地図タイル（負荷分散用サブドメイン a, b, c を含む）
   # - connect-src 'self' https://ntp-a1.nict.go.jp https://holidays-jp.github.io http://opendata.sagabus.info https://cdn.jsdelivr.net https://raw.githubusercontent.com: 外部API接続許可（GTFS-Realtimeデータ取得用 + protobufjs/protoファイル読み込み用）
@@ -12,7 +12,7 @@
   # - base-uri 'self': base要素は同一オリジンのみ
   # - form-action 'self': フォーム送信は同一オリジンのみ
   # - frame-ancestors 'none': iframe埋め込み禁止
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.tile.openstreetmap.org https://*.tile.openstreetmap.fr; connect-src 'self' https://ntp-a1.nict.go.jp https://holidays-jp.github.io http://opendata.sagabus.info https://cdn.jsdelivr.net https://raw.githubusercontent.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' https://static.cloudflareinsights.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.tile.openstreetmap.org https://*.tile.openstreetmap.fr; connect-src 'self' https://ntp-a1.nict.go.jp https://holidays-jp.github.io http://opendata.sagabus.info https://cdn.jsdelivr.net https://raw.githubusercontent.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';
   
   # X-Frame-Options: iframe埋め込み禁止（クリックジャッキング対策）
   X-Frame-Options: DENY
