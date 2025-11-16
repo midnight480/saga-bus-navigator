@@ -37,6 +37,9 @@ class MapController {
     
     // 現在地マーカー
     this.currentLocationMarker = null;
+    
+    // 車両マーカー管理用のMap (tripId -> marker)
+    this.vehicleMarkers = new Map();
   }
 
   /**
@@ -1277,6 +1280,270 @@ class MapController {
       
       requestAnimationFrame(measureFrame);
     });
+  }
+  
+  // ========================================
+  // 車両マーカー関連メソッド
+  // ========================================
+  
+  /**
+   * 車両アイコンを作成する
+   * @param {string} status - 運行状態 ('before_start' | 'on_time' | 'delayed' | 'finished')
+   * @returns {L.DivIcon} Leaflet DivIconオブジェクト
+   */
+  createVehicleIcon(status = 'on_time') {
+    // 運行状態に応じた色を設定
+    const statusColors = {
+      before_start: '#FFC107', // 黄色（運行開始前）
+      on_time: '#4CAF50',      // 緑色（定刻通り）
+      delayed: '#F44336',      // 赤色（遅延）
+      finished: '#757575'      // グレー（運行終了）
+    };
+    
+    const color = statusColors[status] || statusColors.on_time;
+    
+    // バスアイコンのSVG
+    const svgIcon = `
+      <svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="15" cy="15" r="14" fill="${color}" stroke="#fff" stroke-width="2"/>
+        <path d="M10 10 h10 v8 h-10 z M10 18 h10 v2 h-10 z M11 20 v2 M19 20 v2" 
+              stroke="#fff" stroke-width="2" fill="none"/>
+        <circle cx="12" cy="21" r="1.5" fill="#fff"/>
+        <circle cx="18" cy="21" r="1.5" fill="#fff"/>
+      </svg>
+    `;
+    
+    return L.divIcon({
+      html: svgIcon,
+      className: 'vehicle-marker',
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+      popupAnchor: [0, -15]
+    });
+  }
+  
+  /**
+   * 車両マーカーを作成する
+   * @param {number} lat - 緯度
+   * @param {number} lng - 経度
+   * @param {string} status - 運行状態
+   * @param {Object} tripInfo - 便情報
+   * @returns {L.Marker} 作成された車両マーカー
+   */
+  createVehicleMarker(lat, lng, status, tripInfo) {
+    try {
+      // 座標の妥当性チェック
+      if (!this.isValidCoordinate(lat, lng)) {
+        this.logError('不正な座標で車両マーカーを作成しようとしました', {
+          latitude: lat,
+          longitude: lng,
+          tripId: tripInfo.tripId,
+          reason: this.getCoordinateErrorReason(lat, lng)
+        });
+        return null;
+      }
+      
+      // 車両アイコンを作成
+      const icon = this.createVehicleIcon(status);
+      
+      // マーカーを作成
+      const marker = L.marker([lat, lng], {
+        icon: icon,
+        title: tripInfo.routeName || '車両'
+      });
+      
+      // 運行状態に応じた吹き出しを作成
+      const popupContent = this.createVehiclePopupContent(status, tripInfo);
+      marker.bindPopup(popupContent, {
+        maxWidth: 300,
+        className: 'vehicle-popup-container'
+      });
+      
+      // 地図に追加
+      marker.addTo(this.map);
+      
+      // 車両マーカー管理Mapに追加
+      this.vehicleMarkers.set(tripInfo.tripId, marker);
+      
+      console.log('[MapController] 車両マーカーを作成しました:', {
+        tripId: tripInfo.tripId,
+        status: status,
+        position: [lat, lng]
+      });
+      
+      return marker;
+      
+    } catch (error) {
+      this.logError('車両マーカーの作成に失敗しました', {
+        message: error.message,
+        details: error.stack,
+        tripId: tripInfo.tripId
+      });
+      return null;
+    }
+  }
+  
+  /**
+   * 車両ポップアップのコンテンツを作成する
+   * @param {string} status - 運行状態
+   * @param {Object} tripInfo - 便情報
+   * @returns {string} ポップアップのHTMLコンテンツ
+   */
+  createVehiclePopupContent(status, tripInfo) {
+    // 運行状態に応じたメッセージと色
+    const statusMessages = {
+      before_start: { text: '運行開始前です', color: '#FFC107' },
+      on_time: { text: '定刻通りです', color: '#4CAF50' },
+      delayed: { text: `予定より${tripInfo.delayMinutes || 0}分遅れ`, color: '#F44336' },
+      finished: { text: '運行終了しました', color: '#757575' }
+    };
+    
+    const statusInfo = statusMessages[status] || statusMessages.on_time;
+    
+    let content = `
+      <div class="vehicle-popup">
+        <h3 class="popup-title">${this.escapeHtml(tripInfo.routeName || '路線名不明')}</h3>
+        <div class="popup-info">
+          <p><strong>便ID:</strong> ${this.escapeHtml(tripInfo.tripId)}</p>
+          <p><strong>行き先:</strong> ${this.escapeHtml(tripInfo.headsign || '不明')}</p>
+          <p style="color: ${statusInfo.color}; font-weight: bold;">
+            ${this.escapeHtml(statusInfo.text)}
+          </p>
+    `;
+    
+    // 最終更新時刻を表示
+    if (tripInfo.lastUpdate) {
+      const updateTime = new Date(tripInfo.lastUpdate * 1000).toLocaleTimeString('ja-JP');
+      content += `
+          <p class="update-time"><small>最終更新: ${updateTime}</small></p>
+      `;
+    }
+    
+    content += `
+        </div>
+      </div>
+    `;
+    
+    return content;
+  }
+  
+  /**
+   * 車両マーカーの位置を更新する
+   * @param {string} tripId - 便ID
+   * @param {number} lat - 新しい緯度
+   * @param {number} lng - 新しい経度
+   * @param {string} status - 運行状態
+   * @param {Object} tripInfo - 便情報
+   */
+  updateVehicleMarkerPosition(tripId, lat, lng, status, tripInfo) {
+    try {
+      // 座標の妥当性チェック
+      if (!this.isValidCoordinate(lat, lng)) {
+        this.logError('不正な座標で車両マーカーを更新しようとしました', {
+          tripId: tripId,
+          latitude: lat,
+          longitude: lng,
+          reason: this.getCoordinateErrorReason(lat, lng)
+        });
+        return;
+      }
+      
+      const marker = this.vehicleMarkers.get(tripId);
+      
+      if (marker) {
+        // 既存マーカーの位置を更新
+        marker.setLatLng([lat, lng]);
+        
+        // アイコンを更新（運行状態が変わった場合）
+        marker.setIcon(this.createVehicleIcon(status));
+        
+        // ポップアップの内容を更新
+        const popupContent = this.createVehiclePopupContent(status, tripInfo);
+        marker.setPopupContent(popupContent);
+        
+        console.log('[MapController] 車両マーカーを更新しました:', {
+          tripId: tripId,
+          status: status,
+          position: [lat, lng]
+        });
+      } else {
+        // マーカーが存在しない場合は新規作成
+        console.log('[MapController] 車両マーカーが存在しないため新規作成します:', tripId);
+        this.createVehicleMarker(lat, lng, status, tripInfo);
+      }
+      
+    } catch (error) {
+      this.logError('車両マーカーの更新に失敗しました', {
+        message: error.message,
+        details: error.stack,
+        tripId: tripId
+      });
+    }
+  }
+  
+  /**
+   * 車両マーカーを削除する
+   * @param {string} tripId - 便ID
+   */
+  removeVehicleMarker(tripId) {
+    try {
+      const marker = this.vehicleMarkers.get(tripId);
+      
+      if (marker) {
+        // 地図からマーカーを削除
+        this.map.removeLayer(marker);
+        
+        // 車両マーカー管理Mapから削除
+        this.vehicleMarkers.delete(tripId);
+        
+        console.log('[MapController] 車両マーカーを削除しました:', tripId);
+      }
+      
+    } catch (error) {
+      this.logError('車両マーカーの削除に失敗しました', {
+        message: error.message,
+        details: error.stack,
+        tripId: tripId
+      });
+    }
+  }
+  
+  /**
+   * 車両マーカーを強調表示する
+   * @param {string} tripId - 強調表示する便ID（nullの場合は全て通常表示に戻す）
+   */
+  highlightVehicleMarker(tripId) {
+    try {
+      this.vehicleMarkers.forEach((marker, id) => {
+        const element = marker.getElement();
+        if (element) {
+          if (tripId === null) {
+            // 全て通常表示に戻す
+            element.style.opacity = '1';
+            element.style.zIndex = '1000';
+          } else if (id === tripId) {
+            // 選択された車両を強調表示
+            element.style.opacity = '1';
+            element.style.zIndex = '2000';
+            element.style.transform = 'scale(1.2)';
+          } else {
+            // 他の車両を半透明にする
+            element.style.opacity = '0.4';
+            element.style.zIndex = '1000';
+            element.style.transform = 'scale(1)';
+          }
+        }
+      });
+      
+      console.log('[MapController] 車両マーカーを強調表示しました:', tripId);
+      
+    } catch (error) {
+      this.logError('車両マーカーの強調表示に失敗しました', {
+        message: error.message,
+        details: error.stack,
+        tripId: tripId
+      });
+    }
   }
 }
 
