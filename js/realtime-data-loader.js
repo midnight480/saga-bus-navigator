@@ -72,9 +72,18 @@ class RealtimeDataLoader {
         throw new Error('protobufjs is not loaded');
       }
       
-      // GTFS-Realtimeの.protoファイルを読み込む
-      const root = await protobuf.load('https://raw.githubusercontent.com/google/transit/master/gtfs-realtime/proto/gtfs-realtime.proto');
-      const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
+      // GTFS-Realtimeの.protoファイルを読み込む（キャッシュを利用）
+      if (!this._protoRoot) {
+        // ローカルの.protoファイルを読み込む
+        const response = await fetch('/js/gtfs-realtime.proto');
+        if (!response.ok) {
+          throw new Error(`Failed to load proto file: ${response.status} ${response.statusText}`);
+        }
+        const protoText = await response.text();
+        this._protoRoot = protobuf.parse(protoText).root;
+      }
+      
+      const FeedMessage = this._protoRoot.lookupType('transit_realtime.FeedMessage');
       
       // Protocol Buffersをデコード
       const uint8Array = new Uint8Array(arrayBuffer);
