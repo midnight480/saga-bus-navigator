@@ -360,7 +360,6 @@ body {
 }
 
 .btn-secondary {
-  display: none;
   background-color: white;
   color: #0066cc;
   border: 2px solid #0066cc;
@@ -370,6 +369,13 @@ body {
 
 .btn-secondary:hover:not(:disabled) {
   background-color: #f0f7ff;
+}
+
+/* ボタンコンテナ - 検索ボタンと同じ幅を保証 */
+.button-container {
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 /* 地図選択ボタン */
@@ -618,11 +624,18 @@ body {
   word-break: break-word;
 }
 
+/* アクションボタンコンテナ */
+.result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 /* 地図で表示ボタン */
 .map-display-button {
   width: 100%;
   padding: 0.75rem 1rem;
-  margin-top: 1rem;
   font-size: 0.9375rem;
   font-weight: 600;
   background-color: white;
@@ -646,6 +659,47 @@ body {
 .map-display-button:focus-visible {
   outline: 3px solid #0066cc;
   outline-offset: 2px;
+}
+
+/* カレンダーに登録ボタン */
+.add-to-calendar-button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  background-color: white;
+  color: #28a745;
+  border: 2px solid #28a745;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 44px;
+}
+
+.add-to-calendar-button:hover {
+  background-color: #f0fff4;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+}
+
+.add-to-calendar-button:active {
+  transform: translateY(1px);
+}
+
+.add-to-calendar-button:focus-visible {
+  outline: 3px solid #28a745;
+  outline-offset: 2px;
+}
+
+/* レスポンシブ対応 */
+@media (min-width: 768px) {
+  .result-actions {
+    flex-direction: row;
+  }
+  
+  .map-display-button,
+  .add-to-calendar-button {
+    flex: 1;
+  }
 }
 
 /* ========================================
@@ -874,6 +928,62 @@ body {
 
 .btn-clear-route:active {
   transform: translateY(1px);
+}
+
+/* 現在地ボタン（Leafletコントロールとして） */
+.current-location-control {
+  margin: 10px;
+}
+
+.current-location-button {
+  width: 44px;
+  height: 44px;
+  background-color: white;
+  border: 2px solid #333;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.current-location-button:hover {
+  background-color: #f0f0f0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.current-location-button:active {
+  transform: translateY(1px);
+}
+
+.current-location-button .location-icon {
+  font-size: 1.5rem;
+  color: #333;
+  line-height: 1;
+}
+
+/* 現在地マーカー */
+.current-location-icon {
+  background: transparent;
+  border: none;
+}
+
+.current-location-marker {
+  font-size: 1.5rem;
+  color: #0066cc;
+  text-shadow: 0 0 3px white, 0 0 6px white;
+}
+
+/* 位置情報エラー通知 */
+.location-error-notification {
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  margin: 10px;
+  max-width: 300px;
 }
 
 /* 経路ポップアップ */
@@ -1170,4 +1280,368 @@ body {
 
 .timetable-tab-content[hidden] {
   display: none;
+}
+
+/* ========================================
+   現在地表示機能
+   ======================================== */
+
+/* 現在地ボタン（Leafletコントロールとして） */
+.current-location-control {
+  margin: 10px;
+}
+
+.current-location-button {
+  width: 44px;
+  height: 44px;
+  background: white;
+  border: 2px solid #333;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.current-location-button:hover {
+  background-color: #f5f5f5;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.current-location-button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.current-location-button:focus {
+  outline: 2px solid #2196F3;
+  outline-offset: 2px;
+}
+
+.current-location-button .location-icon {
+  font-size: 22px;
+  color: #333;
+  line-height: 1;
+}
+
+/* 現在地マーカー */
+.current-location-marker {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #2196F3;
+  text-shadow: 0 0 3px white, 0 0 6px white;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.current-location-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* 位置情報エラー通知 */
+.location-error-notification {
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  margin: 10px;
+  max-width: 350px;
+  border-left: 4px solid #f44336;
+}
+
+.location-error-notification .notification-content {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  gap: 0.5rem;
+}
+
+.location-error-notification .notification-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.location-error-notification .notification-text {
+  font-size: 0.875rem;
+  color: #d32f2f;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 767px) {
+  .current-location-control {
+    margin: 8px;
+  }
+  
+  .current-location-button {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .current-location-button .location-icon {
+    font-size: 20px;
+  }
+  
+  .location-error-notification {
+    max-width: calc(100vw - 20px);
+  }
+  
+  .location-error-notification .notification-content {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .location-error-notification .notification-text {
+    font-size: 0.8125rem;
+  }
+}
+
+/* ========================================
+   Calendar Modal Styles
+   ======================================== */
+
+/* カレンダーモーダルのオーバーレイ */
+.calendar-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.calendar-modal[hidden] {
+  display: none;
+}
+
+/* カレンダーモーダルのコンテンツ */
+.calendar-modal-content {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* カレンダーモーダルのヘッダー */
+.calendar-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.calendar-modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.calendar-close-button {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.calendar-close-button:hover {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.calendar-close-button:focus {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}
+
+/* カレンダーモーダルのボディ */
+.calendar-modal-body {
+  padding: 1.5rem;
+}
+
+.calendar-modal-description {
+  font-size: 0.9375rem;
+  color: #666;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.5;
+}
+
+/* カレンダーオプション */
+.calendar-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.calendar-option-button {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background-color: #f8f9fa;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1rem;
+  text-align: left;
+  width: 100%;
+}
+
+.calendar-option-button:hover {
+  background-color: #e3f2fd;
+  border-color: #0066cc;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 102, 204, 0.15);
+}
+
+.calendar-option-button:focus {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}
+
+.calendar-option-button:active {
+  transform: translateY(0);
+}
+
+.calendar-option-icon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+}
+
+.calendar-option-text {
+  font-weight: 500;
+  color: #333;
+  line-height: 1.4;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 767px) {
+  .calendar-modal {
+    padding: 0.5rem;
+  }
+  
+  .calendar-modal-content {
+    max-width: 100%;
+  }
+  
+  .calendar-modal-header {
+    padding: 1rem 1.25rem;
+  }
+  
+  .calendar-modal-title {
+    font-size: 1.125rem;
+  }
+  
+  .calendar-modal-body {
+    padding: 1.25rem;
+  }
+  
+  .calendar-modal-description {
+    font-size: 0.875rem;
+    margin-bottom: 1.25rem;
+  }
+  
+  .calendar-option-button {
+    padding: 0.875rem 1rem;
+    gap: 0.875rem;
+  }
+  
+  .calendar-option-icon {
+    font-size: 1.5rem;
+  }
+  
+  .calendar-option-text {
+    font-size: 0.9375rem;
+  }
+}
+
+/* ダークモード対応（オプション） */
+@media (prefers-color-scheme: dark) {
+  .calendar-modal-content {
+    background-color: #2c2c2c;
+  }
+  
+  .calendar-modal-header {
+    border-bottom-color: #444;
+  }
+  
+  .calendar-modal-title {
+    color: #f5f5f5;
+  }
+  
+  .calendar-close-button {
+    color: #ccc;
+  }
+  
+  .calendar-close-button:hover {
+    background-color: #3c3c3c;
+    color: #f5f5f5;
+  }
+  
+  .calendar-modal-description {
+    color: #ccc;
+  }
+  
+  .calendar-option-button {
+    background-color: #3c3c3c;
+    border-color: #555;
+  }
+  
+  .calendar-option-button:hover {
+    background-color: #1a3a5c;
+    border-color: #4a90e2;
+  }
+  
+  .calendar-option-text {
+    color: #f5f5f5;
+  }
 }

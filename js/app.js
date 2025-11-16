@@ -404,6 +404,11 @@ class UIController {
     this.mapSelectionButtons = null;
     this.isMapSelectionActive = false;
     this.currentMapSelectionType = null; // 'departure' | 'arrival'
+    
+    // カレンダー機能関連
+    this.calendarExporter = null;
+    this.calendarModal = null;
+    this.currentScheduleForCalendar = null;
   }
 
   /**
@@ -435,6 +440,9 @@ class UIController {
       arrival: document.getElementById('map-select-arrival')
     };
     
+    // カレンダーエクスポーターの初期化
+    this.calendarExporter = new CalendarExporter();
+    
     // イベントリスナーの設定
     this.setupAutocomplete();
     this.setupClickOutside();
@@ -442,6 +450,8 @@ class UIController {
     this.setupTimeSelection();
     this.setupSearchButton();
     this.setupMapSelectionButtons();
+    this.setupClearSearchResultsButton();
+    this.setupCalendarModal();
   }
 
   /**
@@ -968,6 +978,9 @@ class UIController {
       
       // もっと見るボタンを非表示
       loadMoreButton.style.display = 'none';
+      
+      // クリアボタンを非表示
+      this.hideClearSearchResultsButton();
       return;
     }
     
@@ -986,6 +999,191 @@ class UIController {
     // もっと見るボタンは現在非表示（20件制限のため）
     // 将来的に実装する場合はここで表示制御
     loadMoreButton.style.display = 'none';
+    
+    // 検索結果が表示されたらクリアボタンを表示
+    this.showClearSearchResultsButton();
+  }
+  
+  /**
+   * 検索結果クリアボタンのイベントリスナー設定
+   */
+  setupClearSearchResultsButton() {
+    const clearButton = document.getElementById('clear-search-results-button');
+    if (clearButton) {
+      clearButton.addEventListener('click', () => {
+        this.clearSearchResults();
+      });
+    }
+  }
+  
+  /**
+   * 検索結果をクリア
+   */
+  clearSearchResults() {
+    // 検索結果コンテナをクリア
+    const resultsContainer = document.getElementById('results-container');
+    if (resultsContainer) {
+      // 既存の内容をクリア
+      while (resultsContainer.firstChild) {
+        resultsContainer.removeChild(resultsContainer.firstChild);
+      }
+      
+      // プレースホルダーを表示
+      const placeholder = document.createElement('p');
+      placeholder.className = 'results-placeholder';
+      placeholder.textContent = '検索条件を入力して検索ボタンを押してください';
+      resultsContainer.appendChild(placeholder);
+    }
+    
+    // 検索入力フィールドをクリア
+    if (this.departureInput) {
+      this.departureInput.value = '';
+      this.selectedDepartureStop = null;
+    }
+    
+    if (this.arrivalInput) {
+      this.arrivalInput.value = '';
+      this.selectedArrivalStop = null;
+    }
+    
+    // 検索ボタンを無効化
+    this.updateSearchButton();
+    
+    // クリアボタンを非表示
+    this.hideClearSearchResultsButton();
+    
+    // エラーメッセージをクリア
+    this.clearError();
+    
+    console.log('[UIController] 検索結果をクリアしました');
+  }
+  
+  /**
+   * 検索結果クリアボタンを表示
+   */
+  showClearSearchResultsButton() {
+    const clearButton = document.getElementById('clear-search-results-button');
+    if (clearButton) {
+      clearButton.removeAttribute('hidden');
+    }
+  }
+  
+  /**
+   * 検索結果クリアボタンを非表示
+   */
+  hideClearSearchResultsButton() {
+    const clearButton = document.getElementById('clear-search-results-button');
+    if (clearButton) {
+      clearButton.setAttribute('hidden', '');
+    }
+  }
+
+  /**
+   * カレンダーモーダルのセットアップ
+   */
+  setupCalendarModal() {
+    this.calendarModal = document.getElementById('calendar-modal');
+    
+    if (!this.calendarModal) {
+      console.error('[UIController] カレンダーモーダルが見つかりません');
+      return;
+    }
+    
+    // 閉じるボタンのイベントリスナー
+    const closeButton = this.calendarModal.querySelector('.calendar-close-button');
+    if (closeButton) {
+      closeButton.addEventListener('click', () => {
+        this.closeCalendarModal();
+      });
+    }
+    
+    // モーダル外側クリックで閉じる
+    this.calendarModal.addEventListener('click', (e) => {
+      if (e.target === this.calendarModal) {
+        this.closeCalendarModal();
+      }
+    });
+    
+    // Escapeキーで閉じる
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !this.calendarModal.hasAttribute('hidden')) {
+        this.closeCalendarModal();
+      }
+    });
+    
+    // カレンダーオプションボタンのイベントリスナー
+    const optionButtons = this.calendarModal.querySelectorAll('.calendar-option-button');
+    optionButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        const format = e.currentTarget.getAttribute('data-format');
+        this.handleCalendarExport(format);
+      });
+    });
+  }
+  
+  /**
+   * 「カレンダーに登録」ボタンクリック時の処理
+   * @param {Object} result - 検索結果オブジェクト
+   */
+  handleAddToCalendarClick(result) {
+    console.log('[UIController] カレンダーに登録ボタンがクリックされました:', result);
+    
+    // スケジュール情報を保存
+    this.currentScheduleForCalendar = result;
+    
+    // モーダルを表示
+    this.showCalendarModal();
+  }
+  
+  /**
+   * カレンダーモーダルを表示
+   */
+  showCalendarModal() {
+    if (this.calendarModal) {
+      this.calendarModal.removeAttribute('hidden');
+      
+      // フォーカスをモーダルに移動
+      const firstButton = this.calendarModal.querySelector('.calendar-option-button');
+      if (firstButton) {
+        firstButton.focus();
+      }
+    }
+  }
+  
+  /**
+   * カレンダーモーダルを閉じる
+   */
+  closeCalendarModal() {
+    if (this.calendarModal) {
+      this.calendarModal.setAttribute('hidden', '');
+      this.currentScheduleForCalendar = null;
+    }
+  }
+  
+  /**
+   * カレンダーエクスポート処理
+   * @param {string} format - エクスポート形式 ('ical' | 'google')
+   */
+  handleCalendarExport(format) {
+    if (!this.currentScheduleForCalendar) {
+      console.error('[UIController] スケジュール情報がありません');
+      return;
+    }
+    
+    try {
+      if (format === 'ical') {
+        this.calendarExporter.exportToICal(this.currentScheduleForCalendar);
+      } else if (format === 'google') {
+        this.calendarExporter.exportToGoogleCalendar(this.currentScheduleForCalendar);
+      }
+      
+      // モーダルを閉じる
+      this.closeCalendarModal();
+      
+    } catch (error) {
+      console.error('[UIController] カレンダーエクスポートエラー:', error);
+      this.displayError('カレンダーへの登録に失敗しました');
+    }
   }
 
   /**
@@ -1140,6 +1338,10 @@ class UIController {
       detailsContainer.appendChild(viaStops);
     }
     
+    // アクションボタンコンテナを作成
+    const actionsContainer = document.createElement('div');
+    actionsContainer.className = 'result-actions';
+    
     // 「地図で表示」ボタンを追加
     const mapButton = document.createElement('button');
     mapButton.className = 'map-display-button';
@@ -1152,7 +1354,23 @@ class UIController {
       this.handleMapDisplayButtonClick(result);
     });
     
-    detailsContainer.appendChild(mapButton);
+    actionsContainer.appendChild(mapButton);
+    
+    // 「カレンダーに登録」ボタンを追加
+    const calendarButton = document.createElement('button');
+    calendarButton.className = 'add-to-calendar-button';
+    calendarButton.textContent = 'カレンダーに登録';
+    calendarButton.setAttribute('type', 'button');
+    calendarButton.setAttribute('aria-label', `${result.departureStop}から${result.arrivalStop}のバスをカレンダーに登録`);
+    
+    // ボタンクリック時のイベントハンドラー
+    calendarButton.addEventListener('click', () => {
+      this.handleAddToCalendarClick(result);
+    });
+    
+    actionsContainer.appendChild(calendarButton);
+    
+    detailsContainer.appendChild(actionsContainer);
     
     // リストアイテムに追加
     li.appendChild(timeContainer);

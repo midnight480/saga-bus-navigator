@@ -23,6 +23,7 @@ const createLeafletMock = () => {
     bindPopup: vi.fn().mockReturnThis(),
     on: vi.fn().mockReturnThis(),
     setIcon: vi.fn().mockReturnThis(),
+    addTo: vi.fn().mockReturnThis(),
     getElement: vi.fn().mockReturnValue({
       style: {}
     })
@@ -577,6 +578,440 @@ describe('MapController', () => {
       expect(stats).toHaveProperty('errorCount');
       expect(stats).toHaveProperty('mapZoom');
       expect(stats).toHaveProperty('mapCenter');
+    });
+  });
+
+  describe('現在地表示機能', () => {
+    beforeEach(() => {
+      mapController.initialize('map-container', mockBusStops);
+      // 現在地ボタンはLeafletコントロールとして自動的に追加される
+    });
+
+    afterEach(() => {
+      // 現在地コントロールを削除
+      if (mapController.currentLocationControl) {
+        mapController.map.removeControl(mapController.currentLocationControl);
+        mapController.currentLocationControl = null;
+      }
+      
+      // Geolocation APIをクリーンアップ
+      if (global.navigator && global.navigator.geolocation) {
+        delete global.navigator.geolocation;
+      }
+    });
+
+    describe('getCurrentPosition', () => {
+      it('位置情報を正常に取得する', async () => {
+        // Geolocation APIをモック
+        const mockPosition = {
+          coords: {
+            latitude: 33.2649,
+            longitude: 130.3008,
+            accuracy: 10
+          }
+        };
+
+        global.navigator.geolocation = {
+          getCurrentPosition: vi.fn((successCallback) => {
+            successCallback(mockPosition);
+          })
+        };
+
+        const position = await mapController.getCurrentPosition();
+
+        expect(position).toEqual(mockPosition);
+        expect(global.navigator.geolocation.getCurrentPosition).toHaveBeenCalledWith(
+          expect.any(Function),
+          expect.any(Function),
+          expect.objectContaining({
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          })
+        );
+      });
+
+      it('位置情報の取得に失敗した場合はエラーを返す', async () => {
+        // Geolocation APIをモック（エラーケース）
+        const mockError = {
+          code: 1,
+          message: 'User denied Geolocation',
+          PERMISSION_DENIED: 1
+        };
+
+        global.navigator.geolocation = {
+          getCurrentPosition: vi.fn((successCallback, errorCallback) => {
+            errorCallback(mockError);
+          })
+        };
+
+        await expect(mapController.getCurrentPosition()).rejects.toEqual(mockError);
+      });
+
+      it('Geolocation APIがサポートされていない場合はエラーを返す', async () => {
+        // Geolocation APIを削除
+        delete global.navigator.geolocation;
+
+        await expect(mapController.getCurrentPosition()).rejects.toThrow('Geolocation APIがサポートされていません');
+      });
+
+      it('位置情報取得時に正しいオプションを渡す', async () => {
+        const mockPosition = {
+          coords: {
+            latitude: 33.2649,
+            longitude: 130.3008
+          }
+        };
+
+        global.navigator.geolocation = {
+          getCurrentPosition: vi.fn((successCallback) => {
+            successCallback(mockPosition);
+          })
+        };
+
+        await mapController.getCurrentPosition();
+
+        expect(global.navigator.geolocation.getCurrentPosition).toHaveBeenCalledWith(
+          expect.any(Function),
+          expect.any(Function),
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
+        );
+      });
+    });
+
+    describe('displayCurrentLocationMarker', () => {
+      it('現在地マーカーを表示する', () => {
+        const lat = 33.2649;
+        const lng = 130.3008;
+
+        mapController.displayCurrentLocationMarker(lat, lng);
+
+        expect(leafletMock.marker).toHaveBeenCalledWith([lat, lng], expect.any(Object));
+        expect(mapController.currentLocationMarker).toBeDefined();
+      });
+
+      it('現在地マーカーにポップアップを設定する', () => {
+        const lat = 33.2649;
+        const lng = 130.3008;
+
+        mapController.displayCurrentLocationMarker(lat, lng);
+
+        expect(mapController.currentLocationMarker.bindPopup).toHaveBeenCalledWith('現在地');
+      });
+
+      it('既存の現在地マーカーを削除してから新しいマーカーを表示する', () => {
+        const lat1 = 33.2649;
+        const lng1 = 130.3008;
+        const lat2 = 33.2495;
+        const lng2 = 130.3005;
+
+        // 最初のマーカーを表示
+        mapController.displayCurrentLocationMarker(lat1, lng1);
+        const firstMarker = mapController.currentLocationMarker;
+
+        // 2番目のマーカーを表示
+        mapController.displayCurrentLocationMarker(lat2, lng2);
+
+        // 既存のマーカーが削除されたことを確認
+        expect(mapController.map.removeLayer).toHaveBeenCalledWith(firstMarker);
+        
+        // 新しいマーカーが作成されたことを確認（leafletMock.markerが2回呼ばれる）
+        expect(leafletMock.marker).toHaveBeenCalledTimes(2);
+        expect(leafletMock.marker).toHaveBeenLastCalledWith([lat2, lng2], expect.any(Object));
+      });
+
+      it('現在地マーカーが地図に追加される', () => {
+        const lat = 33.2649;
+        const lng = 130.3008;
+
+        mapController.displayCurrentLocationMarker(lat, lng);
+
+        expect(mapController.currentLocationMarker.addTo).toBeDefined();
+      });
+    });
+
+    describe('showCurrentLocation', () => {
+      it('現在地を取得して地図を移動する', async () => {
+        const mockPosition = {
+          coords: {
+            latitude: 33.2649,
+            longitude: 130.3008
+          }
+        };
+
+        global.navigator.geolocation = {
+          getCurrentPosition: vi.fn((successCallback) => {
+            successCallback(mockPosition);
+          })
+        };
+
+        await mapController.showCurrentLocation();
+
+        expect(mapController.map.setView).toHaveBeenCalledWith(
+          [mockPosition.coords.latitude, mockPosition.coords.longitude],
+          15
+        );
+        expect(mapController.currentLocationMarker).toBeDefined();
+      });
+
+      it('現在地を取得して地図をズームレベル15で表示する', async () => {
+        const mockPosition = {
+          coords: {
+            latitude: 33.2649,
+            longitude: 130.3008
+          }
+        };
+
+        global.navigator.geolocation = {
+          getCurrentPosition: vi.fn((successCallback) => {
+            successCallback(mockPosition);
+          })
+        };
+
+        await mapController.showCurrentLocation();
+
+        expect(mapController.map.setView).toHaveBeenCalledWith(
+          expect.any(Array),
+          15
+        );
+      });
+
+      it('位置情報の取得に失敗した場合はエラーを表示する', async () => {
+        const mockError = {
+          code: 1,
+          message: 'User denied Geolocation',
+          PERMISSION_DENIED: 1
+        };
+
+        global.navigator.geolocation = {
+          getCurrentPosition: vi.fn((successCallback, errorCallback) => {
+            errorCallback(mockError);
+          })
+        };
+
+        const displayErrorSpy = vi.spyOn(mapController, 'displayLocationError');
+
+        await mapController.showCurrentLocation();
+
+        expect(displayErrorSpy).toHaveBeenCalled();
+
+        displayErrorSpy.mockRestore();
+      });
+
+      it('位置情報取得成功時にコンソールログを出力する', async () => {
+        const mockPosition = {
+          coords: {
+            latitude: 33.2649,
+            longitude: 130.3008
+          }
+        };
+
+        global.navigator.geolocation = {
+          getCurrentPosition: vi.fn((successCallback) => {
+            successCallback(mockPosition);
+          })
+        };
+
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        await mapController.showCurrentLocation();
+
+        expect(consoleSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[MapController] 現在地を取得しました'),
+          expect.objectContaining({
+            latitude: mockPosition.coords.latitude,
+            longitude: mockPosition.coords.longitude
+          })
+        );
+
+        consoleSpy.mockRestore();
+      });
+    });
+
+    describe('handleLocationError', () => {
+      it('PERMISSION_DENIEDエラーを処理する', () => {
+        const error = {
+          code: 1,
+          PERMISSION_DENIED: 1
+        };
+
+        const displayErrorSpy = vi.spyOn(mapController, 'displayLocationError');
+
+        mapController.handleLocationError(error);
+
+        expect(displayErrorSpy).toHaveBeenCalledWith('位置情報の使用が許可されていません');
+
+        displayErrorSpy.mockRestore();
+      });
+
+      it('POSITION_UNAVAILABLEエラーを処理する', () => {
+        const error = {
+          code: 2,
+          POSITION_UNAVAILABLE: 2
+        };
+
+        const displayErrorSpy = vi.spyOn(mapController, 'displayLocationError');
+
+        mapController.handleLocationError(error);
+
+        expect(displayErrorSpy).toHaveBeenCalledWith('位置情報が利用できません');
+
+        displayErrorSpy.mockRestore();
+      });
+
+      it('TIMEOUTエラーを処理する', () => {
+        const error = {
+          code: 3,
+          TIMEOUT: 3
+        };
+
+        const displayErrorSpy = vi.spyOn(mapController, 'displayLocationError');
+
+        mapController.handleLocationError(error);
+
+        expect(displayErrorSpy).toHaveBeenCalledWith('位置情報の取得がタイムアウトしました');
+
+        displayErrorSpy.mockRestore();
+      });
+
+      it('一般的なエラーを処理する', () => {
+        const error = new Error('Unknown error');
+
+        const displayErrorSpy = vi.spyOn(mapController, 'displayLocationError');
+
+        mapController.handleLocationError(error);
+
+        expect(displayErrorSpy).toHaveBeenCalledWith('Unknown error');
+
+        displayErrorSpy.mockRestore();
+      });
+
+      it('エラーコードがない場合はエラーメッセージを使用する', () => {
+        const error = {
+          message: 'Custom error message'
+        };
+
+        const displayErrorSpy = vi.spyOn(mapController, 'displayLocationError');
+
+        mapController.handleLocationError(error);
+
+        expect(displayErrorSpy).toHaveBeenCalledWith('Custom error message');
+
+        displayErrorSpy.mockRestore();
+      });
+
+      it('エラーログをコンソールに出力する', () => {
+        const error = {
+          code: 1,
+          PERMISSION_DENIED: 1
+        };
+
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const displayErrorSpy = vi.spyOn(mapController, 'displayLocationError').mockImplementation(() => {});
+
+        mapController.handleLocationError(error);
+
+        expect(consoleSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[MapController] 位置情報エラー'),
+          expect.any(String),
+          error
+        );
+
+        consoleSpy.mockRestore();
+        displayErrorSpy.mockRestore();
+      });
+    });
+
+    describe('displayLocationError', () => {
+      it('エラーメッセージを表示する', () => {
+        const message = 'テストエラーメッセージ';
+
+        mapController.displayLocationError(message);
+
+        expect(leafletMock.control).toHaveBeenCalledWith({ position: 'topright' });
+      });
+
+      it('エラー通知に正しいメッセージを含む', () => {
+        const message = 'テストエラーメッセージ';
+        let createdDiv = null;
+        let onAddCallback = null;
+
+        // L.controlのonAddメソッドをキャプチャ
+        leafletMock.control = vi.fn(() => {
+          const control = {
+            onAdd: null,
+            addTo: vi.fn()
+          };
+          return control;
+        });
+
+        mapController.displayLocationError(message);
+
+        // controlが呼ばれたことを確認
+        expect(leafletMock.control).toHaveBeenCalledWith({ position: 'topright' });
+      });
+
+      it('エラー通知が3秒後に自動的に削除される', () => {
+        const message = 'テストエラーメッセージ';
+        
+        vi.useFakeTimers();
+
+        mapController.displayLocationError(message);
+
+        // 3秒後にタイマーを進める
+        vi.advanceTimersByTime(3000);
+
+        // タイマーをクリーンアップ
+        vi.useRealTimers();
+        
+        // テストが完了したことを確認
+        expect(leafletMock.control).toHaveBeenCalled();
+      });
+    });
+
+    describe('setupCurrentLocationButton', () => {
+      it('現在地ボタンをLeafletコントロールとして追加する', () => {
+        const showLocationSpy = vi.spyOn(mapController, 'showCurrentLocation').mockImplementation(() => {});
+
+        mapController.setupCurrentLocationButton();
+
+        // コントロールが追加されていることを確認
+        expect(mapController.currentLocationControl).toBeDefined();
+        
+        // ボタンが存在することを確認
+        const locationButton = document.querySelector('.current-location-button');
+        expect(locationButton).toBeTruthy();
+
+        // ボタンをクリック
+        locationButton.click();
+
+        expect(showLocationSpy).toHaveBeenCalled();
+
+        showLocationSpy.mockRestore();
+      });
+
+      it('現在地ボタンが正しい位置（bottomright）に配置される', () => {
+        mapController.setupCurrentLocationButton();
+
+        // コントロールがbottomrightに配置されていることを確認
+        expect(mapController.currentLocationControl.options.position).toBe('bottomright');
+      });
+
+      it('現在地ボタン追加時にコンソールログを出力する', () => {
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        mapController.setupCurrentLocationButton();
+
+        expect(consoleSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[MapController] 現在地ボタンをLeafletコントロールとして追加しました')
+        );
+
+        consoleSpy.mockRestore();
+      });
     });
   });
 });
