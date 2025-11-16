@@ -152,11 +152,8 @@ class RealtimeVehicleController {
           return;
         }
         
-        // 車両の運行状態を判定 (運行開始前/運行中/運行終了)
-        const status = this.determineVehicleStatus(vehicleData, trip);
-        
         // updateVehicleMarker()を呼び出してマーカーを更新
-        this.updateVehicleMarker(vehicleData, trip, status);
+        this.updateVehicleMarker(vehicleData, trip);
         
       } catch (error) {
         console.error('[RealtimeVehicleController] 車両位置情報の処理に失敗しました:', error, vehicleData);
@@ -171,58 +168,13 @@ class RealtimeVehicleController {
    * 車両マーカーの作成・更新処理
    * @param {Object} vehicleData - 車両位置情報
    * @param {Object} trip - 便情報（trips.txt）
-   * @param {Object} status - 運行状態
    */
-  updateVehicleMarker(vehicleData, trip, status) {
+  updateVehicleMarker(vehicleData, trip) {
     const tripId = vehicleData.tripId;
-    let lat, lng;
     
-    // 運行状態に応じて座標を決定
-    if (status.state === 'before_start') {
-      // 運行開始前: stop_times.txtから最初のstop_idを取得し、stops.txtから座標を取得
-      const firstStopTime = this.stopTimes
-        .filter(st => st.trip_id === tripId)
-        .sort((a, b) => parseInt(a.stop_sequence) - parseInt(b.stop_sequence))[0];
-      
-      if (!firstStopTime) {
-        console.warn('[RealtimeVehicleController] 最初のstop_timeが見つかりません:', tripId);
-        return;
-      }
-      
-      const stop = this.stops.find(s => s.stop_id === firstStopTime.stop_id);
-      if (!stop) {
-        console.warn('[RealtimeVehicleController] バス停が見つかりません:', firstStopTime.stop_id);
-        return;
-      }
-      
-      lat = parseFloat(stop.stop_lat);
-      lng = parseFloat(stop.stop_lon);
-      
-    } else if (status.state === 'after_end') {
-      // 運行終了: stop_times.txtから最後のstop_idを取得し、stops.txtから座標を取得
-      const lastStopTime = this.stopTimes
-        .filter(st => st.trip_id === tripId)
-        .sort((a, b) => parseInt(b.stop_sequence) - parseInt(a.stop_sequence))[0];
-      
-      if (!lastStopTime) {
-        console.warn('[RealtimeVehicleController] 最後のstop_timeが見つかりません:', tripId);
-        return;
-      }
-      
-      const stop = this.stops.find(s => s.stop_id === lastStopTime.stop_id);
-      if (!stop) {
-        console.warn('[RealtimeVehicleController] バス停が見つかりません:', lastStopTime.stop_id);
-        return;
-      }
-      
-      lat = parseFloat(stop.stop_lat);
-      lng = parseFloat(stop.stop_lon);
-      
-    } else {
-      // 運行中: vehicle.pbの緯度・経度を使用
-      lat = vehicleData.latitude;
-      lng = vehicleData.longitude;
-    }
+    // vehicle.pbの緯度・経度を使用
+    const lat = vehicleData.latitude;
+    const lng = vehicleData.longitude;
     
     // 座標の妥当性チェック
     if (!this.isValidCoordinate(lat, lng)) {
@@ -230,37 +182,14 @@ class RealtimeVehicleController {
       return;
     }
     
-    // route_idから路線情報を取得
+    // trip_idからroute_idを取得（trips.txt）
+    // route_idからroute_long_nameを取得（routes.txt）
     let routeName = '路線名不明';
-    let headsign = '不明';
     
     if (trip.route_id && this.routes) {
       const route = this.routes.find(r => r.route_id === trip.route_id);
-      if (route) {
-        // route_long_nameを優先、なければroute_short_nameを使用
-        routeName = route.route_long_name || route.route_short_name || '路線名不明';
-        
-        // 行き先の取得: trip_headsignを優先、なければ最終バス停名を使用
-        if (trip.trip_headsign) {
-          headsign = trip.trip_headsign;
-        } else {
-          // stop_times.txtから最終バス停を取得
-          const stopTimesForTrip = this.stopTimes
-            .filter(st => st.trip_id === tripId)
-            .sort((a, b) => parseInt(b.stop_sequence) - parseInt(a.stop_sequence));
-          
-          if (stopTimesForTrip.length > 0) {
-            const lastStop = this.stops.find(s => s.stop_id === stopTimesForTrip[0].stop_id);
-            if (lastStop) {
-              headsign = lastStop.stop_name;
-            }
-          }
-          
-          // 最終バス停名も取得できない場合は路線名を使用
-          if (headsign === '不明') {
-            headsign = route.route_long_name || route.route_short_name || '不明';
-          }
-        }
+      if (route && route.route_long_name) {
+        routeName = route.route_long_name;
       }
     }
     
@@ -268,14 +197,11 @@ class RealtimeVehicleController {
     const tripInfo = {
       tripId: tripId,
       routeId: trip.route_id,
-      routeName: routeName,
-      headsign: headsign,
-      vehicleId: vehicleData.vehicleId,
-      vehicleLabel: vehicleData.vehicleLabel
+      routeName: routeName
     };
     
     // MapController.updateVehicleMarkerPosition()を呼び出す（既存マーカーの有無はMapController内でチェック）
-    this.mapController.updateVehicleMarkerPosition(tripId, lat, lng, status, tripInfo);
+    this.mapController.updateVehicleMarkerPosition(tripId, lat, lng, null, tripInfo);
     
     // 最終更新時刻を記録
     this.lastUpdateTimes.set(tripId, Date.now());
