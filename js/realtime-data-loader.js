@@ -61,6 +61,44 @@ class RealtimeDataLoader {
   }
 
   /**
+   * Protocol Buffersデータをデコード
+   * @param {ArrayBuffer} arrayBuffer - Protocol Buffersのバイナリデータ
+   * @returns {Promise<Object>} デコードされたFeedMessage
+   */
+  async decodeProtobuf(arrayBuffer) {
+    try {
+      // protobufjsが読み込まれているか確認
+      if (typeof protobuf === 'undefined') {
+        throw new Error('protobufjs is not loaded');
+      }
+      
+      // GTFS-Realtimeの.protoファイルを読み込む
+      const root = await protobuf.load('https://raw.githubusercontent.com/google/transit/master/gtfs-realtime/proto/gtfs-realtime.proto');
+      const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
+      
+      // Protocol Buffersをデコード
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const message = FeedMessage.decode(uint8Array);
+      
+      // JSON形式に変換
+      const jsonData = FeedMessage.toObject(message, {
+        longs: String,
+        enums: String,
+        bytes: String,
+        defaults: true,
+        arrays: true,
+        objects: true,
+        oneofs: true
+      });
+      
+      return jsonData;
+    } catch (error) {
+      console.error('[RealtimeDataLoader] Failed to decode protobuf:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 車両位置情報を取得
    * @returns {Promise<Array>} 車両位置情報の配列
    */
@@ -69,16 +107,14 @@ class RealtimeDataLoader {
       const url = `${this.proxyBaseUrl}/vehicle`;
       const response = await this.fetchWithRetry(url);
       
-      // JSON形式のレスポンスを取得
-      const jsonData = await response.json();
+      // Protocol Buffersのバイナリデータを取得
+      const arrayBuffer = await response.arrayBuffer();
       
-      // エラーチェック
-      if (jsonData.error) {
-        throw new Error(jsonData.error);
-      }
+      // Protocol Buffersをデコード
+      const feedMessage = await this.decodeProtobuf(arrayBuffer);
       
       // 内部データモデルに変換
-      const vehiclePositions = this.convertVehiclePositions(jsonData);
+      const vehiclePositions = this.convertVehiclePositions(feedMessage);
       
       // キャッシュを更新
       this.vehiclePositions = vehiclePositions;
@@ -129,7 +165,7 @@ class RealtimeDataLoader {
         latitude: vehicle.position.latitude || null,
         longitude: vehicle.position.longitude || null,
         currentStopSequence: vehicle.currentStopSequence || vehicle.current_stop_sequence || null,
-        timestamp: vehicle.timestamp ? (typeof vehicle.timestamp === 'number' ? vehicle.timestamp : vehicle.timestamp.toNumber?.() || Date.now() / 1000) : Date.now() / 1000,
+        timestamp: vehicle.timestamp ? (typeof vehicle.timestamp === 'number' ? vehicle.timestamp : parseInt(vehicle.timestamp) || Date.now() / 1000) : Date.now() / 1000,
         vehicleId: vehicle.vehicle?.id || null,
         vehicleLabel: vehicle.vehicle?.label || null
       };
@@ -156,16 +192,14 @@ class RealtimeDataLoader {
       const url = `${this.proxyBaseUrl}/route`;
       const response = await this.fetchWithRetry(url);
       
-      // JSON形式のレスポンスを取得
-      const jsonData = await response.json();
+      // Protocol Buffersのバイナリデータを取得
+      const arrayBuffer = await response.arrayBuffer();
       
-      // エラーチェック
-      if (jsonData.error) {
-        throw new Error(jsonData.error);
-      }
+      // Protocol Buffersをデコード
+      const feedMessage = await this.decodeProtobuf(arrayBuffer);
       
       // 内部データモデルに変換
-      const tripUpdates = this.convertTripUpdates(jsonData);
+      const tripUpdates = this.convertTripUpdates(feedMessage);
       
       // キャッシュを更新
       this.tripUpdates = tripUpdates;
@@ -247,16 +281,14 @@ class RealtimeDataLoader {
       const url = `${this.proxyBaseUrl}/alert`;
       const response = await this.fetchWithRetry(url);
       
-      // JSON形式のレスポンスを取得
-      const jsonData = await response.json();
+      // Protocol Buffersのバイナリデータを取得
+      const arrayBuffer = await response.arrayBuffer();
       
-      // エラーチェック
-      if (jsonData.error) {
-        throw new Error(jsonData.error);
-      }
+      // Protocol Buffersをデコード
+      const feedMessage = await this.decodeProtobuf(arrayBuffer);
       
       // 内部データモデルに変換
-      const alerts = this.convertAlerts(jsonData);
+      const alerts = this.convertAlerts(feedMessage);
       
       // キャッシュを更新
       this.alerts = alerts;
@@ -306,8 +338,8 @@ class RealtimeDataLoader {
       const activePeriods = alert.activePeriod || alert.active_period || [];
       if (activePeriods.length > 0) {
         for (const period of activePeriods) {
-          const start = period.start ? (typeof period.start === 'number' ? period.start : period.start.toNumber?.() || 0) : 0;
-          const end = period.end ? (typeof period.end === 'number' ? period.end : period.end.toNumber?.() || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+          const start = period.start ? (typeof period.start === 'number' ? period.start : parseInt(period.start) || 0) : 0;
+          const end = period.end ? (typeof period.end === 'number' ? period.end : parseInt(period.end) || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
           
           if (currentTime >= start && currentTime <= end) {
             isActive = true;

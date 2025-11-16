@@ -2,11 +2,8 @@
  * Cloudflare Functions: route.pbプロキシ
  * 
  * 佐賀バスオープンデータのroute.pb（ルート最新情報/TripUpdates）を
- * Protocol BuffersからデコードしてJSON形式で返す
  * CORSヘッダー付きでプロキシし、30秒間エッジキャッシュする
  */
-
-import { transit_realtime } from "gtfs-realtime-bindings";
 
 interface Env {
   // Cloudflare環境変数（必要に応じて追加）
@@ -29,7 +26,7 @@ export const onRequestOptions = async () => {
 };
 
 /**
- * GETリクエストハンドラー（route.pbの取得、デコード、JSON形式で返却）
+ * GETリクエストハンドラー（route.pbの取得とキャッシュ）
  */
 export const onRequestGet = async (ctx: any) => {
   const upstreamUrl = "http://opendata.sagabus.info/route.pb";
@@ -51,11 +48,11 @@ export const onRequestGet = async (ctx: any) => {
       if (!upstreamResponse.ok) {
         // アップストリームエラー
         return new Response(
-          JSON.stringify({ error: `Upstream error: ${upstreamResponse.status} ${upstreamResponse.statusText}` }),
+          `Upstream error: ${upstreamResponse.status} ${upstreamResponse.statusText}`,
           { 
             status: 502,
             headers: {
-              "Content-Type": "application/json; charset=utf-8",
+              "Content-Type": "text/plain; charset=utf-8",
               "Access-Control-Allow-Origin": "https://saga-bus.midnight480.com",
               "Vary": "Origin",
             }
@@ -63,21 +60,11 @@ export const onRequestGet = async (ctx: any) => {
         );
       }
 
-      // Protocol Buffersデータを取得
-      const arrayBuffer = await upstreamResponse.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      
-      // Protocol Buffersをデコード
-      const feedMessage = transit_realtime.FeedMessage.decode(uint8Array);
-      
-      // JSON形式に変換
-      const jsonData = feedMessage.toJSON();
-      
       // レスポンスを作成（CORSヘッダーとキャッシュ設定を追加）
-      response = new Response(JSON.stringify(jsonData), {
+      response = new Response(upstreamResponse.body, {
         status: 200,
         headers: {
-          "Content-Type": "application/json; charset=utf-8",
+          "Content-Type": "application/x-protobuf",
           "Cache-Control": "public, max-age=30, s-maxage=30",
           "Access-Control-Allow-Origin": "https://saga-bus.midnight480.com",
           "Vary": "Origin",
@@ -90,14 +77,14 @@ export const onRequestGet = async (ctx: any) => {
 
     return response;
   } catch (error) {
-    // ネットワークエラーやデコードエラーなど
-    console.error("Error fetching/decoding route.pb:", error);
+    // ネットワークエラーなど
+    console.error("Error fetching route.pb:", error);
     return new Response(
-      JSON.stringify({ error: `Proxy error: ${error instanceof Error ? error.message : "Unknown error"}` }),
+      `Proxy error: ${error instanceof Error ? error.message : "Unknown error"}`,
       {
         status: 502,
         headers: {
-          "Content-Type": "application/json; charset=utf-8",
+          "Content-Type": "text/plain; charset=utf-8",
           "Access-Control-Allow-Origin": "https://saga-bus.midnight480.com",
           "Vary": "Origin",
         }
