@@ -23,10 +23,11 @@ class RealtimeVehicleController {
     // 最終更新時刻の管理用のMap (tripId -> timestamp)
     this.lastUpdateTimes = new Map();
     
-    // 静的データ（trips.txt, stops.txt）
+    // 静的データ（trips.txt, stops.txt, routes.txt）
     this.trips = null;
     this.stops = null;
     this.stopTimes = null;
+    this.routes = null;
     
     // 運行情報表示エリア
     this.alertsContainer = null;
@@ -42,17 +43,19 @@ class RealtimeVehicleController {
     try {
       console.log('[RealtimeVehicleController] 初期化を開始します');
       
-      // DataLoaderから静的データ(trips.txt, stops.txt, stop_times.txt)を取得
+      // DataLoaderから静的データ(trips.txt, stops.txt, stop_times.txt, routes.txt)を取得
       await this.dataLoader.loadGTFSData();
       
       this.trips = this.dataLoader.trips;
       this.stops = this.dataLoader.gtfsStops; // 生のstops.txtデータ（stop_idプロパティを持つ）
       this.stopTimes = this.dataLoader.stopTimes;
+      this.routes = this.dataLoader.routes; // routes.txtデータ
       
       console.log('[RealtimeVehicleController] 静的データを読み込みました', {
         tripsCount: this.trips ? this.trips.length : 0,
         stopsCount: this.stops ? this.stops.length : 0,
-        stopTimesCount: this.stopTimes ? this.stopTimes.length : 0
+        stopTimesCount: this.stopTimes ? this.stopTimes.length : 0,
+        routesCount: this.routes ? this.routes.length : 0
       });
       
       // 運行情報表示エリアを作成
@@ -227,10 +230,46 @@ class RealtimeVehicleController {
       return;
     }
     
+    // route_idから路線情報を取得
+    let routeName = '路線名不明';
+    let headsign = '不明';
+    
+    if (trip.route_id && this.routes) {
+      const route = this.routes.find(r => r.route_id === trip.route_id);
+      if (route) {
+        // route_long_nameを優先、なければroute_short_nameを使用
+        routeName = route.route_long_name || route.route_short_name || '路線名不明';
+        
+        // 行き先の取得: trip_headsignを優先、なければ最終バス停名を使用
+        if (trip.trip_headsign) {
+          headsign = trip.trip_headsign;
+        } else {
+          // stop_times.txtから最終バス停を取得
+          const stopTimesForTrip = this.stopTimes
+            .filter(st => st.trip_id === tripId)
+            .sort((a, b) => parseInt(b.stop_sequence) - parseInt(a.stop_sequence));
+          
+          if (stopTimesForTrip.length > 0) {
+            const lastStop = this.stops.find(s => s.stop_id === stopTimesForTrip[0].stop_id);
+            if (lastStop) {
+              headsign = lastStop.stop_name;
+            }
+          }
+          
+          // 最終バス停名も取得できない場合は路線名を使用
+          if (headsign === '不明') {
+            headsign = route.route_long_name || route.route_short_name || '不明';
+          }
+        }
+      }
+    }
+    
     // tripInfoオブジェクトを作成
     const tripInfo = {
       tripId: tripId,
       routeId: trip.route_id,
+      routeName: routeName,
+      headsign: headsign,
       vehicleId: vehicleData.vehicleId,
       vehicleLabel: vehicleData.vehicleLabel
     };
