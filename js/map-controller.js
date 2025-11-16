@@ -34,6 +34,9 @@ class MapController {
     
     // バス停選択時のコールバック関数
     this.onStopSelected = null;
+    
+    // 現在地マーカー
+    this.currentLocationMarker = null;
   }
 
   /**
@@ -109,6 +112,9 @@ class MapController {
       
       // 「経路をクリア」ボタンのイベントリスナーを設定
       this.setupClearRouteButton();
+      
+      // 「現在地」ボタンをLeafletコントロールとして追加
+      this.setupCurrentLocationButton();
       
       console.log('[MapController] 地図の初期化が完了しました');
       
@@ -853,7 +859,7 @@ class MapController {
   showClearRouteButton() {
     const clearButton = document.getElementById('clear-route-button');
     if (clearButton) {
-      clearButton.style.display = 'block';
+      clearButton.removeAttribute('hidden');
     }
   }
   
@@ -863,7 +869,7 @@ class MapController {
   hideClearRouteButton() {
     const clearButton = document.getElementById('clear-route-button');
     if (clearButton) {
-      clearButton.style.display = 'none';
+      clearButton.setAttribute('hidden', '');
     }
   }
   
@@ -878,6 +884,166 @@ class MapController {
       });
       console.log('[MapController] 経路クリアボタンのイベントリスナーを設定しました');
     }
+  }
+  
+  /**
+   * 「現在地」ボタンをLeafletコントロールとして設定する
+   */
+  setupCurrentLocationButton() {
+    // Leafletのコントロールとして現在地ボタンを作成
+    const currentLocationControl = L.control({ position: 'bottomright' });
+    
+    currentLocationControl.onAdd = () => {
+      const div = L.DomUtil.create('div', 'current-location-control');
+      const button = L.DomUtil.create('button', 'current-location-button');
+      button.type = 'button';
+      button.setAttribute('aria-label', '現在地を表示');
+      button.innerHTML = '<span class="location-icon">◎</span>';
+      
+      // クリックイベントを設定
+      L.DomEvent.on(button, 'click', (e) => {
+        L.DomEvent.stopPropagation(e);
+        this.showCurrentLocation();
+      });
+      
+      // タッチデバイスでのダブルタップズームを防ぐ
+      L.DomEvent.disableClickPropagation(button);
+      
+      div.appendChild(button);
+      return div;
+    };
+    
+    // 地図にコントロールを追加
+    currentLocationControl.addTo(this.map);
+    this.currentLocationControl = currentLocationControl;
+    
+    console.log('[MapController] 現在地ボタンをLeafletコントロールとして追加しました');
+  }
+  
+  /**
+   * 現在地を表示する
+   */
+  async showCurrentLocation() {
+    try {
+      console.log('[MapController] 現在地の取得を開始します');
+      
+      // Geolocation APIで現在地を取得
+      const position = await this.getCurrentPosition();
+      const { latitude, longitude } = position.coords;
+      
+      console.log('[MapController] 現在地を取得しました:', { latitude, longitude });
+      
+      // 地図を現在地中心に移動（ズームレベル15）
+      this.map.setView([latitude, longitude], 15);
+      
+      // 現在地マーカーを表示
+      this.displayCurrentLocationMarker(latitude, longitude);
+      
+    } catch (error) {
+      this.handleLocationError(error);
+    }
+  }
+  
+  /**
+   * Geolocation APIで現在地を取得
+   * @returns {Promise<GeolocationPosition>} 位置情報
+   */
+  getCurrentPosition() {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation APIがサポートされていません'));
+        return;
+      }
+      
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      });
+    });
+  }
+  
+  /**
+   * 現在地マーカーを表示
+   * @param {number} lat - 緯度
+   * @param {number} lng - 経度
+   */
+  displayCurrentLocationMarker(lat, lng) {
+    // 既存の現在地マーカーを削除
+    if (this.currentLocationMarker) {
+      this.map.removeLayer(this.currentLocationMarker);
+    }
+    
+    // 現在地アイコンを作成
+    const icon = L.divIcon({
+      html: '<div class="current-location-marker">◎</div>',
+      className: 'current-location-icon',
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+    
+    // マーカーを作成
+    this.currentLocationMarker = L.marker([lat, lng], { icon });
+    this.currentLocationMarker.addTo(this.map);
+    
+    // ポップアップを追加
+    this.currentLocationMarker.bindPopup('現在地');
+    
+    console.log('[MapController] 現在地マーカーを表示しました');
+  }
+  
+  /**
+   * 位置情報エラーハンドリング
+   * @param {GeolocationPositionError|Error} error - エラーオブジェクト
+   */
+  handleLocationError(error) {
+    let message = '位置情報の取得に失敗しました';
+    
+    if (error.code) {
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          message = '位置情報の使用が許可されていません';
+          break;
+        case error.POSITION_UNAVAILABLE:
+          message = '位置情報が利用できません';
+          break;
+        case error.TIMEOUT:
+          message = '位置情報の取得がタイムアウトしました';
+          break;
+      }
+    } else if (error.message) {
+      message = error.message;
+    }
+    
+    console.error('[MapController] 位置情報エラー:', message, error);
+    this.displayLocationError(message);
+  }
+  
+  /**
+   * 位置情報エラーメッセージを表示
+   * @param {string} message - エラーメッセージ
+   */
+  displayLocationError(message) {
+    // エラー通知を表示（3秒後に自動消去）
+    const notification = L.control({ position: 'topright' });
+    notification.onAdd = () => {
+      const div = L.DomUtil.create('div', 'location-error-notification');
+      div.innerHTML = `
+        <div class="notification-content">
+          <span class="notification-icon">⚠️</span>
+          <span class="notification-text">${this.escapeHtml(message)}</span>
+        </div>
+      `;
+      
+      setTimeout(() => {
+        if (div.parentNode) {
+          div.parentNode.removeChild(div);
+        }
+      }, 3000);
+      
+      return div;
+    };
+    notification.addTo(this.map);
   }
   
   /**
@@ -1002,4 +1168,9 @@ class MapController {
       requestAnimationFrame(measureFrame);
     });
   }
+}
+
+// MapControllerをグローバルスコープに公開
+if (typeof window !== 'undefined') {
+  window.MapController = MapController;
 }

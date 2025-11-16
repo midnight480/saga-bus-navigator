@@ -18,6 +18,10 @@
 - ⏰ **時刻検索**: 出発時刻指定、到着時刻指定、今すぐ、始発、終電から選択
 - 📊 **検索結果表示**: 出発時刻、到着時刻、所要時間、運賃を一覧表示
 - 💰 **運賃表示**: 大人・子供料金を表示
+- 🗺️ **地図表示**: OpenStreetMapでバス停位置と経路を表示
+- 📍 **現在地表示**: ワンタップで現在地を地図上に表示
+- 🗑️ **クリア機能**: 検索結果や地図経路を簡単にクリア
+- 📅 **カレンダー登録**: バスの時刻をiCalまたはGoogle Calendarに登録
 - 📱 **レスポンシブデザイン**: スマートフォン、タブレット、デスクトップに対応
 - 🔒 **セキュリティ**: XSS対策、CSPヘッダー設定済み
 
@@ -184,6 +188,9 @@ saga-bus-navigator/
 - [時刻表検索 - 要件定義書](.kiro/specs/timetable-search/requirements.md)
 - [時刻表検索 - 設計書](.kiro/specs/timetable-search/design.md)
 - [時刻表検索 - 実装タスク](.kiro/specs/timetable-search/tasks.md)
+- [ユーザー操作機能強化 - 要件定義書](.kiro/specs/user-interaction-enhancements/requirements.md)
+- [ユーザー操作機能強化 - 設計書](.kiro/specs/user-interaction-enhancements/design.md)
+- [ユーザー操作機能強化 - 実装タスク](.kiro/specs/user-interaction-enhancements/tasks.md)
 
 ### GTFS移行
 
@@ -198,6 +205,7 @@ saga-bus-navigator/
 - [プロジェクト構成](docs/FILES_STRUCTURE.md)
 - [セキュリティ](docs/SECURITY.md)
 - [レスポンシブデザイン](docs/RESPONSIVE_DESIGN.md)
+- [使い方ガイド](docs/USER_GUIDE.md)
 
 ## 🔐 セキュリティ
 
@@ -239,6 +247,14 @@ saga-bus-navigator/
 - holidays-jp.github.ioの祝日カレンダーAPI
 
 ## 📅 更新履歴
+
+### v2.1.0 (2025-11-16)
+
+- **現在地表示機能**: 地図上に現在地を表示し、現在地を中心に地図を移動
+- **検索結果クリア機能**: 検索結果を一括でクリアして新しい検索を開始
+- **地図経路クリア機能**: 地図上の経路表示をクリア
+- **カレンダー登録機能**: バスの時刻をiCalまたはGoogle Calendarに登録
+- **ユーザビリティ向上**: 各種クリアボタンの追加で操作性を改善
 
 ### v2.0.0 (2025-11-15)
 

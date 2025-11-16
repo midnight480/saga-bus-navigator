@@ -185,6 +185,13 @@
             検索
           </button>
         </form>
+        
+        <!-- Clear Search Results Button -->
+        <div class="button-container">
+          <button type="button" id="clear-search-results-button" class="btn btn-secondary" hidden>
+            検索結果をクリア
+          </button>
+        </div>
       </section>
 
       <!-- Results Section -->
@@ -228,6 +235,29 @@
     </div>
   </div>
 
+  <!-- Calendar Modal -->
+  <div id="calendar-modal" class="calendar-modal" role="dialog" aria-labelledby="calendar-modal-title" aria-modal="true" tabindex="-1" hidden>
+    <div class="calendar-modal-content">
+      <div class="calendar-modal-header">
+        <h3 id="calendar-modal-title" class="calendar-modal-title">カレンダーに登録</h3>
+        <button type="button" class="calendar-close-button" aria-label="閉じる">×</button>
+      </div>
+      <div class="calendar-modal-body">
+        <p class="calendar-modal-description">カレンダーに登録する方法を選択してください</p>
+        <div class="calendar-options">
+          <button type="button" class="calendar-option-button" data-format="ical">
+            <span class="calendar-option-icon">📅</span>
+            <span class="calendar-option-text">iCal形式でダウンロード</span>
+          </button>
+          <button type="button" class="calendar-option-button" data-format="google">
+            <span class="calendar-option-icon">🗓️</span>
+            <span class="calendar-option-text">Google Calendarで開く</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <!-- Leaflet JS -->
   <script src="/js/leaflet.js"></script>
@@ -238,6 +268,7 @@
   <script src="/js/utils.js"></script>
   <script src="/js/data-loader.js"></script>
   <script src="/js/fare-calculator.js"></script>
+  <script src="/js/calendar-exporter.js"></script>
   <script src="/js/timetable-controller.js"></script>
   <script src="/js/timetable-ui.js"></script>
   <script src="/js/map-controller.js"></script>
