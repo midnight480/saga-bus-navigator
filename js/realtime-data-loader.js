@@ -61,6 +61,44 @@ class RealtimeDataLoader {
   }
 
   /**
+   * Protocol Buffersデータをデコード
+   * @param {ArrayBuffer} arrayBuffer - Protocol Buffersのバイナリデータ
+   * @returns {Promise<Object>} デコードされたFeedMessage
+   */
+  async decodeProtobuf(arrayBuffer) {
+    try {
+      // protobufjsが読み込まれているか確認
+      if (typeof protobuf === 'undefined') {
+        throw new Error('protobufjs is not loaded');
+      }
+      
+      // GTFS-Realtimeの.protoファイルを読み込む
+      const root = await protobuf.load('https://raw.githubusercontent.com/google/transit/master/gtfs-realtime/proto/gtfs-realtime.proto');
+      const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
+      
+      // Protocol Buffersをデコード
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const message = FeedMessage.decode(uint8Array);
+      
+      // JSON形式に変換
+      const jsonData = FeedMessage.toObject(message, {
+        longs: String,
+        enums: String,
+        bytes: String,
+        defaults: true,
+        arrays: true,
+        objects: true,
+        oneofs: true
+      });
+      
+      return jsonData;
+    } catch (error) {
+      console.error('[RealtimeDataLoader] Failed to decode protobuf:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 車両位置情報を取得
    * @returns {Promise<Array>} 車両位置情報の配列
    */
@@ -69,11 +107,14 @@ class RealtimeDataLoader {
       const url = `${this.proxyBaseUrl}/vehicle`;
       const response = await this.fetchWithRetry(url);
       
+      // Protocol Buffersのバイナリデータを取得
       const arrayBuffer = await response.arrayBuffer();
-      const decodedData = await this.decodeProtobuf(arrayBuffer, 'FeedMessage');
+      
+      // Protocol Buffersをデコード
+      const feedMessage = await this.decodeProtobuf(arrayBuffer);
       
       // 内部データモデルに変換
-      const vehiclePositions = this.convertVehiclePositions(decodedData);
+      const vehiclePositions = this.convertVehiclePositions(feedMessage);
       
       // キャッシュを更新
       this.vehiclePositions = vehiclePositions;
@@ -90,30 +131,6 @@ class RealtimeDataLoader {
     } catch (error) {
       console.error('[RealtimeDataLoader] Failed to fetch vehicle positions:', error);
       this.handleFetchError(error, 'vehicle');
-      throw error;
-    }
-  }
-
-  /**
-   * Protocol Buffersデータをデコード
-   * @param {ArrayBuffer} arrayBuffer - バイナリデータ
-   * @param {string} messageType - メッセージタイプ
-   * @returns {Promise<Object>} デコードされたデータ
-   */
-  async decodeProtobuf(arrayBuffer, messageType) {
-    try {
-      // gtfs-realtime-bindingsを使用してデコード
-      // ブラウザ環境ではgtfs-realtime-bindingsが利用可能であることを前提
-      if (typeof GtfsRealtimeBindings === 'undefined') {
-        throw new Error('gtfs-realtime-bindings is not loaded');
-      }
-      
-      const uint8Array = new Uint8Array(arrayBuffer);
-      const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(uint8Array);
-      
-      return feed;
-    } catch (error) {
-      console.error('[RealtimeDataLoader] Failed to decode protobuf:', error);
       throw error;
     }
   }
@@ -143,12 +160,12 @@ class RealtimeDataLoader {
       }
       
       const position = {
-        tripId: vehicle.trip.tripId || null,
-        routeId: vehicle.trip.routeId || null,
+        tripId: vehicle.trip.tripId || vehicle.trip.trip_id || null,
+        routeId: vehicle.trip.routeId || vehicle.trip.route_id || null,
         latitude: vehicle.position.latitude || null,
         longitude: vehicle.position.longitude || null,
-        currentStopSequence: vehicle.currentStopSequence || null,
-        timestamp: vehicle.timestamp ? vehicle.timestamp.toNumber() : Date.now() / 1000,
+        currentStopSequence: vehicle.currentStopSequence || vehicle.current_stop_sequence || null,
+        timestamp: vehicle.timestamp ? (typeof vehicle.timestamp === 'number' ? vehicle.timestamp : parseInt(vehicle.timestamp) || Date.now() / 1000) : Date.now() / 1000,
         vehicleId: vehicle.vehicle?.id || null,
         vehicleLabel: vehicle.vehicle?.label || null
       };
@@ -175,11 +192,14 @@ class RealtimeDataLoader {
       const url = `${this.proxyBaseUrl}/route`;
       const response = await this.fetchWithRetry(url);
       
+      // Protocol Buffersのバイナリデータを取得
       const arrayBuffer = await response.arrayBuffer();
-      const decodedData = await this.decodeProtobuf(arrayBuffer, 'FeedMessage');
+      
+      // Protocol Buffersをデコード
+      const feedMessage = await this.decodeProtobuf(arrayBuffer);
       
       // 内部データモデルに変換
-      const tripUpdates = this.convertTripUpdates(decodedData);
+      const tripUpdates = this.convertTripUpdates(feedMessage);
       
       // キャッシュを更新
       this.tripUpdates = tripUpdates;
@@ -213,11 +233,11 @@ class RealtimeDataLoader {
     const updates = [];
     
     for (const entity of feedMessage.entity) {
-      if (!entity.tripUpdate) {
+      // tripUpdateとtrip_updateの両方に対応
+      const tripUpdate = entity.tripUpdate || entity.trip_update;
+      if (!tripUpdate) {
         continue;
       }
-      
-      const tripUpdate = entity.tripUpdate;
       
       // 必須フィールドのチェック
       if (!tripUpdate.trip) {
@@ -225,18 +245,21 @@ class RealtimeDataLoader {
       }
       
       const update = {
-        tripId: tripUpdate.trip.tripId || null,
-        routeId: tripUpdate.trip.routeId || null,
+        tripId: tripUpdate.trip.tripId || tripUpdate.trip.trip_id || null,
+        routeId: tripUpdate.trip.routeId || tripUpdate.trip.route_id || null,
         stopTimeUpdates: []
       };
       
-      // stop_time_updateを変換
-      if (tripUpdate.stopTimeUpdate && Array.isArray(tripUpdate.stopTimeUpdate)) {
-        for (const stopTimeUpdate of tripUpdate.stopTimeUpdate) {
+      // stop_time_updateを変換（snake_caseとcamelCaseの両方に対応）
+      const stopTimeUpdates = tripUpdate.stopTimeUpdate || tripUpdate.stop_time_update || [];
+      if (Array.isArray(stopTimeUpdates)) {
+        for (const stopTimeUpdate of stopTimeUpdates) {
+          const arrival = stopTimeUpdate.arrival || {};
+          const departure = stopTimeUpdate.departure || {};
           const stu = {
-            stopSequence: stopTimeUpdate.stopSequence || null,
-            arrivalDelay: stopTimeUpdate.arrival?.delay || 0,
-            departureDelay: stopTimeUpdate.departure?.delay || 0
+            stopSequence: stopTimeUpdate.stopSequence || stopTimeUpdate.stop_sequence || null,
+            arrivalDelay: arrival.delay || 0,
+            departureDelay: departure.delay || 0
           };
           
           update.stopTimeUpdates.push(stu);
@@ -258,11 +281,14 @@ class RealtimeDataLoader {
       const url = `${this.proxyBaseUrl}/alert`;
       const response = await this.fetchWithRetry(url);
       
+      // Protocol Buffersのバイナリデータを取得
       const arrayBuffer = await response.arrayBuffer();
-      const decodedData = await this.decodeProtobuf(arrayBuffer, 'FeedMessage');
+      
+      // Protocol Buffersをデコード
+      const feedMessage = await this.decodeProtobuf(arrayBuffer);
       
       // 内部データモデルに変換
-      const alerts = this.convertAlerts(decodedData);
+      const alerts = this.convertAlerts(feedMessage);
       
       // キャッシュを更新
       this.alerts = alerts;
@@ -308,10 +334,12 @@ class RealtimeDataLoader {
       let activeStart = null;
       let activeEnd = null;
       
-      if (alert.activePeriod && alert.activePeriod.length > 0) {
-        for (const period of alert.activePeriod) {
-          const start = period.start ? period.start.toNumber() : 0;
-          const end = period.end ? period.end.toNumber() : Number.MAX_SAFE_INTEGER;
+      // activePeriodとactive_periodの両方に対応
+      const activePeriods = alert.activePeriod || alert.active_period || [];
+      if (activePeriods.length > 0) {
+        for (const period of activePeriods) {
+          const start = period.start ? (typeof period.start === 'number' ? period.start : parseInt(period.start) || 0) : 0;
+          const end = period.end ? (typeof period.end === 'number' ? period.end : parseInt(period.end) || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
           
           if (currentTime >= start && currentTime <= end) {
             isActive = true;
@@ -330,9 +358,9 @@ class RealtimeDataLoader {
         continue;
       }
       
-      // header_textとdescription_textを取得
-      const headerText = this.extractTranslatedText(alert.headerText);
-      const descriptionText = this.extractTranslatedText(alert.descriptionText);
+      // header_textとdescription_textを取得（headerTextとheader_textの両方に対応）
+      const headerText = this.extractTranslatedText(alert.headerText || alert.header_text);
+      const descriptionText = this.extractTranslatedText(alert.descriptionText || alert.description_text);
       
       // 運休/遅延の分類
       const isCancellation = 
@@ -350,14 +378,17 @@ class RealtimeDataLoader {
         affectedTrips: []
       };
       
-      // informed_entityから影響を受ける路線・便を抽出
-      if (alert.informedEntity && Array.isArray(alert.informedEntity)) {
-        for (const entity of alert.informedEntity) {
-          if (entity.routeId) {
-            alertData.affectedRoutes.push(entity.routeId);
+      // informed_entityから影響を受ける路線・便を抽出（informedEntityとinformed_entityの両方に対応）
+      const informedEntities = alert.informedEntity || alert.informed_entity || [];
+      if (Array.isArray(informedEntities)) {
+        for (const entity of informedEntities) {
+          const routeId = entity.routeId || entity.route_id;
+          const tripId = entity.tripId || entity.trip_id;
+          if (routeId) {
+            alertData.affectedRoutes.push(routeId);
           }
-          if (entity.tripId) {
-            alertData.affectedTrips.push(entity.tripId);
+          if (tripId) {
+            alertData.affectedTrips.push(tripId);
           }
         }
       }

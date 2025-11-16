@@ -12,7 +12,7 @@ interface Env {
 /**
  * OPTIONSリクエストハンドラー（CORSプリフライト対応）
  */
-export const onRequestOptions: PagesFunction<Env> = async () => {
+export const onRequestOptions = async () => {
   return new Response(null, {
     status: 204,
     headers: {
@@ -28,9 +28,9 @@ export const onRequestOptions: PagesFunction<Env> = async () => {
 /**
  * GETリクエストハンドラー（alert.pbの取得とキャッシュ）
  */
-export const onRequestGet: PagesFunction<Env> = async (ctx) => {
+export const onRequestGet = async (ctx: any) => {
   const upstreamUrl = "http://opendata.sagabus.info/alert.pb";
-  const cache = caches.default;
+  const cache = (caches as any).default;
   
   // キャッシュキーとしてリクエストを作成
   const cacheKey = new Request(upstreamUrl, {
