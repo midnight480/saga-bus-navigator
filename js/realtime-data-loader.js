@@ -124,11 +124,11 @@ class RealtimeDataLoader {
       }
       
       const position = {
-        tripId: vehicle.trip.tripId || null,
-        routeId: vehicle.trip.routeId || null,
+        tripId: vehicle.trip.tripId || vehicle.trip.trip_id || null,
+        routeId: vehicle.trip.routeId || vehicle.trip.route_id || null,
         latitude: vehicle.position.latitude || null,
         longitude: vehicle.position.longitude || null,
-        currentStopSequence: vehicle.currentStopSequence || null,
+        currentStopSequence: vehicle.currentStopSequence || vehicle.current_stop_sequence || null,
         timestamp: vehicle.timestamp ? (typeof vehicle.timestamp === 'number' ? vehicle.timestamp : vehicle.timestamp.toNumber?.() || Date.now() / 1000) : Date.now() / 1000,
         vehicleId: vehicle.vehicle?.id || null,
         vehicleLabel: vehicle.vehicle?.label || null
@@ -199,11 +199,11 @@ class RealtimeDataLoader {
     const updates = [];
     
     for (const entity of feedMessage.entity) {
-      if (!entity.tripUpdate) {
+      // tripUpdateとtrip_updateの両方に対応
+      const tripUpdate = entity.tripUpdate || entity.trip_update;
+      if (!tripUpdate) {
         continue;
       }
-      
-      const tripUpdate = entity.tripUpdate;
       
       // 必須フィールドのチェック
       if (!tripUpdate.trip) {
@@ -211,18 +211,21 @@ class RealtimeDataLoader {
       }
       
       const update = {
-        tripId: tripUpdate.trip.tripId || null,
-        routeId: tripUpdate.trip.routeId || null,
+        tripId: tripUpdate.trip.tripId || tripUpdate.trip.trip_id || null,
+        routeId: tripUpdate.trip.routeId || tripUpdate.trip.route_id || null,
         stopTimeUpdates: []
       };
       
-      // stop_time_updateを変換
-      if (tripUpdate.stopTimeUpdate && Array.isArray(tripUpdate.stopTimeUpdate)) {
-        for (const stopTimeUpdate of tripUpdate.stopTimeUpdate) {
+      // stop_time_updateを変換（snake_caseとcamelCaseの両方に対応）
+      const stopTimeUpdates = tripUpdate.stopTimeUpdate || tripUpdate.stop_time_update || [];
+      if (Array.isArray(stopTimeUpdates)) {
+        for (const stopTimeUpdate of stopTimeUpdates) {
+          const arrival = stopTimeUpdate.arrival || {};
+          const departure = stopTimeUpdate.departure || {};
           const stu = {
-            stopSequence: stopTimeUpdate.stopSequence || null,
-            arrivalDelay: stopTimeUpdate.arrival?.delay || 0,
-            departureDelay: stopTimeUpdate.departure?.delay || 0
+            stopSequence: stopTimeUpdate.stopSequence || stopTimeUpdate.stop_sequence || null,
+            arrivalDelay: arrival.delay || 0,
+            departureDelay: departure.delay || 0
           };
           
           update.stopTimeUpdates.push(stu);
@@ -299,8 +302,10 @@ class RealtimeDataLoader {
       let activeStart = null;
       let activeEnd = null;
       
-      if (alert.activePeriod && alert.activePeriod.length > 0) {
-        for (const period of alert.activePeriod) {
+      // activePeriodとactive_periodの両方に対応
+      const activePeriods = alert.activePeriod || alert.active_period || [];
+      if (activePeriods.length > 0) {
+        for (const period of activePeriods) {
           const start = period.start ? (typeof period.start === 'number' ? period.start : period.start.toNumber?.() || 0) : 0;
           const end = period.end ? (typeof period.end === 'number' ? period.end : period.end.toNumber?.() || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
           
@@ -321,9 +326,9 @@ class RealtimeDataLoader {
         continue;
       }
       
-      // header_textとdescription_textを取得
-      const headerText = this.extractTranslatedText(alert.headerText);
-      const descriptionText = this.extractTranslatedText(alert.descriptionText);
+      // header_textとdescription_textを取得（headerTextとheader_textの両方に対応）
+      const headerText = this.extractTranslatedText(alert.headerText || alert.header_text);
+      const descriptionText = this.extractTranslatedText(alert.descriptionText || alert.description_text);
       
       // 運休/遅延の分類
       const isCancellation = 
@@ -341,14 +346,17 @@ class RealtimeDataLoader {
         affectedTrips: []
       };
       
-      // informed_entityから影響を受ける路線・便を抽出
-      if (alert.informedEntity && Array.isArray(alert.informedEntity)) {
-        for (const entity of alert.informedEntity) {
-          if (entity.routeId) {
-            alertData.affectedRoutes.push(entity.routeId);
+      // informed_entityから影響を受ける路線・便を抽出（informedEntityとinformed_entityの両方に対応）
+      const informedEntities = alert.informedEntity || alert.informed_entity || [];
+      if (Array.isArray(informedEntities)) {
+        for (const entity of informedEntities) {
+          const routeId = entity.routeId || entity.route_id;
+          const tripId = entity.tripId || entity.trip_id;
+          if (routeId) {
+            alertData.affectedRoutes.push(routeId);
           }
-          if (entity.tripId) {
-            alertData.affectedTrips.push(entity.tripId);
+          if (tripId) {
+            alertData.affectedTrips.push(tripId);
           }
         }
       }
