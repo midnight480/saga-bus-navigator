@@ -80,18 +80,18 @@ class RealtimeVehicleController {
    */
   setupEventListeners() {
     // vehiclePositionsUpdatedイベントのハンドラーを登録
-    this.realtimeDataLoader.addEventListener('vehiclePositionsUpdated', (event) => {
-      this.handleVehiclePositionsUpdate(event.detail);
+    this.realtimeDataLoader.addEventListener('vehiclePositionsUpdated', (data) => {
+      this.handleVehiclePositionsUpdate(data);
     });
     
     // tripUpdatesUpdatedイベントのハンドラーを登録
-    this.realtimeDataLoader.addEventListener('tripUpdatesUpdated', (event) => {
-      this.handleTripUpdatesUpdate(event.detail);
+    this.realtimeDataLoader.addEventListener('tripUpdatesUpdated', (data) => {
+      this.handleTripUpdatesUpdate(data);
     });
     
     // alertsUpdatedイベントのハンドラーを登録
-    this.realtimeDataLoader.addEventListener('alertsUpdated', (event) => {
-      this.handleAlertsUpdate(event.detail);
+    this.realtimeDataLoader.addEventListener('alertsUpdated', (data) => {
+      this.handleAlertsUpdate(data);
     });
     
     console.log('[RealtimeVehicleController] イベントリスナーを設定しました');
@@ -129,9 +129,14 @@ class RealtimeVehicleController {
    * @param {Array} vehiclePositions - 車両位置情報の配列
    */
   handleVehiclePositionsUpdate(vehiclePositions) {
+    if (!vehiclePositions || !Array.isArray(vehiclePositions)) {
+      console.log('[RealtimeVehicleController] 車両位置情報がありません');
+      return;
+    }
+    
     console.log('[RealtimeVehicleController] 車両位置情報が更新されました:', vehiclePositions.length);
     
-    if (!vehiclePositions || vehiclePositions.length === 0) {
+    if (vehiclePositions.length === 0) {
       console.log('[RealtimeVehicleController] 車両位置情報がありません');
       return;
     }
@@ -326,6 +331,12 @@ class RealtimeVehicleController {
    * @param {Array} tripUpdates - ルート最新情報の配列
    */
   handleTripUpdatesUpdate(tripUpdates) {
+    if (!tripUpdates || !Array.isArray(tripUpdates)) {
+      console.log('[RealtimeVehicleController] ルート最新情報がありません');
+      this.tripUpdates = [];
+      return;
+    }
+    
     console.log('[RealtimeVehicleController] ルート最新情報が更新されました:', tripUpdates.length);
     
     // tripUpdatesを保存（calculateDelay()で使用）
@@ -473,9 +484,16 @@ class RealtimeVehicleController {
    * @param {Array} alerts - 運行情報の配列
    */
   handleAlertsUpdate(alerts) {
+    if (!alerts || !Array.isArray(alerts)) {
+      console.log('[RealtimeVehicleController] 運行情報がありません');
+      // 運行情報がない場合はクリア
+      this.clearAlerts();
+      return;
+    }
+    
     console.log('[RealtimeVehicleController] 運行情報が更新されました:', alerts.length);
     
-    if (!alerts || alerts.length === 0) {
+    if (alerts.length === 0) {
       // 運行情報がない場合はクリア
       this.clearAlerts();
       return;
