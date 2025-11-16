@@ -113,6 +113,28 @@
   border-bottom: 2px solid #e0e0e0;
   background-color: #f8f9fa;
   flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #c0c0c0 #f8f9fa;
+}
+
+/* WebKit系ブラウザ用のスクロールバー */
+.footer-modal-tabs::-webkit-scrollbar {
+  height: 8px;
+}
+
+.footer-modal-tabs::-webkit-scrollbar-track {
+  background: #f8f9fa;
+}
+
+.footer-modal-tabs::-webkit-scrollbar-thumb {
+  background-color: #c0c0c0;
+  border-radius: 4px;
+}
+
+.footer-modal-tabs::-webkit-scrollbar-thumb:hover {
+  background-color: #a0a0a0;
 }
 
 .footer-tab-button {
@@ -221,6 +243,56 @@
   font-weight: bold;
 }
 
+/* ========================================
+   Terms Section (利用規約)
+   ======================================== */
+
+.terms-section {
+  margin-bottom: 2rem;
+}
+
+.terms-section:last-child {
+  margin-bottom: 0;
+}
+
+.terms-heading {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.terms-text {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: #333;
+  margin-bottom: 0.75rem;
+}
+
+.terms-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.75rem 0 1rem 0;
+}
+
+.terms-list li {
+  padding: 0.5rem 0 0.5rem 1.5rem;
+  position: relative;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: #333;
+}
+
+.terms-list li:before {
+  content: "•";
+  position: absolute;
+  left: 0.5rem;
+  color: #0066cc;
+  font-weight: bold;
+}
+
 /* 外部リンク */
 .content-link {
   color: #0066cc;
@@ -302,16 +374,31 @@
   
   .footer-modal-tabs {
     overflow-x: auto;
+    overflow-y: hidden;
   }
   
-  /* スクロールバーを非表示（オプション） */
+  /* スクロールバーを表示 */
   .footer-modal-tabs::-webkit-scrollbar {
-    display: none;
+    height: 6px;
+    display: block;
+  }
+  
+  .footer-modal-tabs::-webkit-scrollbar-track {
+    background: #f8f9fa;
+  }
+  
+  .footer-modal-tabs::-webkit-scrollbar-thumb {
+    background-color: #c0c0c0;
+    border-radius: 3px;
+  }
+  
+  .footer-modal-tabs::-webkit-scrollbar-thumb:hover {
+    background-color: #a0a0a0;
   }
   
   .footer-modal-tabs {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+    scrollbar-width: thin;
+    scrollbar-color: #c0c0c0 #f8f9fa;
   }
   
   .footer-tab-button {
@@ -342,6 +429,23 @@
   }
   
   .content-section-list li {
+    font-size: 0.875rem;
+    padding-left: 1.25rem;
+  }
+  
+  .terms-section {
+    margin-bottom: 1.5rem;
+  }
+  
+  .terms-heading {
+    font-size: 1rem;
+  }
+  
+  .terms-text {
+    font-size: 0.875rem;
+  }
+  
+  .terms-list li {
     font-size: 0.875rem;
     padding-left: 1.25rem;
   }
