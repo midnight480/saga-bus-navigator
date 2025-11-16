@@ -9,12 +9,43 @@
  * 直通便の検索、フィルタリング、ソートを担当
  */
 class SearchController {
-  constructor(timetable, fares) {
+  constructor(timetable, fares, fareCalculator = null, busStops = [], trips = []) {
     this.timetable = timetable;
     this.fares = fares;
+    this.fareCalculator = fareCalculator;
+    this.busStops = busStops;
+    this.trips = trips;
     
     // tripIdでグループ化したインデックスを作成（検索最適化）
     this.tripIndex = this.createTripIndex();
+    
+    // バス停名からstop_idへのマッピングを作成
+    this.stopNameToIdMap = this.createStopNameToIdMap(busStops);
+    
+    // tripIdからroute_idへのマッピングを作成
+    this.tripToRouteMap = this.createTripToRouteMap(trips);
+  }
+  
+  /**
+   * バス停名からstop_idへのマッピングを作成
+   */
+  createStopNameToIdMap(busStops) {
+    const map = {};
+    busStops.forEach(stop => {
+      map[stop.name] = stop.id;
+    });
+    return map;
+  }
+  
+  /**
+   * tripIdからroute_idへのマッピングを作成
+   */
+  createTripToRouteMap(trips) {
+    const map = {};
+    trips.forEach(trip => {
+      map[trip.trip_id] = trip.route_id;
+    });
+    return map;
   }
 
   /**
@@ -83,8 +114,8 @@ class SearchController {
         arrivalEntry.minute
       );
       
-      // 運賃を取得
-      const fare = this.getFare(departureStop, arrivalStop, departureEntry.operator);
+      // 運賃を取得（tripIdを渡してFareCalculatorを使用）
+      const fare = this.getFare(departureStop, arrivalStop, departureEntry.operator, tripId);
       
       // 経由バス停を取得（乗車バス停と降車バス停の間）
       const viaStops = stops
@@ -196,8 +227,41 @@ class SearchController {
 
   /**
    * 運賃を取得
+   * FareCalculatorを優先的に使用し、見つからない場合は既存のfares配列にフォールバック
    */
-  getFare(departureStop, arrivalStop, operator) {
+  getFare(departureStop, arrivalStop, operator, tripId = null) {
+    // FareCalculatorが利用可能な場合は優先的に使用
+    if (this.fareCalculator && tripId) {
+      // バス停名からstop_idを取得
+      const departureStopId = this.stopNameToIdMap[departureStop];
+      const arrivalStopId = this.stopNameToIdMap[arrivalStop];
+      
+      // tripIdからroute_idを取得
+      const routeId = this.tripToRouteMap[tripId];
+      
+      if (departureStopId && arrivalStopId && routeId) {
+        const fareResult = this.fareCalculator.calculateFare(
+          departureStopId,
+          arrivalStopId,
+          routeId
+        );
+        
+        if (fareResult) {
+          return fareResult;
+        }
+        
+        // FareCalculatorで見つからない場合は、既存のfares配列にフォールバック
+        console.warn('FareCalculatorで運賃が見つからないため、既存のfares配列を使用します', {
+          departureStop,
+          arrivalStop,
+          operator,
+          tripId,
+          routeId
+        });
+      }
+    }
+    
+    // 既存のfares配列から運賃を検索（フォールバック処理）
     // 完全一致で検索
     let fare = this.fares.find(f => 
       f.from === departureStop && 
@@ -1583,7 +1647,10 @@ async function initializeApp() {
     // データの読み込み（5秒タイムアウト）
     console.log('データを読み込んでいます...');
     
-    const loadPromise = dataLoader.loadAllData();
+    const loadPromise = Promise.all([
+      dataLoader.loadAllData(),
+      dataLoader.loadGTFSData()
+    ]);
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('データ読み込みがタイムアウトしました（5秒超過）')), 5000);
     });
@@ -1596,16 +1663,66 @@ async function initializeApp() {
     console.log(`バス停数: ${dataLoader.busStops.length}`);
     console.log(`時刻表データ数: ${dataLoader.timetable.length}`);
     console.log(`運賃データ数: ${dataLoader.fares.length}`);
+    console.log(`GTFSデータ: stopTimes=${dataLoader.stopTimes.length}, trips=${dataLoader.trips.length}, routes=${dataLoader.routes.length}, calendar=${dataLoader.calendar.length}, gtfsStops=${dataLoader.gtfsStops.length}`);
     
     // 3秒以内に読み込み完了したか確認
     if (loadTime > 3000) {
       console.warn('データ読み込みに3秒以上かかりました');
     }
     
+    // FareCalculatorの初期化
+    let fareCalculator = null;
+    try {
+      if (dataLoader.fareRules && dataLoader.fareRules.length > 0) {
+        fareCalculator = new FareCalculator(
+          dataLoader.fares,
+          dataLoader.fareRules,
+          dataLoader.routes || [] // routesデータを渡す
+        );
+        console.log('FareCalculatorの初期化が完了しました');
+        console.log(`運賃ルール数: ${dataLoader.fareRules.length}`);
+      } else {
+        console.warn('fare_rules.txtが存在しないため、FareCalculatorは初期化されませんでした');
+        console.warn('既存のfares配列を使用して運賃計算を行います');
+      }
+    } catch (error) {
+      console.error('FareCalculator初期化エラー:', error);
+      console.warn('既存のfares配列を使用して運賃計算を行います');
+      fareCalculator = null;
+    }
+    
+    // TimetableControllerの初期化
+    try {
+      if (!dataLoader.stopTimes || !dataLoader.trips || !dataLoader.routes || !dataLoader.calendar || !dataLoader.gtfsStops) {
+        throw new Error('TimetableControllerに必要なGTFSデータが不足しています');
+      }
+      
+      window.timetableController = new TimetableController(
+        dataLoader.stopTimes,
+        dataLoader.trips,
+        dataLoader.routes,
+        dataLoader.calendar,
+        dataLoader.gtfsStops // 生のstops.txtデータを渡す（stop_idプロパティを持つ）
+      );
+      console.log('TimetableControllerの初期化が完了しました');
+      
+      // TimetableUIの初期化
+      window.timetableUI = new TimetableUI(window.timetableController);
+      console.log('TimetableUIの初期化が完了しました');
+    } catch (error) {
+      console.error('TimetableController初期化エラー:', error);
+      console.warn('時刻表表示機能は利用できません');
+      window.timetableController = null;
+      window.timetableUI = null;
+    }
+    
     // SearchControllerの初期化
     window.searchController = new SearchController(
       dataLoader.timetable,
-      dataLoader.fares
+      dataLoader.fares,
+      fareCalculator,
+      dataLoader.busStops, // 変換後のバス停データ（name -> idマッピング用）
+      dataLoader.trips // tripId -> route_idマッピング用
     );
     console.log('SearchControllerの初期化が完了しました');
     

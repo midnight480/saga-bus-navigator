@@ -90,6 +90,14 @@ class DataLoader {
     this.busStops = null;
     this.timetable = null;
     this.fares = null;
+    this.fareRules = null;
+    
+    // TimetableController用のGTFSデータ（生データ）
+    this.stopTimes = null;
+    this.trips = null;
+    this.routes = null;
+    this.calendar = null;
+    this.gtfsStops = null; // 生のstops.txtデータ（stop_idプロパティを持つ）
     
     // タイムアウト設定（ミリ秒）- ZIPファイルサイズを考慮して5秒に延長
     this.timeout = 5000;
@@ -245,7 +253,7 @@ class DataLoader {
   }
 
   /**
-   * 運賃データを読み込み
+   * 運賃データを読み込み（fare_attributes.txtとfare_rules.txtを並列読み込み）
    * @returns {Promise<Array>}
    * @throws {Error} データ読み込みに失敗した場合
    */
@@ -275,11 +283,24 @@ class DataLoader {
         gtfsData.fareAttributes,
         (message, data) => this.logDebug(message, data) // 進捗コールバック
       );
+      
+      // fare_rules.txtが存在する場合は変換してキャッシュ
+      if (gtfsData.fareRules && gtfsData.fareRules.length > 0) {
+        this.fareRules = DataTransformer.transformFareRules(
+          gtfsData.fareRules,
+          (message, data) => this.logDebug(message, data) // 進捗コールバック
+        );
+      } else {
+        this.logDebug('fare_rules.txtが存在しないため、運賃ルールデータはスキップされました');
+        this.fareRules = [];
+      }
+      
       const transformEndTime = Date.now();
       
       const overallEndTime = Date.now();
       this.logDebug('運賃データの読み込み完了', { 
-        count: this.fares.length,
+        fareAttributesCount: this.fares.length,
+        fareRulesCount: this.fareRules.length,
         totalDuration: `${overallEndTime - overallStartTime}ms`,
         transformDuration: `${transformEndTime - transformStartTime}ms`
       });
@@ -294,6 +315,69 @@ class DataLoader {
       // その他のエラー
       console.error('運賃データ読み込みエラー:', error);
       throw new Error('運賃データの読み込みに失敗しました');
+    }
+  }
+
+  /**
+   * 運賃ルールデータを取得
+   * @returns {Promise<Array>}
+   */
+  async loadFareRules() {
+    // loadFares()を呼び出してfare_rules.txtも読み込む
+    await this.loadFares();
+    return this.fareRules || [];
+  }
+
+  /**
+   * TimetableController用のGTFSデータを読み込み
+   * @returns {Promise<void>}
+   * @throws {Error} データ読み込みに失敗した場合
+   */
+  async loadGTFSData() {
+    // キャッシュチェック
+    if (this.stopTimes && this.trips && this.routes && this.calendar && this.gtfsStops) {
+      this.logDebug('GTFSデータをキャッシュから取得');
+      return;
+    }
+
+    try {
+      this.logDebug('GTFSデータの読み込み開始');
+      const overallStartTime = Date.now();
+      
+      // GTFS ZIPファイルを検索
+      const zipPath = await this.findGTFSZipFile();
+      
+      // ZIPファイルを読み込んで解凍
+      const zip = await this.loadGTFSZip(zipPath);
+      
+      // GTFSファイルをパース
+      const gtfsData = await this.parseGTFSFiles(zip);
+      
+      // GTFSデータをそのまま保存（変換不要）
+      this.stopTimes = gtfsData.stopTimes;
+      this.trips = gtfsData.trips;
+      this.routes = gtfsData.routes;
+      this.calendar = gtfsData.calendar;
+      this.gtfsStops = gtfsData.stops; // 生のstops.txtデータ
+      
+      const overallEndTime = Date.now();
+      this.logDebug('GTFSデータの読み込み完了', { 
+        stopTimesCount: this.stopTimes.length,
+        tripsCount: this.trips.length,
+        routesCount: this.routes.length,
+        calendarCount: this.calendar.length,
+        gtfsStopsCount: this.gtfsStops.length,
+        totalDuration: `${overallEndTime - overallStartTime}ms`
+      });
+    } catch (error) {
+      // エラーコードが設定されている場合はそのまま再スロー
+      if (error.code) {
+        console.error('GTFSデータ読み込みエラー:', error.message);
+        throw error;
+      }
+      // その他のエラー
+      console.error('GTFSデータ読み込みエラー:', error);
+      throw new Error('GTFSデータの読み込みに失敗しました');
     }
   }
 
@@ -460,7 +544,8 @@ class DataLoader {
         tripsText,
         calendarText,
         agencyText,
-        fareAttributesText
+        fareAttributesText,
+        fareRulesText
       ] = await Promise.all([
         extractWithTiming('stops.txt'),
         extractWithTiming('stop_times.txt'),
@@ -468,7 +553,8 @@ class DataLoader {
         extractWithTiming('trips.txt'),
         extractWithTiming('calendar.txt'),
         extractWithTiming('agency.txt'),
-        extractWithTiming('fare_attributes.txt').catch(() => null) // オプショナル
+        extractWithTiming('fare_attributes.txt').catch(() => null), // オプショナル
+        extractWithTiming('fare_rules.txt').catch(() => null) // オプショナル
       ]);
       
       // feed_info.txtからバージョン情報を読み取り（オプショナル）
@@ -488,7 +574,8 @@ class DataLoader {
         trips: GTFSParser.parse(tripsText),
         calendar: GTFSParser.parse(calendarText),
         agency: GTFSParser.parse(agencyText),
-        fareAttributes: fareAttributesText ? GTFSParser.parse(fareAttributesText) : []
+        fareAttributes: fareAttributesText ? GTFSParser.parse(fareAttributesText) : [],
+        fareRules: fareRulesText ? GTFSParser.parse(fareRulesText) : []
       };
       const parseEndTime = Date.now();
       const parseDuration = parseEndTime - parseStartTime;
@@ -537,7 +624,8 @@ class DataLoader {
           trips: gtfsData.trips.length,
           calendar: gtfsData.calendar.length,
           agency: gtfsData.agency.length,
-          fareAttributes: gtfsData.fareAttributes.length
+          fareAttributes: gtfsData.fareAttributes.length,
+          fareRules: gtfsData.fareRules.length
         }
       });
       
@@ -752,6 +840,7 @@ class DataLoader {
     this.busStops = null;
     this.timetable = null;
     this.fares = null;
+    this.fareRules = null;
   }
 }
 
@@ -894,21 +983,54 @@ class DataTransformer {
       progressCallback('運賃データ変換開始', { totalRecords: fareAttributesData.length });
     }
     
-    // GTFSのfare_attributes.txtは区間別運賃を直接表現しないため、
-    // 既存のfare_major_routes.csvと同等のデータ構造に変換する必要がある
-    // ここでは基本運賃のみを返す（詳細な区間別運賃は別途対応が必要）
+    // fare_attributes.txtをFareCalculatorで使用する形式に変換
     const result = fareAttributesData.map(fare => ({
-      from: '', // GTFSでは区間情報がfare_rulesに分離されている
-      to: '',
-      operator: '', // agency_idから取得する必要がある
-      adultFare: parseFloat(fare.price),
-      childFare: parseFloat(fare.price) / 2 // 小児運賃は大人の半額と仮定
+      fareId: fare.fare_id,
+      price: parseFloat(fare.price),
+      currencyType: fare.currency_type,
+      paymentMethod: parseInt(fare.payment_method),
+      transfers: parseInt(fare.transfers),
+      agencyId: fare.agency_id
     }));
     
     const endTime = Date.now();
     
     if (progressCallback) {
       progressCallback('運賃データ変換完了', { 
+        duration: `${endTime - startTime}ms`,
+        recordCount: result.length
+      });
+    }
+    
+    return result;
+  }
+
+  /**
+   * fare_rules.txtを変換
+   * @param {Array} fareRulesData - fare_rules.txtのデータ
+   * @param {Function} progressCallback - 進捗状況を報告するコールバック関数（オプション）
+   * @returns {Array} 変換された運賃ルールデータ
+   */
+  static transformFareRules(fareRulesData, progressCallback = null) {
+    const startTime = Date.now();
+    
+    if (progressCallback) {
+      progressCallback('運賃ルールデータ変換開始', { totalRecords: fareRulesData.length });
+    }
+    
+    // fare_rules.txtをそのまま変換（FareCalculatorで使用）
+    const result = fareRulesData.map(rule => ({
+      fareId: rule.fare_id,
+      routeId: rule.route_id || null,
+      originId: rule.origin_id || null,
+      destinationId: rule.destination_id || null,
+      containsId: rule.contains_id || null
+    }));
+    
+    const endTime = Date.now();
+    
+    if (progressCallback) {
+      progressCallback('運賃ルールデータ変換完了', { 
         duration: `${endTime - startTime}ms`,
         recordCount: result.length
       });

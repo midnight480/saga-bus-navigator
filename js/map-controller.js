@@ -502,12 +502,42 @@ class MapController {
   }
   
   /**
-   * 時刻表を表示する（プレースホルダー）
+   * 時刻表を表示する
    * @param {string} stopId - バス停ID
    */
   showTimetable(stopId) {
     console.log('[MapController] 時刻表を表示:', stopId);
-    // 実際の時刻表表示機能は後のタスクで実装
+    
+    // TimetableControllerとTimetableUIが初期化されているか確認
+    if (!window.timetableController) {
+      console.error('[MapController] TimetableControllerが初期化されていません');
+      return;
+    }
+    
+    if (!window.timetableUI) {
+      console.error('[MapController] TimetableUIが初期化されていません');
+      return;
+    }
+    
+    // バス停情報を取得
+    const stop = this.busStops.find(s => s.id === stopId);
+    if (!stop) {
+      console.error('[MapController] バス停が見つかりません:', stopId);
+      return;
+    }
+    
+    // バス停で運行している路線一覧を取得
+    const routes = window.timetableController.getRoutesAtStop(stopId);
+    
+    if (!routes || routes.length === 0) {
+      console.warn('[MapController] この停留所に路線が見つかりません:', stop.name);
+      // エラーメッセージを表示するモーダルを表示
+      window.timetableUI.showTimetableModal(stopId, stop.name);
+      return;
+    }
+    
+    // 時刻表モーダルを表示（stopIdとstopNameを渡す）
+    window.timetableUI.showTimetableModal(stopId, stop.name);
   }
   
   /**
