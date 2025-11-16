@@ -1,0 +1,5 @@
+compatibility_flags = ["nodejs_compat"]
+
+[build]
+command = "cd functions && npm install"
+
