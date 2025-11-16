@@ -227,20 +227,20 @@
     - _headersファイルの更新をデプロイ
     - _Requirements: 全要件_
 
-- [ ] 10. テストの実装
-  - [ ] 10.1 RealtimeDataLoaderの単体テスト
+- [x] 10. テストの実装
+  - [x] 10.1 RealtimeDataLoaderの単体テスト
     - Protocol Buffersデコードのテスト
     - リトライロジックのテスト
     - エラーハンドリングのテスト
     - _Requirements: テスト戦略_
 
-  - [ ] 10.2 RealtimeVehicleControllerの単体テスト
+  - [x] 10.2 RealtimeVehicleControllerの単体テスト
     - 車両位置計算のテスト (運行開始前/運行中/運行終了)
     - 遅延時間計算のテスト
     - 運行情報分類のテスト (運休/遅延)
     - _Requirements: テスト戦略_
 
-  - [ ] 10.3 E2Eテストの実装
+  - [x] 10.3 E2Eテストの実装
     - 車両位置表示のE2Eテスト
     - 運行情報表示のE2Eテスト
     - エラーハンドリングのE2Eテスト
