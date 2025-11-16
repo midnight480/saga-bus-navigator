@@ -26,6 +26,7 @@
   <!-- Stylesheet -->
   <link rel="stylesheet" href="/css/app.css">
   <link rel="stylesheet" href="/css/timetable.css">
+  <link rel="stylesheet" href="/css/footer-pages.css">
 </head>
 <body>
   <div class="container">
@@ -220,10 +221,206 @@
     <footer class="footer">
       <p class="footer-text">
         &copy; 2025 佐賀バスナビ | 
-        <a href="#" class="footer-link">使い方</a> | 
-        <a href="#" class="footer-link">お問い合わせ</a>
+        <a href="#usage" class="footer-link">使い方</a> | 
+        <a href="#contact" class="footer-link">お問い合わせ</a>
       </p>
     </footer>
+  </div>
+
+  <!-- Contact Modal -->
+  <div id="contact-modal" class="footer-modal" role="dialog" aria-labelledby="contact-modal-title" aria-modal="true" hidden>
+    <div class="footer-modal-overlay"></div>
+    <div class="footer-modal-content">
+      <div class="footer-modal-header">
+        <h2 id="contact-modal-title" class="footer-modal-title">お問い合わせ</h2>
+        <button type="button" class="footer-modal-close" aria-label="閉じる">×</button>
+      </div>
+      
+      <div class="footer-modal-body">
+        <iframe 
+          src="https://docs.google.com/forms/d/e/1FAIpQLSew5RP-DNfGSjRIQvglb74sCw5t-Cg3xMWen3pjnkuTcXtV5g/viewform?embedded=true"
+          width="100%"
+          height="600"
+          frameborder="0"
+          marginheight="0"
+          marginwidth="0"
+          title="お問い合わせフォーム"
+          loading="lazy">
+          読み込んでいます…
+        </iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Usage Modal -->
+  <div id="usage-modal" class="footer-modal" role="dialog" aria-labelledby="usage-modal-title" aria-modal="true" hidden>
+    <div class="footer-modal-overlay"></div>
+    <div class="footer-modal-content">
+      <div class="footer-modal-header">
+        <h2 id="usage-modal-title" class="footer-modal-title">佐賀バスナビ</h2>
+        <button type="button" class="footer-modal-close" aria-label="閉じる">×</button>
+      </div>
+      
+      <div class="footer-modal-tabs" role="tablist">
+        <button type="button" class="footer-tab-button active" data-tab="usage" role="tab" aria-selected="true" aria-controls="usage-tab">
+          使い方
+        </button>
+        <button type="button" class="footer-tab-button" data-tab="acknowledgments" role="tab" aria-selected="false" aria-controls="acknowledgments-tab">
+          謝辞
+        </button>
+        <button type="button" class="footer-tab-button" data-tab="terms" role="tab" aria-selected="false" aria-controls="terms-tab">
+          利用規約
+        </button>
+      </div>
+      
+      <div class="footer-modal-body">
+        <!-- 使い方タブ -->
+        <div id="usage-tab" class="footer-tab-content active" role="tabpanel" aria-labelledby="usage-tab-button">
+          <section class="usage-section">
+            <h3 class="usage-heading">バス停の検索</h3>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading">テキスト入力で検索</h4>
+              <p class="usage-text">バス停名を入力すると、候補が表示されます。1文字以上入力すると自動的に候補が絞り込まれます。</p>
+            </div>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading">地図から選択</h4>
+              <p class="usage-text">「地図から選択」ボタンをクリックすると、地図上でバス停を選択できます。地図上のマーカーをクリックしてバス停を選んでください。</p>
+            </div>
+          </section>
+          
+          <section class="usage-section">
+            <h3 class="usage-heading">時刻表の検索</h3>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading">出発時刻指定</h4>
+              <p class="usage-text">指定した時刻以降に出発するバスを検索します。時刻を入力して検索ボタンを押してください。</p>
+            </div>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading">到着時刻指定</h4>
+              <p class="usage-text">指定した時刻までに到着するバスを検索します。時刻を入力して検索ボタンを押してください。</p>
+            </div>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading">今すぐ</h4>
+              <p class="usage-text">現在時刻から最も近いバスを検索します。すぐに乗れるバスを探したいときに便利です。</p>
+            </div>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading">始発</h4>
+              <p class="usage-text">その日の最初のバスを検索します。早朝の移動計画に役立ちます。</p>
+            </div>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading">終電</h4>
+              <p class="usage-text">その日の最後のバスを検索します。夜間の移動計画に役立ちます。</p>
+            </div>
+          </section>
+          
+          <section class="usage-section">
+            <h3 class="usage-heading">検索結果の見方</h3>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading">路線情報</h4>
+              <p class="usage-text">検索結果には路線名、行き先、出発時刻、到着時刻が表示されます。複数の路線が見つかった場合は、時刻順に表示されます。</p>
+            </div>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading">運賃</h4>
+              <p class="usage-text">各路線の運賃が表示されます。運賃は大人料金です。</p>
+            </div>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading">所要時間</h4>
+              <p class="usage-text">乗車バス停から降車バス停までの所要時間が表示されます。</p>
+            </div>
+          </section>
+          
+          <section class="usage-section">
+            <h3 class="usage-heading">時刻表詳細の表示</h3>
+            <p class="usage-text">検索結果の各項目をクリックすると、その路線の詳細な時刻表が表示されます。時刻表では、全てのバス停と通過時刻を確認できます。</p>
+          </section>
+          
+          <section class="usage-section">
+            <h3 class="usage-heading">カレンダー登録機能</h3>
+            <p class="usage-text">時刻表詳細画面から「カレンダーに登録」ボタンをクリックすると、バスの出発時刻をカレンダーアプリに登録できます。iCal形式でのダウンロードまたはGoogle Calendarへの直接登録が選択できます。</p>
+          </section>
+        </div>
+        
+        <!-- 謝辞タブ -->
+        <div id="acknowledgments-tab" class="footer-tab-content" role="tabpanel" aria-labelledby="acknowledgments-tab-button" hidden>
+          <section class="acknowledgments-section">
+            <h3 class="acknowledgments-heading">データ提供元への謝辞</h3>
+            <p class="acknowledgments-text">このアプリケーションは、佐賀県が提供するオープンデータを利用しています。正確で最新のバス情報を公開していただいている佐賀県および関係事業者の皆様に深く感謝いたします。</p>
+          </section>
+          
+          <section class="acknowledgments-section">
+            <h3 class="acknowledgments-heading">データ提供元</h3>
+            
+            <div class="acknowledgments-item">
+              <h4 class="acknowledgments-subheading">佐賀県バス情報</h4>
+              <p class="acknowledgments-text">佐賀県内のバス情報を提供しています。</p>
+              <p class="acknowledgments-link-wrapper">
+                <a href="https://www.sagabus.info/home" class="acknowledgments-link" target="_blank" rel="noopener noreferrer">https://www.sagabus.info/home</a>
+              </p>
+            </div>
+            
+            <div class="acknowledgments-item">
+              <h4 class="acknowledgments-subheading">オープンデータポータル</h4>
+              <p class="acknowledgments-text">GTFS形式のバスデータを公開しています。</p>
+              <p class="acknowledgments-link-wrapper">
+                <a href="http://opendata.sagabus.info/" class="acknowledgments-link" target="_blank" rel="noopener noreferrer">http://opendata.sagabus.info/</a>
+              </p>
+            </div>
+          </section>
+          
+          <section class="acknowledgments-section">
+            <h3 class="acknowledgments-heading">GTFS形式について</h3>
+            <p class="acknowledgments-text">GTFS（General Transit Feed Specification）は、公共交通機関の時刻表と地理情報を記述するための標準形式です。本アプリケーションは、このGTFS形式のデータを利用して、リアルタイムで正確なバス情報を提供しています。</p>
+          </section>
+        </div>
+        
+        <!-- 利用規約タブ -->
+        <div id="terms-tab" class="footer-tab-content" role="tabpanel" aria-labelledby="terms-tab-button" hidden>
+          <section class="terms-section">
+            <h3 class="terms-heading">サービスの提供範囲</h3>
+            <p class="terms-text">本サービスは佐賀県内の路線バス情報を提供します。提供する情報は、佐賀県が公開するオープンデータに基づいています。情報は予告なく変更される場合があります。</p>
+          </section>
+          
+          <section class="terms-section">
+            <h3 class="terms-heading">データの正確性に関する免責事項</h3>
+            <p class="terms-text">本サービスで提供する情報は、オープンデータを基にしていますが、その正確性、完全性、有用性について保証するものではありません。実際のバス運行状況は、天候、交通状況、その他の要因により変更される場合があります。重要な移動の際は、必ず各バス事業者の公式情報もご確認ください。</p>
+          </section>
+          
+          <section class="terms-section">
+            <h3 class="terms-heading">オープンデータの利用条件</h3>
+            <p class="terms-text">本サービスは、佐賀県が提供するオープンデータを利用しています。オープンデータの利用条件については、データ提供元の利用規約に従います。</p>
+          </section>
+          
+          <section class="terms-section">
+            <h3 class="terms-heading">位置情報の取り扱い</h3>
+            <p class="terms-text">本サービスは、現在地機能を使用する際に、お使いのデバイスから位置情報を取得します。取得した位置情報は、地図上での現在地表示および最寄りのバス停検索のためにのみ使用され、サーバーへの送信や保存は一切行いません。位置情報の利用は、ブラウザ内での処理に限定されます。</p>
+          </section>
+          
+          <section class="terms-section">
+            <h3 class="terms-heading">個人情報の取り扱い</h3>
+            <p class="terms-text">本サービスは、個人を特定する情報を取得・保存しません。お問い合わせフォームから送信された情報は、お問い合わせ対応のためにのみ使用され、第三者に提供されることはありません。</p>
+          </section>
+          
+          <section class="terms-section">
+            <h3 class="terms-heading">サービスの変更・中断</h3>
+            <p class="terms-text">本サービスは、予告なく内容の変更、一時的な中断、または終了する場合があります。これらによって生じたいかなる損害についても、当方は責任を負いかねます。</p>
+          </section>
+          
+          <section class="terms-section">
+            <h3 class="terms-heading">免責事項</h3>
+            <p class="terms-text">本サービスの利用により生じたいかなる損害についても、当方は一切の責任を負いません。本サービスは「現状のまま」提供されるものであり、特定の目的への適合性について保証するものではありません。</p>
+          </section>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Timetable Modal -->
@@ -273,5 +470,6 @@
   <script src="/js/timetable-ui.js"></script>
   <script src="/js/map-controller.js"></script>
   <script src="/js/app.js"></script>
+  <script src="/js/footer-pages.js"></script>
 </body>
 </html>

@@ -1,0 +1,455 @@
+/* ========================================
+   Footer Pages Modal Styles
+   ======================================== */
+
+/* モーダルオーバーレイ */
+.footer-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.footer-modal[hidden] {
+  display: none;
+}
+
+/* 背景オーバーレイ */
+.footer-modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+/* モーダルコンテンツ */
+.footer-modal-content {
+  position: relative;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   Modal Header
+   ======================================== */
+
+.footer-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 2px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.footer-modal-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0066cc;
+  margin: 0;
+}
+
+.footer-modal-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.footer-modal-close:hover {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.footer-modal-close:focus-visible {
+  outline: 3px solid #0066cc;
+  outline-offset: 2px;
+}
+
+/* ========================================
+   Tab Navigation
+   ======================================== */
+
+.footer-modal-tabs {
+  display: flex;
+  border-bottom: 2px solid #e0e0e0;
+  background-color: #f8f9fa;
+  flex-shrink: 0;
+}
+
+.footer-tab-button {
+  flex: 1;
+  padding: 1rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #666;
+  min-height: 44px;
+}
+
+.footer-tab-button:hover {
+  background-color: #e9ecef;
+  color: #333;
+}
+
+.footer-tab-button:focus-visible {
+  outline: 3px solid #0066cc;
+  outline-offset: -3px;
+}
+
+.footer-tab-button.active {
+  color: #0066cc;
+  border-bottom-color: #0066cc;
+  background-color: white;
+}
+
+/* ========================================
+   Modal Body
+   ======================================== */
+
+.footer-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+/* タブコンテンツ */
+.footer-tab-content {
+  display: block;
+}
+
+.footer-tab-content[hidden] {
+  display: none;
+}
+
+/* ========================================
+   Content Sections
+   ======================================== */
+
+.content-section {
+  margin-bottom: 2rem;
+}
+
+.content-section:last-child {
+  margin-bottom: 0;
+}
+
+.content-section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.content-section-subtitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0066cc;
+  margin: 1rem 0 0.5rem 0;
+}
+
+.content-section-text {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: #333;
+  margin-bottom: 0.75rem;
+}
+
+.content-section-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.75rem 0;
+}
+
+.content-section-list li {
+  padding: 0.5rem 0 0.5rem 1.5rem;
+  position: relative;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: #333;
+}
+
+.content-section-list li:before {
+  content: "•";
+  position: absolute;
+  left: 0.5rem;
+  color: #0066cc;
+  font-weight: bold;
+}
+
+/* 外部リンク */
+.content-link {
+  color: #0066cc;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s;
+  word-break: break-all;
+}
+
+.content-link:hover {
+  text-decoration: underline;
+  color: #0052a3;
+}
+
+.content-link:focus-visible {
+  outline: 3px solid #0066cc;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ========================================
+   Contact Modal (Google Form)
+   ======================================== */
+
+.contact-iframe-container {
+  width: 100%;
+  height: 600px;
+  border: none;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.contact-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ========================================
+   Responsive Design - Mobile (< 768px)
+   ======================================== */
+
+@media (max-width: 767px) {
+  .footer-modal {
+    padding: 0;
+  }
+  
+  .footer-modal-content {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+    animation: modalSlideUp 0.3s ease-out;
+  }
+  
+  @keyframes modalSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .footer-modal-header {
+    padding: 1rem 1.25rem;
+  }
+  
+  .footer-modal-title {
+    font-size: 1.25rem;
+  }
+  
+  .footer-modal-close {
+    font-size: 1.75rem;
+    width: 32px;
+    height: 32px;
+  }
+  
+  .footer-modal-tabs {
+    overflow-x: auto;
+  }
+  
+  /* スクロールバーを非表示（オプション） */
+  .footer-modal-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .footer-modal-tabs {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .footer-tab-button {
+    flex: 0 0 auto;
+    min-width: 100px;
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+  }
+  
+  .footer-modal-body {
+    padding: 1.25rem;
+  }
+  
+  .content-section {
+    margin-bottom: 1.5rem;
+  }
+  
+  .content-section-title {
+    font-size: 1rem;
+  }
+  
+  .content-section-subtitle {
+    font-size: 0.9375rem;
+  }
+  
+  .content-section-text {
+    font-size: 0.875rem;
+  }
+  
+  .content-section-list li {
+    font-size: 0.875rem;
+    padding-left: 1.25rem;
+  }
+  
+  .contact-iframe-container {
+    height: calc(100vh - 180px);
+    min-height: 400px;
+  }
+}
+
+/* ========================================
+   Responsive Design - Tablet & Desktop (>= 768px)
+   ======================================== */
+
+@media (min-width: 768px) {
+  .footer-modal-content {
+    max-width: 800px;
+  }
+  
+  .footer-modal-body {
+    padding: 2rem;
+  }
+  
+  .content-section {
+    margin-bottom: 2.5rem;
+  }
+  
+  .content-section-title {
+    font-size: 1.25rem;
+  }
+}
+
+/* ========================================
+   Accessibility
+   ======================================== */
+
+/* フォーカス表示の強化 */
+.footer-modal *:focus-visible {
+  outline: 3px solid #0066cc;
+  outline-offset: 2px;
+}
+
+/* スクリーンリーダー用 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ハイコントラストモード対応 */
+@media (prefers-contrast: high) {
+  .footer-modal-content {
+    border: 3px solid currentColor;
+  }
+  
+  .footer-tab-button {
+    border: 2px solid transparent;
+  }
+  
+  .footer-tab-button.active {
+    border-color: currentColor;
+  }
+}
+
+/* アニメーション削減モード対応 */
+@media (prefers-reduced-motion: reduce) {
+  .footer-modal-content {
+    animation: none;
+  }
+  
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ========================================
+   Print Styles
+   ======================================== */
+
+@media print {
+  .footer-modal-overlay {
+    display: none;
+  }
+  
+  .footer-modal-content {
+    position: static;
+    max-width: 100%;
+    max-height: none;
+    box-shadow: none;
+    border: 1px solid #000;
+  }
+  
+  .footer-modal-close {
+    display: none;
+  }
+  
+  .footer-modal-tabs {
+    display: none;
+  }
+  
+  .footer-tab-content[hidden] {
+    display: block !important;
+    page-break-before: always;
+  }
+}
