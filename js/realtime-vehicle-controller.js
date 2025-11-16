@@ -517,13 +517,7 @@ class RealtimeVehicleController {
     // displayAlerts()を呼び出して表示
     this.displayAlerts(cancellations, delays);
   }
-}
-
-// グローバルスコープに公開
-if (typeof window !== 'undefined') {
-  window.RealtimeVehicleController = RealtimeVehicleController;
-}
-
+  
   /**
    * 運行情報表示
    * @param {Array} cancellations - 運休情報の配列
