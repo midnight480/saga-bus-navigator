@@ -1,5 +1,3 @@
-compatibility_flags = ["nodejs_compat"]
-
-[build]
-command = "cd functions && npm install"
+compatibility_date = "2025-11-16"
+node_compat = true
 
