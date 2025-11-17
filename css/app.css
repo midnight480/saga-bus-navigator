@@ -1415,6 +1415,196 @@ body {
 }
 
 /* ========================================
+   Safari Warning Dialog Styles
+   ======================================== */
+
+/* オーバーレイ */
+.safari-warning-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+/* ダイアログ本体 */
+.safari-warning-dialog {
+  background: white;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.3s ease-out;
+}
+
+/* アニメーション定義 */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* アクセシビリティ対応: アニメーション削減 */
+@media (prefers-reduced-motion: reduce) {
+  .safari-warning-dialog {
+    animation: none;
+  }
+  
+  @keyframes slideIn {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* ヘッダー */
+.safari-warning-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.safari-warning-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.safari-warning-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+/* ボディ */
+.safari-warning-body {
+  padding: 1.5rem;
+}
+
+.safari-warning-message {
+  font-size: 1rem;
+  color: #333;
+  line-height: 1.6;
+  margin: 0 0 1rem 0;
+}
+
+.safari-warning-recommendation {
+  font-size: 1rem;
+  color: #0066cc;
+  font-weight: 500;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* フッター */
+.safari-warning-footer {
+  padding: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* チェックボックスとラベル */
+.safari-warning-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  color: #666;
+  min-height: 44px;
+  padding: 0.5rem 0;
+}
+
+.safari-warning-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.safari-warning-checkbox:focus {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}
+
+/* OKボタン */
+.safari-warning-ok-button {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background-color: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  min-height: 44px;
+  transition: all 0.2s;
+}
+
+.safari-warning-ok-button:hover {
+  background-color: #0052a3;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.safari-warning-ok-button:active {
+  transform: translateY(1px);
+}
+
+.safari-warning-ok-button:focus {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}
+
+/* レスポンシブデザイン: モバイル（767px以下） */
+@media (max-width: 767px) {
+  .safari-warning-dialog {
+    max-width: 100%;
+  }
+  
+  .safari-warning-header {
+    padding: 1.25rem;
+  }
+  
+  .safari-warning-title {
+    font-size: 1.125rem;
+  }
+  
+  .safari-warning-body {
+    padding: 1.25rem;
+  }
+  
+  .safari-warning-message,
+  .safari-warning-recommendation {
+    font-size: 0.9375rem;
+  }
+  
+  .safari-warning-footer {
+    padding: 1.25rem;
+  }
+}
+
+/* ========================================
    Calendar Modal Styles
    ======================================== */
 

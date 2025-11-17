@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Safari警告ダイアログ - 手動テスト</title>
+  <link rel="stylesheet" href="../css/app.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .test-button {
+      padding: 10px 20px;
+      margin: 5px;
+      background: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .test-button:hover {
+      background: #0052a3;
+    }
+    .test-result {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f5f5f5;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    .success {
+      color: green;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>Safari警告ダイアログ - 手動テスト</h1>
+  
+  <div class="test-section">
+    <h2>1. ブラウザ判定テスト</h2>
+    <p>現在のブラウザ情報:</p>
+    <div id="browser-info" class="test-result"></div>
+    <button class="test-button" onclick="testBrowserDetection()">ブラウザ判定を実行</button>
+    <div id="browser-result" class="test-result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>2. LocalStorage確認テスト</h2>
+    <button class="test-button" onclick="checkLocalStorage()">LocalStorageの状態を確認</button>
+    <button class="test-button" onclick="clearLocalStorage()">LocalStorageをクリア</button>
+    <button class="test-button" onclick="setLocalStorage()">LocalStorageに保存</button>
+    <div id="storage-result" class="test-result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>3. ダイアログ表示テスト</h2>
+    <button class="test-button" onclick="showDialog()">ダイアログを表示</button>
+    <button class="test-button" onclick="hideDialog()">ダイアログを非表示</button>
+    <div id="dialog-result" class="test-result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>4. 統合テスト</h2>
+    <button class="test-button" onclick="runIntegrationTest()">統合テストを実行</button>
+    <div id="integration-result" class="test-result"></div>
+  </div>
+
+  <script src="../js/safari-warning-dialog.js"></script>
+  <script>
+    let dialog = null;
+
+    // ブラウザ情報を表示
+    document.getElementById('browser-info').innerHTML = `
+      <strong>UserAgent:</strong><br>
+      ${navigator.userAgent}
+    `;
+
+    function testBrowserDetection() {
+      dialog = new SafariWarningDialog();
+      const isIphoneSafari = dialog.isIphoneSafari();
+      const resultDiv = document.getElementById('browser-result');
+      
+      resultDiv.innerHTML = `
+        <strong>判定結果:</strong> ${isIphoneSafari ? '<span class="success">iPhone Safari</span>' : '<span class="error">iPhone Safari以外</span>'}<br>
+        <strong>詳細:</strong><br>
+        - iPhone: ${/iPhone/.test(navigator.userAgent)}<br>
+        - Safari: ${/Safari/.test(navigator.userAgent)}<br>
+        - Not Chrome: ${!/Chrome|CriOS/.test(navigator.userAgent)}
+      `;
+    }
+
+    function checkLocalStorage() {
+      const key = 'hideIphoneSafariWarning';
+      const value = localStorage.getItem(key);
+      const resultDiv = document.getElementById('storage-result');
+      
+      resultDiv.innerHTML = `
+        <strong>LocalStorage状態:</strong><br>
+        キー: ${key}<br>
+        値: ${value === null ? '(未設定)' : value}
+      `;
+    }
+
+    function clearLocalStorage() {
+      const key = 'hideIphoneSafariWarning';
+      localStorage.removeItem(key);
+      checkLocalStorage();
+    }
+
+    function setLocalStorage() {
+      const key = 'hideIphoneSafariWarning';
+      localStorage.setItem(key, 'true');
+      checkLocalStorage();
+    }
+
+    function showDialog() {
+      if (!dialog) {
+        dialog = new SafariWarningDialog();
+      }
+      dialog.show();
+      document.getElementById('dialog-result').innerHTML = '<span class="success">ダイアログを表示しました</span>';
+    }
+
+    function hideDialog() {
+      if (dialog) {
+        dialog.hide();
+        document.getElementById('dialog-result').innerHTML = '<span class="success">ダイアログを非表示にしました</span>';
+      }
+    }
+
+    function runIntegrationTest() {
+      const resultDiv = document.getElementById('integration-result');
+      resultDiv.innerHTML = '<strong>テスト実行中...</strong>';
+      
+      // LocalStorageをクリア
+      localStorage.removeItem('hideIphoneSafariWarning');
+      
+      // 新しいインスタンスを作成
+      const testDialog = new SafariWarningDialog();
+      
+      // ブラウザ判定
+      const isIphoneSafari = testDialog.isIphoneSafari();
+      
+      // 表示判定
+      const shouldShow = testDialog.shouldShowWarning();
+      
+      // 結果を表示
+      resultDiv.innerHTML = `
+        <strong>統合テスト結果:</strong><br>
+        1. ブラウザ判定: ${isIphoneSafari ? '<span class="success">iPhone Safari</span>' : '<span class="error">iPhone Safari以外</span>'}<br>
+        2. 表示判定: ${shouldShow ? '<span class="success">表示する</span>' : '<span class="error">表示しない</span>'}<br>
+        3. 自動表示: ${isIphoneSafari && shouldShow ? '<span class="success">条件を満たす</span>' : '<span class="error">条件を満たさない</span>'}
+      `;
+      
+      // 条件を満たす場合は自動表示をテスト
+      if (isIphoneSafari && shouldShow) {
+        setTimeout(() => {
+          testDialog.init();
+          resultDiv.innerHTML += '<br><br><span class="success">init()を実行しました。ダイアログが表示されているはずです。</span>';
+        }, 1000);
+      }
+    }
+  </script>
+</body>
+</html>
