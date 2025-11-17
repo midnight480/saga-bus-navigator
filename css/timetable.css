@@ -17,9 +17,9 @@
 .timetable-modal-body {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   min-height: 100%;
-  padding: 5% 0;
+  padding: 20px 0;
 }
 
 .timetable-modal-content {
