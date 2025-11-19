@@ -117,10 +117,16 @@ class RealtimeVehicleController {
     container.className = 'realtime-alerts-container';
     container.style.display = 'none'; // 初期状態は非表示
     
-    // 地図コンテナの上部に挿入
-    const mapContainer = document.getElementById('map');
-    if (mapContainer && mapContainer.parentNode) {
-      mapContainer.parentNode.insertBefore(container, mapContainer);
+    // 地図コンテナの上部に挿入（map-containerを参照）
+    const mapSection = document.querySelector('.map-section');
+    if (mapSection) {
+      mapSection.insertBefore(container, mapSection.firstChild);
+    } else {
+      // map-sectionが見つからない場合は、map-containerの親要素に挿入
+      const mapContainer = document.getElementById('map-container');
+      if (mapContainer && mapContainer.parentNode) {
+        mapContainer.parentNode.insertBefore(container, mapContainer);
+      }
     }
     
     this.alertsContainer = container;
