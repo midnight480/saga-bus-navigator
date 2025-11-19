@@ -96,11 +96,19 @@ describe('RealtimeVehicleController', () => {
     dataLoaderMock = createDataLoaderMock();
     realtimeDataLoaderMock = createRealtimeDataLoaderMock();
 
+    // TripTimetableFormatterのモック
+    const tripTimetableFormatterMock = {
+      formatTimetableHTML: vi.fn((tripId, options) => {
+        return `<div class="trip-timetable"><p>時刻表: ${tripId}</p></div>`;
+      })
+    };
+
     // RealtimeVehicleControllerインスタンスを作成
     controller = new window.RealtimeVehicleController(
       mapControllerMock,
       dataLoaderMock,
-      realtimeDataLoaderMock
+      realtimeDataLoaderMock,
+      tripTimetableFormatterMock
     );
   });
 
@@ -772,6 +780,161 @@ describe('RealtimeVehicleController', () => {
 
       expect(alertsContainer.style.display).toBe('none');
       expect(alertsContainer.children.length).toBe(0);
+    });
+  });
+
+  /**
+   * Property 6: 吹き出しへの統合
+   * Feature: trip-timetable-display, Property 6: 吹き出しへの統合
+   * 
+   * 任意の車両マーカーに対して、吹き出しには運行状態情報と時刻表情報の両方が含まれ、
+   * 時刻表は運行状態情報の下に配置される
+   * 
+   * Validates: Requirements 3.1
+   */
+  describe('Property 6: 吹き出しへの統合', () => {
+    beforeEach(async () => {
+      await controller.initialize();
+      
+      // TripTimetableFormatterのモックを設定
+      controller.tripTimetableFormatter = {
+        formatTimetableHTML: vi.fn((tripId, options) => {
+          return `<div class="trip-timetable"><p>時刻表: ${tripId}</p></div>`;
+        })
+      };
+    });
+
+    it('任意の車両マーカーの吹き出しに運行状態情報と時刻表情報の両方が含まれる', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-16T08:05:00'));
+
+      const vehicleData = {
+        tripId: 'trip_123',
+        latitude: 33.2600,
+        longitude: 130.3000,
+        currentStopSequence: 1
+      };
+
+      const trip = dataLoaderMock.trips[0];
+
+      // 吹き出しコンテンツを作成
+      const vehicleStatus = controller.determineVehicleStatus(vehicleData, trip);
+      const tripInfo = {
+        tripId: 'trip_123',
+        routeId: 'route_456',
+        routeName: '佐賀駅～大和線'
+      };
+      
+      const popupContent = controller.createVehiclePopupContent(vehicleData, trip, tripInfo, vehicleStatus);
+
+      // 運行状態情報が含まれることを確認
+      expect(popupContent.querySelector('.vehicle-status')).toBeTruthy();
+      expect(popupContent.textContent).toContain('便ID: trip_123');
+      expect(popupContent.textContent).toContain('路線: 佐賀駅～大和線');
+
+      // 時刻表情報が含まれることを確認
+      expect(popupContent.querySelector('.trip-timetable')).toBeTruthy();
+      expect(popupContent.textContent).toContain('時刻表: trip_123');
+
+      // 時刻表が運行状態情報の下に配置されることを確認
+      const vehicleStatusElement = popupContent.querySelector('.vehicle-status');
+      const timetableElement = popupContent.querySelector('.trip-timetable');
+      
+      // DOMツリー内での順序を確認
+      const vehicleStatusIndex = Array.from(popupContent.children).indexOf(vehicleStatusElement);
+      const timetableIndex = Array.from(popupContent.children).indexOf(timetableElement.parentElement);
+      
+      expect(timetableIndex).toBeGreaterThan(vehicleStatusIndex);
+
+      vi.useRealTimers();
+    });
+
+    it('時刻表生成エラー時も運行状態情報は表示される', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-16T08:05:00'));
+
+      // TripTimetableFormatterがエラーをスローするように設定
+      controller.tripTimetableFormatter.formatTimetableHTML = vi.fn(() => {
+        throw new Error('時刻表生成エラー');
+      });
+
+      const vehicleData = {
+        tripId: 'trip_123',
+        latitude: 33.2600,
+        longitude: 130.3000,
+        currentStopSequence: 1
+      };
+
+      const trip = dataLoaderMock.trips[0];
+
+      const vehicleStatus = controller.determineVehicleStatus(vehicleData, trip);
+      const tripInfo = {
+        tripId: 'trip_123',
+        routeId: 'route_456',
+        routeName: '佐賀駅～大和線'
+      };
+      
+      const popupContent = controller.createVehiclePopupContent(vehicleData, trip, tripInfo, vehicleStatus);
+
+      // 運行状態情報は表示される
+      expect(popupContent.querySelector('.vehicle-status')).toBeTruthy();
+      expect(popupContent.textContent).toContain('便ID: trip_123');
+
+      // エラーメッセージが表示される
+      expect(popupContent.textContent).toContain('時刻表情報の取得に失敗しました');
+
+      vi.useRealTimers();
+    });
+
+    it('複数の車両マーカーでそれぞれ正しい時刻表が表示される', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-16T08:05:00'));
+
+      const vehicleData1 = {
+        tripId: 'trip_123',
+        latitude: 33.2600,
+        longitude: 130.3000,
+        currentStopSequence: 1
+      };
+
+      const vehicleData2 = {
+        tripId: 'trip_456',
+        latitude: 33.2700,
+        longitude: 130.3100,
+        currentStopSequence: 2
+      };
+
+      const trip = dataLoaderMock.trips[0];
+      const vehicleStatus = controller.determineVehicleStatus(vehicleData1, trip);
+      const tripInfo1 = {
+        tripId: 'trip_123',
+        routeId: 'route_456',
+        routeName: '佐賀駅～大和線'
+      };
+      const tripInfo2 = {
+        tripId: 'trip_456',
+        routeId: 'route_789',
+        routeName: '佐賀駅～鳥栖線'
+      };
+
+      const popupContent1 = controller.createVehiclePopupContent(vehicleData1, trip, tripInfo1, vehicleStatus);
+      const popupContent2 = controller.createVehiclePopupContent(vehicleData2, trip, tripInfo2, vehicleStatus);
+
+      // それぞれの吹き出しに正しい時刻表が含まれる
+      expect(popupContent1.textContent).toContain('時刻表: trip_123');
+      expect(popupContent2.textContent).toContain('時刻表: trip_456');
+
+      // TripTimetableFormatterが正しいパラメータで呼び出される
+      expect(controller.tripTimetableFormatter.formatTimetableHTML).toHaveBeenCalledWith(
+        'trip_123',
+        expect.objectContaining({ currentStopSequence: 1 })
+      );
+      expect(controller.tripTimetableFormatter.formatTimetableHTML).toHaveBeenCalledWith(
+        'trip_456',
+        expect.objectContaining({ currentStopSequence: 2 })
+      );
+
+      vi.useRealTimers();
     });
   });
 });
