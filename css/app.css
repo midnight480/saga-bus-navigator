@@ -2060,3 +2060,134 @@ body {
 .trip-timetable-text > div:last-child::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* ========================================
+   運行情報表示（お知らせ）
+   ======================================== */
+
+.realtime-alerts-container {
+  width: 100%;
+  padding: 1rem;
+  background-color: #fff;
+  border-bottom: 2px solid #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.alert-section {
+  margin-bottom: 1rem;
+}
+
+.alert-section:last-child {
+  margin-bottom: 0;
+}
+
+.alert-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: #333;
+}
+
+.alert-section-cancellation .alert-title {
+  color: #d32f2f;
+}
+
+.alert-section-delay .alert-title {
+  color: #f57c00;
+}
+
+.alert-card {
+  padding: 0.875rem;
+  margin-bottom: 0.75rem;
+  border-radius: 4px;
+  border-left: 4px solid;
+  background-color: #fafafa;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.alert-card:last-child {
+  margin-bottom: 0;
+}
+
+.alert-card-red {
+  border-left-color: #d32f2f;
+  background-color: #ffebee;
+}
+
+.alert-card-yellow {
+  border-left-color: #f57c00;
+  background-color: #fff3e0;
+}
+
+.alert-header {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.alert-card-red .alert-header {
+  color: #d32f2f;
+}
+
+.alert-card-yellow .alert-header {
+  color: #f57c00;
+}
+
+.alert-description {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #666;
+  margin: 0;
+}
+
+.alert-more-link {
+  display: inline-block;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0066cc;
+  text-decoration: underline;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.alert-more-link:hover {
+  color: #0052a3;
+  text-decoration: none;
+  background-color: #f0f7ff;
+}
+
+.alert-more-link:focus {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 767px) {
+  .realtime-alerts-container {
+    padding: 0.75rem;
+  }
+  
+  .alert-title {
+    font-size: 0.9375rem;
+  }
+  
+  .alert-card {
+    padding: 0.75rem;
+  }
+  
+  .alert-header {
+    font-size: 0.875rem;
+  }
+  
+  .alert-description {
+    font-size: 0.8125rem;
+  }
+  
+  .alert-more-link {
+    font-size: 0.8125rem;
+    padding: 0.5rem;
+  }
+}
