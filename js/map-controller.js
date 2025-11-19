@@ -161,6 +161,8 @@ class MapController {
       tileLayerOptions.updateWhenZooming = false; // ズーム中はタイルを更新しない
       tileLayerOptions.updateWhenIdle = true;     // ズーム完了後にタイルを更新
       tileLayerOptions.keepBuffer = 1;             // バッファを最小限に（メモリ使用量を削減）
+      tileLayerOptions.updateInterval = 500;       // タイル更新間隔を500msに設定（デフォルトは200ms）
+      tileLayerOptions.maxNativeZoom = 17;         // 最大ズームレベルを17に制限（18は読み込みが重い）
       console.log('[MapController] iPhoneのChromeを検出しました。タイル読み込み速度を遅くします。');
     }
     
@@ -216,6 +218,8 @@ class MapController {
           fallbackTileLayerOptions.updateWhenZooming = false;
           fallbackTileLayerOptions.updateWhenIdle = true;
           fallbackTileLayerOptions.keepBuffer = 1;
+          fallbackTileLayerOptions.updateInterval = 500;
+          fallbackTileLayerOptions.maxNativeZoom = 17;
         }
         
         currentTileLayer = L.tileLayer(fallbackTileUrl, fallbackTileLayerOptions);
@@ -252,27 +256,57 @@ class MapController {
     
     // iPhoneのChromeでは、ズーム完了後にタイルを更新するイベントリスナーを追加
     if (isIPhoneChrome) {
-      // ズーム完了後にタイルを更新
+      let zoomTimeout = null;
+      let moveTimeout = null;
+      
+      // ズーム完了後にタイルを更新（より長い遅延を設定）
+      this.map.on('zoomstart', () => {
+        // ズーム開始時に既存のタイムアウトをクリア
+        if (zoomTimeout) {
+          clearTimeout(zoomTimeout);
+          zoomTimeout = null;
+        }
+      });
+      
       this.map.on('zoomend', () => {
-        // 少し遅延を入れてからタイルを更新（読み込み速度を遅くする）
-        setTimeout(() => {
+        // 既存のタイムアウトをクリア
+        if (zoomTimeout) {
+          clearTimeout(zoomTimeout);
+        }
+        // より長い遅延（500ms）を入れてからタイルを更新
+        zoomTimeout = setTimeout(() => {
           if (currentTileLayer && this.map) {
+            // タイルを段階的に読み込む（一度に全てを読み込まない）
             currentTileLayer.redraw();
           }
-        }, 100); // 100msの遅延
+          zoomTimeout = null;
+        }, 500); // 500msの遅延
       });
       
       // パン完了後にもタイルを更新
+      this.map.on('movestart', () => {
+        // パン開始時に既存のタイムアウトをクリア
+        if (moveTimeout) {
+          clearTimeout(moveTimeout);
+          moveTimeout = null;
+        }
+      });
+      
       this.map.on('moveend', () => {
-        // 少し遅延を入れてからタイルを更新
-        setTimeout(() => {
+        // 既存のタイムアウトをクリア
+        if (moveTimeout) {
+          clearTimeout(moveTimeout);
+        }
+        // より長い遅延（300ms）を入れてからタイルを更新
+        moveTimeout = setTimeout(() => {
           if (currentTileLayer && this.map) {
             currentTileLayer.redraw();
           }
-        }, 100);
+          moveTimeout = null;
+        }, 300); // 300msの遅延
       });
       
-      console.log('[MapController] iPhoneのChrome用のズーム/パン完了イベントリスナーを設定しました。');
+      console.log('[MapController] iPhoneのChrome用のズーム/パン完了イベントリスナーを設定しました（遅延: ズーム500ms、パン300ms）。');
     }
     
     // タイルレイヤーを保存
@@ -472,12 +506,15 @@ class MapController {
           // モバイルではポップアップが地図の上下からはみ出ないように調整
           const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
           marker.bindPopup(this.createPopupContent(stop), {
-            maxWidth: 300,
-            className: 'bus-stop-popup-container',
+            maxWidth: isMobile ? 200 : 300, // モバイルでは幅を小さく
+            className: isMobile ? 'bus-stop-popup-container mobile-popup' : 'bus-stop-popup-container',
             // モバイルではautoPanを無効化し、autoPanPaddingを小さくして地図内に収める
             autoPan: !isMobile,
             autoPanPadding: isMobile ? [10, 10] : [50, 50],
-            closeOnClick: false
+            closeOnClick: false,
+            // モバイルではポップアップがすぐに閉じないようにする
+            autoClose: false,
+            closeOnEscapeKey: false
           });
           
           // ポップアップが開かれたときにイベントリスナーを設定
