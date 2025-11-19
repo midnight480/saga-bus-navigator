@@ -49,6 +49,7 @@ body {
 .map-section {
   width: 100%;
   background-color: #f5f5f5;
+  position: relative; /* 経路クリアボタンの基準点 */
 }
 
 /* 地図コンテナ - モバイル（768px未満）: 40vh */
@@ -931,7 +932,7 @@ body {
    Route Display
    ======================================== */
 
-/* 経路をクリアボタン */
+/* 経路をクリアボタン - 地図コンテナ内の右上に固定 */
 .btn-clear-route {
   position: absolute;
   top: 10px;
@@ -1106,6 +1107,12 @@ body {
   margin-right: 0.5rem;
 }
 
+.popup-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .popup-button {
   width: 100%;
   padding: 0.75rem 1rem;
@@ -1120,8 +1127,24 @@ body {
   min-height: 44px;
 }
 
-.popup-button:hover {
+.popup-button-primary {
+  background-color: #0066cc;
+  color: white;
+}
+
+.popup-button-primary:hover {
   background-color: #0052a3;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.popup-button-secondary {
+  background-color: white;
+  color: #0066cc;
+  border: 2px solid #0066cc;
+}
+
+.popup-button-secondary:hover {
+  background-color: #f0f7ff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
