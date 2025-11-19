@@ -128,14 +128,25 @@ describe('TripTimetableFormatter', () => {
     it('should return correct stop name for valid stop_id and "バス停名不明" for invalid', () => {
       fc.assert(
         fc.property(
-          // gtfsStopsジェネレータ
+          // gtfsStopsジェネレータ（ユニークなstop_idを生成）
           fc.array(
             fc.record({
               stop_id: fc.string({ minLength: 1, maxLength: 10 }),
               stop_name: fc.string({ minLength: 1, maxLength: 50 })
             }),
             { minLength: 1, maxLength: 20 }
-          ),
+          ).map(stops => {
+            // stop_idをユニークにする
+            const uniqueStops = [];
+            const seenIds = new Set();
+            for (const stop of stops) {
+              if (!seenIds.has(stop.stop_id)) {
+                uniqueStops.push(stop);
+                seenIds.add(stop.stop_id);
+              }
+            }
+            return uniqueStops;
+          }).filter(stops => stops.length > 0), // 空配列を除外
           // 存在しないstop_idジェネレータ
           fc.string({ minLength: 1, maxLength: 10 }),
           (gtfsStops, invalidStopId) => {
@@ -231,7 +242,7 @@ describe('TripTimetableFormatter', () => {
         fc.property(
           // trip_idジェネレータ
           fc.string({ minLength: 1, maxLength: 20 }),
-          // stop_timesジェネレータ（2-10個の停車）
+          // stop_timesジェネレータ（2-10個の停車、ユニークなstop_idを生成）
           fc.array(
             fc.record({
               stop_sequence: fc.integer({ min: 1, max: 100 }),
@@ -245,7 +256,18 @@ describe('TripTimetableFormatter', () => {
               )
             }),
             { minLength: 2, maxLength: 10 }
-          ),
+          ).map(stops => {
+            // stop_idをユニークにする
+            const uniqueStops = [];
+            const seenIds = new Set();
+            for (const stop of stops) {
+              if (!seenIds.has(stop.stop_id)) {
+                uniqueStops.push(stop);
+                seenIds.add(stop.stop_id);
+              }
+            }
+            return uniqueStops;
+          }).filter(stops => stops.length >= 2), // 最低2個の停車を確保
           (tripId, stopTimesTemplate) => {
             // データを生成
             const stopTimes = stopTimesTemplate.map(st => ({
