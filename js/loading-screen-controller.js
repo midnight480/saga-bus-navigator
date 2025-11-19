@@ -30,12 +30,13 @@ class LoadingScreenController {
   }
   
   /**
-   * ローディング画面を表示
+   * ローディング画面を表示（スケルトン型）
    */
   show() {
     if (!this.loadingScreen) return;
     
-    this.loadingScreen.style.display = 'flex';
+    // スケルトンローディングではblock表示
+    this.loadingScreen.style.display = 'block';
     this.loadingScreen.classList.remove('fade-out');
     
     if (this.loadingError) {

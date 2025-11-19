@@ -1991,52 +1991,55 @@ async function initializeApp() {
     window.tripTimetableFormatter = new TripTimetableFormatter(dataLoader);
     console.log('TripTimetableFormatterの初期化が完了しました');
     
-    // RealtimeVehicleControllerの初期化
-    try {
-      console.log('RealtimeVehicleControllerを初期化しています...');
-      
-      // RealtimeDataLoaderのインスタンス化
-      window.realtimeDataLoader = new RealtimeDataLoader('/api');
-      
-      // RealtimeVehicleControllerのインスタンス化
-      window.realtimeVehicleController = new RealtimeVehicleController(
-        window.mapController,
-        dataLoader,
-        window.realtimeDataLoader,
-        window.tripTimetableFormatter
-      );
-      
-      // 初期化とポーリング開始
-      await window.realtimeVehicleController.initialize();
-      
-      // エラーハンドリングの統合
-      window.realtimeDataLoader.addEventListener('fetchError', (data) => {
-        const { error, dataType } = data;
-        console.error(`[App] リアルタイムデータ取得エラー (${dataType}):`, error);
+    // RealtimeVehicleControllerの初期化（非同期で実行、完了を待たない）
+    // ローディング画面をブロックしないように、非同期で実行
+    (async () => {
+      try {
+        console.log('RealtimeVehicleControllerを初期化しています...');
         
-        // UIにエラーメッセージを表示（一時的に表示して自動的に消す）
-        const errorMessage = document.getElementById('error-message');
-        if (errorMessage) {
-          errorMessage.textContent = 'リアルタイム情報が一時的に利用できません';
-          errorMessage.style.display = 'block';
+        // RealtimeDataLoaderのインスタンス化
+        window.realtimeDataLoader = new RealtimeDataLoader('/api');
+        
+        // RealtimeVehicleControllerのインスタンス化
+        window.realtimeVehicleController = new RealtimeVehicleController(
+          window.mapController,
+          dataLoader,
+          window.realtimeDataLoader,
+          window.tripTimetableFormatter
+        );
+        
+        // 初期化とポーリング開始
+        await window.realtimeVehicleController.initialize();
+        
+        // エラーハンドリングの統合
+        window.realtimeDataLoader.addEventListener('fetchError', (data) => {
+          const { error, dataType } = data;
+          console.error(`[App] リアルタイムデータ取得エラー (${dataType}):`, error);
           
-          // 5秒後に自動的に消す
-          setTimeout(() => {
-            if (errorMessage.textContent === 'リアルタイム情報が一時的に利用できません') {
-              errorMessage.textContent = '';
-              errorMessage.style.display = 'none';
-            }
-          }, 5000);
-        }
-      });
-      
-      console.log('RealtimeVehicleControllerの初期化が完了しました');
-    } catch (error) {
-      console.error('RealtimeVehicleController初期化エラー:', error);
-      console.warn('リアルタイム車両追跡機能は利用できません（静的データのみ表示）');
-      window.realtimeVehicleController = null;
-      window.realtimeDataLoader = null;
-    }
+          // UIにエラーメッセージを表示（一時的に表示して自動的に消す）
+          const errorMessage = document.getElementById('error-message');
+          if (errorMessage) {
+            errorMessage.textContent = 'リアルタイム情報が一時的に利用できません';
+            errorMessage.style.display = 'block';
+            
+            // 5秒後に自動的に消す
+            setTimeout(() => {
+              if (errorMessage.textContent === 'リアルタイム情報が一時的に利用できません') {
+                errorMessage.textContent = '';
+                errorMessage.style.display = 'none';
+              }
+            }, 5000);
+          }
+        });
+        
+        console.log('RealtimeVehicleControllerの初期化が完了しました');
+      } catch (error) {
+        console.error('RealtimeVehicleController初期化エラー:', error);
+        console.warn('リアルタイム車両追跡機能は利用できません（静的データのみ表示）');
+        window.realtimeVehicleController = null;
+        window.realtimeDataLoader = null;
+      }
+    })();
     
     // タイムアウトタイマーをクリア
     loadingController.clearTimeout();

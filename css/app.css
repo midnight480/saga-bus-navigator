@@ -481,61 +481,154 @@ body {
    Initial Loading Screen
    ======================================== */
 
-/* ローディング画面のオーバーレイ */
+/* ローディング画面のオーバーレイ（スケルトン型） */
 .loading-screen {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(255, 255, 255, 0.95);
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  background-color: #ffffff;
   z-index: 9999;
   transition: opacity 0.3s ease-out;
+  overflow-y: auto;
 }
 
 /* フェードアウトアニメーション */
 .loading-screen.fade-out {
   opacity: 0;
+  pointer-events: none;
 }
 
-/* ローディングコンテンツ */
-.loading-content {
-  text-align: center;
-  max-width: 400px;
-  padding: 2rem;
+/* スケルトンコンテナ */
+.skeleton-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
 }
 
-/* ロゴ */
-.loading-logo h1 {
-  font-size: 2rem;
-  color: #2c5aa0;
-  margin-bottom: 2rem;
-}
-
-/* スピナー */
-.loading-spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #2c5aa0;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1.5rem;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* 進捗メッセージ */
-.loading-message {
-  font-size: 1rem;
-  color: #666;
+/* スケルトンヘッダー */
+.skeleton-header {
+  padding: 1.5rem 0;
   margin-bottom: 1rem;
+}
+
+/* スケルトン地図セクション */
+.skeleton-map-section {
+  margin-bottom: 1.5rem;
+}
+
+.skeleton-map {
+  width: 100%;
+  height: 400px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: shimmer 1.5s infinite;
+}
+
+/* スケルトンメイン */
+.skeleton-main {
+  padding: 1rem 0;
+}
+
+.skeleton-search-section {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* スケルトンライン（基本要素） */
+.skeleton-line {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s infinite;
+  margin-bottom: 0.75rem;
+}
+
+/* シマーアニメーション（光が流れる効果） */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* スケルトン要素のサイズ */
+.skeleton-title {
+  height: 32px;
+  width: 200px;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-subtitle {
+  height: 20px;
+  width: 150px;
+}
+
+.skeleton-section-title {
+  height: 28px;
+  width: 120px;
+  margin-bottom: 1.5rem;
+}
+
+.skeleton-label {
+  height: 18px;
+  width: 100px;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-input {
+  height: 44px;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-button {
+  height: 36px;
+  width: 140px;
+  margin-bottom: 0.75rem;
+}
+
+.skeleton-submit-button {
+  height: 48px;
+  width: 100%;
+  max-width: 300px;
+  margin: 1.5rem auto 0;
+}
+
+/* スケルトンラジオグループ */
+.skeleton-radio-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.skeleton-radio {
+  height: 20px;
+  width: 80px;
+  margin-bottom: 0;
+}
+
+/* スケルトンフォームグループ */
+.skeleton-form-group {
+  margin-bottom: 1.5rem;
+}
+
+/* エラー表示（スケルトン表示時は中央に配置） */
+.loading-screen .loading-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
 }
 
 /* エラー表示 */
@@ -578,16 +671,46 @@ body {
 
 /* レスポンシブデザイン */
 @media (max-width: 768px) {
-  .loading-logo h1 {
-    font-size: 1.5rem;
+  .skeleton-container {
+    padding: 0.5rem;
   }
   
-  .loading-content {
-    padding: 1rem;
+  .skeleton-header {
+    padding: 1rem 0;
   }
   
-  .loading-message {
-    font-size: 0.9375rem;
+  .skeleton-map {
+    height: 300px;
+  }
+  
+  .skeleton-title {
+    height: 28px;
+    width: 160px;
+  }
+  
+  .skeleton-subtitle {
+    height: 18px;
+    width: 120px;
+  }
+  
+  .skeleton-section-title {
+    height: 24px;
+    width: 100px;
+  }
+  
+  .skeleton-radio-group {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .skeleton-radio {
+    width: 100%;
+  }
+  
+  .loading-screen .loading-error {
+    padding: 1.5rem;
+    margin: 0 1rem;
+    max-width: calc(100% - 2rem);
   }
   
   .loading-error .error-message {
@@ -606,9 +729,10 @@ body {
     transition: none;
   }
   
-  .loading-spinner {
+  .skeleton-line,
+  .skeleton-map {
     animation: none;
-    border-top-color: #2c5aa0;
+    background: #f0f0f0;
   }
 }
 
