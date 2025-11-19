@@ -646,7 +646,7 @@ class RealtimeVehicleController {
   }
   
   /**
-   * 運行情報カードを作成
+   * 運行情報カードを作成（折りたたみ機能付き）
    * @param {Object} alert - 運行情報
    * @param {string} color - 文字色 ('red' | 'yellow')
    * @returns {HTMLElement} 運行情報カード
@@ -655,23 +655,92 @@ class RealtimeVehicleController {
     const card = document.createElement('div');
     card.className = `alert-card alert-card-${color}`;
     
-    // header_text
+    // タイトル部分（クリック可能）
+    const titleContainer = document.createElement('div');
+    titleContainer.className = 'alert-title-container';
+    titleContainer.setAttribute('role', 'button');
+    titleContainer.setAttribute('tabindex', '0');
+    titleContainer.setAttribute('aria-expanded', 'false');
+    
+    // 展開/折りたたみアイコン
+    const toggleIcon = document.createElement('span');
+    toggleIcon.className = 'alert-toggle-icon';
+    toggleIcon.textContent = '▶';
+    toggleIcon.setAttribute('aria-hidden', 'true');
+    
+    // タイトルテキスト（headerTextを使用）
     if (alert.headerText) {
-      const header = document.createElement('h4');
+      const header = document.createElement('span');
       header.className = 'alert-header';
       header.textContent = alert.headerText;
-      card.appendChild(header);
+      titleContainer.appendChild(toggleIcon);
+      titleContainer.appendChild(header);
+    } else if (alert.descriptionText) {
+      // headerTextがない場合はdescriptionTextをタイトルとして使用
+      const header = document.createElement('span');
+      header.className = 'alert-header';
+      header.textContent = alert.descriptionText;
+      titleContainer.appendChild(toggleIcon);
+      titleContainer.appendChild(header);
     }
     
-    // description_text
-    if (alert.descriptionText) {
+    card.appendChild(titleContainer);
+    
+    // 本文部分（初期状態は非表示、headerTextとdescriptionTextの両方がある場合のみ）
+    if (alert.descriptionText && alert.headerText) {
+      const descriptionContainer = document.createElement('div');
+      descriptionContainer.className = 'alert-description-container';
+      descriptionContainer.style.display = 'none';
+      
       const description = document.createElement('p');
       description.className = 'alert-description';
       description.textContent = alert.descriptionText;
-      card.appendChild(description);
+      descriptionContainer.appendChild(description);
+      
+      card.appendChild(descriptionContainer);
     }
     
+    // クリックイベントで展開/折りたたみ
+    titleContainer.addEventListener('click', () => {
+      this.toggleAlertCard(card, titleContainer, toggleIcon);
+    });
+    
+    // キーボード操作対応（Enter/Spaceキー）
+    titleContainer.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.toggleAlertCard(card, titleContainer, toggleIcon);
+      }
+    });
+    
     return card;
+  }
+  
+  /**
+   * 運行情報カードの展開/折りたたみを切り替え
+   * @param {HTMLElement} card - カード要素
+   * @param {HTMLElement} titleContainer - タイトルコンテナ
+   * @param {HTMLElement} toggleIcon - アイコン要素
+   */
+  toggleAlertCard(card, titleContainer, toggleIcon) {
+    const descriptionContainer = card.querySelector('.alert-description-container');
+    const isExpanded = titleContainer.getAttribute('aria-expanded') === 'true';
+    
+    if (isExpanded) {
+      // 折りたたみ
+      if (descriptionContainer) {
+        descriptionContainer.style.display = 'none';
+      }
+      toggleIcon.textContent = '▶';
+      titleContainer.setAttribute('aria-expanded', 'false');
+    } else {
+      // 展開
+      if (descriptionContainer) {
+        descriptionContainer.style.display = 'block';
+      }
+      toggleIcon.textContent = '▼';
+      titleContainer.setAttribute('aria-expanded', 'true');
+    }
   }
   
   /**
