@@ -714,14 +714,6 @@ class RealtimeVehicleController {
       // 時刻表を吹き出しに追加
       const timetableContainer = document.createElement('div');
       timetableContainer.className = 'trip-timetable-text';
-      timetableContainer.style.marginTop = '10px';
-      timetableContainer.style.padding = '8px';
-      timetableContainer.style.backgroundColor = '#f5f5f5';
-      timetableContainer.style.borderRadius = '4px';
-      timetableContainer.style.fontSize = '13px';
-      timetableContainer.style.lineHeight = '1.6';
-      timetableContainer.style.whiteSpace = 'normal';
-      timetableContainer.style.wordBreak = 'break-word';
       
       const timetableLabel = document.createElement('div');
       timetableLabel.style.fontWeight = 'bold';
@@ -731,6 +723,7 @@ class RealtimeVehicleController {
       
       const timetableContent = document.createElement('div');
       timetableContent.textContent = timetableText;
+      // CSSクラスでスクロールバーのスタイルが適用される
       timetableContainer.appendChild(timetableContent);
       
       popupElement.appendChild(timetableContainer);
