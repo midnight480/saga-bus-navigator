@@ -48,7 +48,12 @@ class RealtimeVehicleController {
       console.log('[RealtimeVehicleController] 初期化を開始します');
       
       // DataLoaderから静的データ(trips.txt, stops.txt, stop_times.txt, routes.txt)を取得
-      await this.dataLoader.loadGTFSData();
+      // 注意: loadGTFSData()は既にapp.jsで呼ばれているため、ここでは呼び出さない
+      // データがまだ読み込まれていない場合は読み込む
+      if (!this.dataLoader.trips || !this.dataLoader.gtfsStops || !this.dataLoader.stopTimes || !this.dataLoader.routes) {
+        console.log('[RealtimeVehicleController] GTFSデータがまだ読み込まれていないため、読み込みます');
+        await this.dataLoader.loadGTFSData();
+      }
       
       this.trips = this.dataLoader.trips;
       this.stops = this.dataLoader.gtfsStops; // 生のstops.txtデータ（stop_idプロパティを持つ）
