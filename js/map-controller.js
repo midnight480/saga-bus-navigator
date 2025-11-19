@@ -144,13 +144,27 @@ class MapController {
     let currentTileLayer = null;
     const TILE_ERROR_THRESHOLD = 5;
     
+    // iPhoneのChromeを検出（実機でのみ発生する問題のため）
+    const isIPhoneChrome = /iPhone|iPad|iPod/i.test(navigator.userAgent) && /Chrome/i.test(navigator.userAgent);
+    
     // プライマリタイルレイヤーを作成
-    currentTileLayer = L.tileLayer(primaryTileUrl, {
+    // iPhoneのChromeでは読み込み速度を遅くするため、updateWhenZoomingをfalseに設定
+    const tileLayerOptions = {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 18,
       minZoom: 10,
       errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
-    });
+    };
+    
+    // iPhoneのChromeでは、ズーム中のタイル更新を無効化し、ズーム完了後に更新する
+    if (isIPhoneChrome) {
+      tileLayerOptions.updateWhenZooming = false; // ズーム中はタイルを更新しない
+      tileLayerOptions.updateWhenIdle = true;     // ズーム完了後にタイルを更新
+      tileLayerOptions.keepBuffer = 1;             // バッファを最小限に（メモリ使用量を削減）
+      console.log('[MapController] iPhoneのChromeを検出しました。タイル読み込み速度を遅くします。');
+    }
+    
+    currentTileLayer = L.tileLayer(primaryTileUrl, tileLayerOptions);
     
     // タイル読み込みエラーイベントを監視
     currentTileLayer.on('tileerror', (error) => {
@@ -190,12 +204,21 @@ class MapController {
         this.map.removeLayer(currentTileLayer);
         
         // 代替タイルレイヤーを作成
-        currentTileLayer = L.tileLayer(fallbackTileUrl, {
+        // iPhoneのChromeでは同じオプションを適用
+        const fallbackTileLayerOptions = {
           attribution: '© OpenStreetMap contributors',
           maxZoom: 18,
           minZoom: 10,
           errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
-        });
+        };
+        
+        if (isIPhoneChrome) {
+          fallbackTileLayerOptions.updateWhenZooming = false;
+          fallbackTileLayerOptions.updateWhenIdle = true;
+          fallbackTileLayerOptions.keepBuffer = 1;
+        }
+        
+        currentTileLayer = L.tileLayer(fallbackTileUrl, fallbackTileLayerOptions);
         
         // 代替サーバーでもエラーを監視
         currentTileLayer.on('tileerror', (fallbackError) => {
@@ -226,6 +249,31 @@ class MapController {
     
     // タイルレイヤーを地図に追加
     currentTileLayer.addTo(this.map);
+    
+    // iPhoneのChromeでは、ズーム完了後にタイルを更新するイベントリスナーを追加
+    if (isIPhoneChrome) {
+      // ズーム完了後にタイルを更新
+      this.map.on('zoomend', () => {
+        // 少し遅延を入れてからタイルを更新（読み込み速度を遅くする）
+        setTimeout(() => {
+          if (currentTileLayer && this.map) {
+            currentTileLayer.redraw();
+          }
+        }, 100); // 100msの遅延
+      });
+      
+      // パン完了後にもタイルを更新
+      this.map.on('moveend', () => {
+        // 少し遅延を入れてからタイルを更新
+        setTimeout(() => {
+          if (currentTileLayer && this.map) {
+            currentTileLayer.redraw();
+          }
+        }, 100);
+      });
+      
+      console.log('[MapController] iPhoneのChrome用のズーム/パン完了イベントリスナーを設定しました。');
+    }
     
     // タイルレイヤーを保存
     this.currentTileLayer = currentTileLayer;
@@ -421,13 +469,62 @@ class MapController {
           });
           
           // ポップアップを設定
+          // モバイルではポップアップが地図の上下からはみ出ないように調整
+          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
           marker.bindPopup(this.createPopupContent(stop), {
             maxWidth: 300,
-            className: 'bus-stop-popup-container'
+            className: 'bus-stop-popup-container',
+            // モバイルではautoPanを無効化し、autoPanPaddingを小さくして地図内に収める
+            autoPan: !isMobile,
+            autoPanPadding: isMobile ? [10, 10] : [50, 50],
+            closeOnClick: false
           });
           
           // ポップアップが開かれたときにイベントリスナーを設定
           marker.on('popupopen', () => {
+            // モバイルでは、ポップアップが地図の境界内に収まるように調整
+            if (isMobile) {
+              const popup = marker.getPopup();
+              if (popup && this.map) {
+                const popupElement = popup.getElement();
+                if (popupElement) {
+                  // ポップアップの位置を確認し、地図の境界内に収まるように調整
+                  setTimeout(() => {
+                    const popupLatLng = marker.getLatLng();
+                    const popupPoint = this.map.latLngToContainerPoint(popupLatLng);
+                    const popupSize = {
+                      width: popupElement.offsetWidth,
+                      height: popupElement.offsetHeight
+                    };
+                    const mapSize = this.map.getSize();
+                    
+                    // ポップアップが地図の上下からはみ出る場合は、地図をパン
+                    let panOffset = { x: 0, y: 0 };
+                    
+                    // 上にはみ出る場合
+                    if (popupPoint.y - popupSize.height < 0) {
+                      panOffset.y = popupPoint.y - popupSize.height - 10;
+                    }
+                    
+                    // 下にはみ出る場合
+                    if (popupPoint.y + popupSize.height > mapSize.y) {
+                      panOffset.y = popupPoint.y + popupSize.height - mapSize.y + 10;
+                    }
+                    
+                    // パンが必要な場合は実行
+                    if (panOffset.x !== 0 || panOffset.y !== 0) {
+                      const newCenter = this.map.containerPointToLatLng([
+                        mapSize.x / 2 - panOffset.x,
+                        mapSize.y / 2 - panOffset.y
+                      ]);
+                      this.map.panTo(newCenter, { duration: 0.3 });
+                    }
+                  }, 50); // ポップアップのレンダリングを待つ
+                }
+              }
+            }
+            
+            // 既存のイベントリスナー設定処理
             const popup = marker.getPopup();
             if (popup) {
               const popupElement = popup.getElement();
