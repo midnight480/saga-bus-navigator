@@ -432,14 +432,41 @@ class MapController {
             if (popup) {
               const popupElement = popup.getElement();
               if (popupElement) {
-                const timetableButton = popupElement.querySelector('.popup-button[data-stop-id]');
+                // 時刻表を見るボタン
+                const timetableButton = popupElement.querySelector('.popup-button[data-action="timetable"]');
                 if (timetableButton) {
                   const stopId = timetableButton.getAttribute('data-stop-id');
                   // 既存のイベントリスナーを削除してから追加（重複防止）
-                  const newButton = timetableButton.cloneNode(true);
-                  timetableButton.parentNode.replaceChild(newButton, timetableButton);
-                  newButton.addEventListener('click', () => {
+                  const newTimetableButton = timetableButton.cloneNode(true);
+                  timetableButton.parentNode.replaceChild(newTimetableButton, timetableButton);
+                  newTimetableButton.addEventListener('click', () => {
                     this.showTimetable(stopId);
+                  });
+                }
+                
+                // 乗車バス停に設定するボタン
+                const setDepartureButton = popupElement.querySelector('.popup-button[data-action="set-departure"]');
+                if (setDepartureButton) {
+                  const stopName = setDepartureButton.getAttribute('data-stop-name');
+                  const newSetDepartureButton = setDepartureButton.cloneNode(true);
+                  setDepartureButton.parentNode.replaceChild(newSetDepartureButton, setDepartureButton);
+                  newSetDepartureButton.addEventListener('click', () => {
+                    this.setBusStopToInput(stopName, 'departure');
+                    // ポップアップを閉じる
+                    marker.closePopup();
+                  });
+                }
+                
+                // 降車バス停に設定するボタン
+                const setArrivalButton = popupElement.querySelector('.popup-button[data-action="set-arrival"]');
+                if (setArrivalButton) {
+                  const stopName = setArrivalButton.getAttribute('data-stop-name');
+                  const newSetArrivalButton = setArrivalButton.cloneNode(true);
+                  setArrivalButton.parentNode.replaceChild(newSetArrivalButton, setArrivalButton);
+                  newSetArrivalButton.addEventListener('click', () => {
+                    this.setBusStopToInput(stopName, 'arrival');
+                    // ポップアップを閉じる
+                    marker.closePopup();
                   });
                 }
               }
@@ -551,9 +578,17 @@ class MapController {
     
     content += `
         </div>
-        <button class="popup-button" data-stop-id="${this.escapeHtml(stop.id)}">
-          時刻表を見る
-        </button>
+        <div class="popup-buttons">
+          <button class="popup-button popup-button-primary" data-stop-id="${this.escapeHtml(stop.id)}" data-action="timetable">
+            時刻表を見る
+          </button>
+          <button class="popup-button popup-button-secondary" data-stop-name="${this.escapeHtml(stop.name)}" data-action="set-departure">
+            乗車バス停に設定する
+          </button>
+          <button class="popup-button popup-button-secondary" data-stop-name="${this.escapeHtml(stop.name)}" data-action="set-arrival">
+            降車バス停に設定する
+          </button>
+        </div>
       </div>
     `;
     
@@ -572,6 +607,29 @@ class MapController {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+  
+  /**
+   * バス停名を入力フィールドに設定する
+   * @param {string} stopName - バス停名
+   * @param {string} type - 入力フィールドの種類 ('departure' | 'arrival')
+   */
+  setBusStopToInput(stopName, type) {
+    console.log('[MapController] バス停を入力フィールドに設定:', stopName, type);
+    
+    // UIControllerが初期化されているか確認
+    if (!window.uiController) {
+      console.error('[MapController] UIControllerが初期化されていません');
+      return;
+    }
+    
+    // UIControllerのselectBusStopメソッドを呼び出す
+    if (typeof window.uiController.selectBusStop === 'function') {
+      window.uiController.selectBusStop(stopName, type);
+      console.log('[MapController] バス停を入力フィールドに設定しました:', stopName, type);
+    } else {
+      console.error('[MapController] UIController.selectBusStopメソッドが見つかりません');
+    }
   }
   
   /**
