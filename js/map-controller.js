@@ -161,14 +161,11 @@ class MapController {
     };
     
     // iPhoneのChromeでは、ズーム中のタイル更新を無効化し、ズーム完了後に更新する
+    // iPhoneのChromeでは、ズーム中のタイル更新を無効化し、ズーム完了後に更新する
     if (isIPhoneChrome) {
       tileLayerOptions.updateWhenZooming = false; // ズーム中はタイルを更新しない
-      tileLayerOptions.updateWhenIdle = false;    // 自動更新も無効化（手動で制御）
-      tileLayerOptions.keepBuffer = 0;             // バッファを0に（メモリ使用量を最小化）
-      tileLayerOptions.updateInterval = 1000;      // タイル更新間隔を1000msに設定（デフォルトは200ms）
-      tileLayerOptions.maxNativeZoom = 16;         // 最大ズームレベルを16に制限（17以上は読み込みが重い）
-      tileLayerOptions.maxZoom = 16;               // 最大ズームレベルを16に制限
-      console.log('[MapController] iPhoneのChromeを検出しました。タイル読み込みを大幅に制限します（maxZoom: 16）。');
+      // 他の過度な制限（updateWhenIdle: falseなど）は削除し、Leafletのデフォルト動作に任せる
+      console.log('[MapController] iPhoneのChromeを検出しました。ズーム中のタイル更新のみ制限します。');
     }
     
     currentTileLayer = L.tileLayer(primaryTileUrl, tileLayerOptions);
@@ -221,11 +218,6 @@ class MapController {
         
         if (isIPhoneChrome) {
           fallbackTileLayerOptions.updateWhenZooming = false;
-          fallbackTileLayerOptions.updateWhenIdle = false;
-          fallbackTileLayerOptions.keepBuffer = 0;
-          fallbackTileLayerOptions.updateInterval = 1000;
-          fallbackTileLayerOptions.maxNativeZoom = 16;
-          fallbackTileLayerOptions.maxZoom = 16;
         }
         
         currentTileLayer = L.tileLayer(fallbackTileUrl, fallbackTileLayerOptions);
@@ -260,61 +252,8 @@ class MapController {
     // タイルレイヤーを地図に追加
     currentTileLayer.addTo(this.map);
     
-    // iPhoneのChromeでは、ズーム完了後にタイルを更新するイベントリスナーを追加
-    if (isIPhoneChrome) {
-      let zoomTimeout = null;
-      let moveTimeout = null;
-      
-      // ズーム完了後にタイルを更新（より長い遅延を設定）
-      this.map.on('zoomstart', () => {
-        // ズーム開始時に既存のタイムアウトをクリア
-        if (zoomTimeout) {
-          clearTimeout(zoomTimeout);
-          zoomTimeout = null;
-        }
-      });
-      
-      this.map.on('zoomend', () => {
-        // 既存のタイムアウトをクリア
-        if (zoomTimeout) {
-          clearTimeout(zoomTimeout);
-        }
-        // より長い遅延（1000ms）を入れてからタイルを更新
-        zoomTimeout = setTimeout(() => {
-          if (currentTileLayer && this.map) {
-            // タイルを段階的に読み込む（一度に全てを読み込まない）
-            // iPhoneのChromeでは、タイルの読み込みを手動で制御
-            currentTileLayer.redraw();
-          }
-          zoomTimeout = null;
-        }, 1000); // 1000ms（1秒）の遅延
-      });
-      
-      // パン完了後にもタイルを更新
-      this.map.on('movestart', () => {
-        // パン開始時に既存のタイムアウトをクリア
-        if (moveTimeout) {
-          clearTimeout(moveTimeout);
-          moveTimeout = null;
-        }
-      });
-      
-      this.map.on('moveend', () => {
-        // 既存のタイムアウトをクリア
-        if (moveTimeout) {
-          clearTimeout(moveTimeout);
-        }
-        // より長い遅延（800ms）を入れてからタイルを更新
-        moveTimeout = setTimeout(() => {
-          if (currentTileLayer && this.map) {
-            currentTileLayer.redraw();
-          }
-          moveTimeout = null;
-        }, 800); // 800msの遅延
-      });
-      
-      console.log('[MapController] iPhoneのChrome用のズーム/パン完了イベントリスナーを設定しました（遅延: ズーム1000ms、パン800ms）。');
-    }
+    // iPhoneのChrome用の手動更新ロジックは削除しました
+    // Leafletの標準的な動作で十分であり、手動更新が逆に不具合の原因となっていたため
     
     // タイルレイヤーを保存
     this.currentTileLayer = currentTileLayer;
