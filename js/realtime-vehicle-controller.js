@@ -13,12 +13,16 @@ class RealtimeVehicleController {
    * @param {MapController} mapController - 地図コントローラー
    * @param {DataLoader} dataLoader - データローダー
    * @param {RealtimeDataLoader} realtimeDataLoader - リアルタイムデータローダー
+   * @param {TripTimetableFormatter} tripTimetableFormatter - 時刻表フォーマッター
    */
-  constructor(mapController, dataLoader, realtimeDataLoader) {
+  constructor(mapController, dataLoader, realtimeDataLoader, tripTimetableFormatter = null) {
     // 依存オブジェクト
     this.mapController = mapController;
     this.dataLoader = dataLoader;
     this.realtimeDataLoader = realtimeDataLoader;
+    
+    // TripTimetableFormatterの初期化
+    this.tripTimetableFormatter = tripTimetableFormatter || new TripTimetableFormatter(dataLoader);
     
     // 最終更新時刻の管理用のMap (tripId -> timestamp)
     this.lastUpdateTimes = new Map();
@@ -200,11 +204,89 @@ class RealtimeVehicleController {
       routeName: routeName
     };
     
-    // MapController.updateVehicleMarkerPosition()を呼び出す（既存マーカーの有無はMapController内でチェック）
-    this.mapController.updateVehicleMarkerPosition(tripId, lat, lng, null, tripInfo);
+    // 運行状態を判定
+    const vehicleStatus = this.determineVehicleStatus(vehicleData, trip);
+    
+    // 吹き出しコンテンツを作成
+    const popupContent = this.createVehiclePopupContent(vehicleData, trip, tripInfo, vehicleStatus);
+    
+    // MapController経由で車両マーカーを作成・更新
+    // 注: MapControllerにupdateVehicleMarkerPositionメソッドが存在しない場合は、
+    // 直接Leafletマーカーを作成・更新する処理を実装する必要があります
+    if (this.mapController.updateVehicleMarkerPosition) {
+      this.mapController.updateVehicleMarkerPosition(tripId, lat, lng, popupContent, tripInfo);
+    } else {
+      // MapControllerにメソッドがない場合は、直接マーカーを管理
+      this.updateVehicleMarkerDirect(tripId, lat, lng, popupContent, tripInfo);
+    }
     
     // 最終更新時刻を記録
     this.lastUpdateTimes.set(tripId, Date.now());
+  }
+  
+  /**
+   * 車両マーカーの吹き出しコンテンツを作成
+   * @param {Object} vehicleData - 車両位置情報
+   * @param {Object} trip - 便情報
+   * @param {Object} tripInfo - 便情報オブジェクト
+   * @param {Object} vehicleStatus - 運行状態
+   * @returns {HTMLElement} 吹き出しコンテンツ
+   */
+  createVehiclePopupContent(vehicleData, trip, tripInfo, vehicleStatus) {
+    const popupDiv = document.createElement('div');
+    popupDiv.className = 'vehicle-popup';
+    
+    // 運行状態情報
+    const statusHTML = `
+      <div class="vehicle-status">
+        <h3>便ID: ${tripInfo.tripId}</h3>
+        <p><strong>路線:</strong> ${tripInfo.routeName}</p>
+        <p><strong>状態:</strong> <span style="color: ${vehicleStatus.color}">${vehicleStatus.message}</span></p>
+      </div>
+    `;
+    popupDiv.innerHTML = statusHTML;
+    
+    // 時刻表を追加
+    const currentStopSequence = vehicleData.currentStopSequence || null;
+    this.addTimetableToPopup(tripInfo.tripId, currentStopSequence, popupDiv);
+    
+    return popupDiv;
+  }
+  
+  /**
+   * 車両マーカーを直接管理（MapControllerにメソッドがない場合）
+   * @param {string} tripId - 便ID
+   * @param {number} lat - 緯度
+   * @param {number} lng - 経度
+   * @param {HTMLElement} popupContent - 吹き出しコンテンツ
+   * @param {Object} tripInfo - 便情報
+   */
+  updateVehicleMarkerDirect(tripId, lat, lng, popupContent, tripInfo) {
+    // 既存のマーカーがあるかチェック
+    if (this.mapController.vehicleMarkers && this.mapController.vehicleMarkers.has(tripId)) {
+      // 既存マーカーの位置を更新
+      const marker = this.mapController.vehicleMarkers.get(tripId);
+      marker.setLatLng([lat, lng]);
+      marker.setPopupContent(popupContent);
+    } else {
+      // 新しいマーカーを作成
+      const vehicleIcon = L.divIcon({
+        html: '<div class="vehicle-marker">🚌</div>',
+        className: 'vehicle-marker-icon',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+      });
+      
+      const marker = L.marker([lat, lng], { icon: vehicleIcon });
+      marker.bindPopup(popupContent);
+      marker.addTo(this.mapController.map);
+      
+      // マーカーを保存
+      if (!this.mapController.vehicleMarkers) {
+        this.mapController.vehicleMarkers = new Map();
+      }
+      this.mapController.vehicleMarkers.set(tripId, marker);
+    }
   }
   
   /**
@@ -603,6 +685,88 @@ class RealtimeVehicleController {
     this.alertsContainer.style.display = 'none';
     
     console.log('[RealtimeVehicleController] 運行情報をクリアしました');
+  }
+  
+  /**
+   * 車両マーカーの吹き出しに時刻表を追加
+   * @param {string} tripId - 便ID
+   * @param {number|null} currentStopSequence - 現在位置の停車順序
+   * @param {HTMLElement} popupElement - 吹き出し要素
+   */
+  addTimetableToPopup(tripId, currentStopSequence, popupElement) {
+    try {
+      if (!tripId) {
+        console.warn('[RealtimeVehicleController] tripIdが指定されていません');
+        return;
+      }
+      
+      if (!popupElement) {
+        console.warn('[RealtimeVehicleController] popupElementが指定されていません');
+        return;
+      }
+      
+      // TripTimetableFormatterを使用して時刻表テキストを生成
+      const timetableText = this.tripTimetableFormatter.formatTimetableText(tripId, {
+        currentStopSequence: currentStopSequence,
+        highlightCurrent: false  // テキスト形式では強調表示を無効化
+      });
+      
+      // 時刻表を吹き出しに追加
+      const timetableContainer = document.createElement('div');
+      timetableContainer.className = 'trip-timetable-text';
+      timetableContainer.style.marginTop = '10px';
+      timetableContainer.style.padding = '8px';
+      timetableContainer.style.backgroundColor = '#f5f5f5';
+      timetableContainer.style.borderRadius = '4px';
+      timetableContainer.style.fontSize = '13px';
+      timetableContainer.style.lineHeight = '1.6';
+      timetableContainer.style.whiteSpace = 'normal';
+      timetableContainer.style.wordBreak = 'break-word';
+      
+      const timetableLabel = document.createElement('div');
+      timetableLabel.style.fontWeight = 'bold';
+      timetableLabel.style.marginBottom = '6px';
+      timetableLabel.textContent = '時刻表:';
+      timetableContainer.appendChild(timetableLabel);
+      
+      const timetableContent = document.createElement('div');
+      timetableContent.textContent = timetableText;
+      timetableContainer.appendChild(timetableContent);
+      
+      popupElement.appendChild(timetableContainer);
+      
+      console.log(`[RealtimeVehicleController] 時刻表を吹き出しに追加しました: tripId=${tripId}`);
+      
+    } catch (error) {
+      console.error(`[RealtimeVehicleController] 時刻表追加エラー: tripId=${tripId}`, error);
+      this.handleTimetableError(error, tripId, popupElement);
+    }
+  }
+  
+  /**
+   * 時刻表表示エラーハンドリング
+   * @param {Error} error - エラーオブジェクト
+   * @param {string} tripId - 便ID
+   * @param {HTMLElement} popupElement - 吹き出し要素
+   */
+  handleTimetableError(error, tripId, popupElement) {
+    try {
+      // エラーログを出力
+      console.error(`[RealtimeVehicleController] 時刻表表示エラー: tripId=${tripId}, error=${error.message}`);
+      
+      // エラーメッセージを吹き出しに表示
+      if (popupElement) {
+        const errorContainer = document.createElement('div');
+        errorContainer.className = 'trip-timetable';
+        errorContainer.innerHTML = '<p>時刻表情報の取得に失敗しました</p>';
+        popupElement.appendChild(errorContainer);
+      }
+      
+      // 既存の運行状態情報は引き続き表示される（何もしない）
+      
+    } catch (handlingError) {
+      console.error('[RealtimeVehicleController] エラーハンドリング中にエラーが発生しました:', handlingError);
+    }
   }
 }
 

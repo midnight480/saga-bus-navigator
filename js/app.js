@@ -1972,6 +1972,11 @@ async function initializeApp() {
       console.log('[MapController] パフォーマンス統計:', stats);
     }
     
+    // TripTimetableFormatterの初期化
+    console.log('TripTimetableFormatterを初期化しています...');
+    window.tripTimetableFormatter = new TripTimetableFormatter(dataLoader);
+    console.log('TripTimetableFormatterの初期化が完了しました');
+    
     // RealtimeVehicleControllerの初期化
     try {
       console.log('RealtimeVehicleControllerを初期化しています...');
@@ -1983,7 +1988,8 @@ async function initializeApp() {
       window.realtimeVehicleController = new RealtimeVehicleController(
         window.mapController,
         dataLoader,
-        window.realtimeDataLoader
+        window.realtimeDataLoader,
+        window.tripTimetableFormatter
       );
       
       // 初期化とポーリング開始

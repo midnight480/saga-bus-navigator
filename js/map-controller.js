@@ -1330,7 +1330,7 @@ class MapController {
    * @param {Object} tripInfo - 便情報
    * @returns {L.Marker} 作成された車両マーカー
    */
-  createVehicleMarker(lat, lng, status, tripInfo) {
+  createVehicleMarker(lat, lng, status, tripInfo, popupContent = null) {
     try {
       // 座標の妥当性チェック
       if (!this.isValidCoordinate(lat, lng)) {
@@ -1343,8 +1343,8 @@ class MapController {
         return null;
       }
       
-      // 車両アイコンを作成
-      const icon = this.createVehicleIcon(status);
+      // 車両アイコンを作成（statusが指定されている場合のみ）
+      const icon = status ? this.createVehicleIcon(status) : this.createVehicleIcon('in_transit');
       
       // マーカーを作成
       const marker = L.marker([lat, lng], {
@@ -1352,10 +1352,18 @@ class MapController {
         title: tripInfo.routeName || '車両'
       });
       
-      // 運行状態に応じた吹き出しを作成
-      const popupContent = this.createVehiclePopupContent(status, tripInfo);
-      marker.bindPopup(popupContent, {
-        maxWidth: 300,
+      // 吹き出しを作成
+      // popupContentが渡された場合はそれを使用、ない場合は既存の方法で生成
+      let finalPopupContent;
+      if (popupContent) {
+        finalPopupContent = popupContent;
+      } else {
+        const defaultStatus = status || 'in_transit';
+        finalPopupContent = this.createVehiclePopupContent(defaultStatus, tripInfo);
+      }
+      
+      marker.bindPopup(finalPopupContent, {
+        maxWidth: 400,
         className: 'vehicle-popup-container'
       });
       
@@ -1368,7 +1376,8 @@ class MapController {
       console.log('[MapController] 車両マーカーを作成しました:', {
         tripId: tripInfo.tripId,
         status: status,
-        position: [lat, lng]
+        position: [lat, lng],
+        hasCustomPopup: !!popupContent
       });
       
       return marker;
@@ -1396,6 +1405,9 @@ class MapController {
         <div class="popup-info">
           <p><strong>便ID:</strong> ${this.escapeHtml(tripInfo.tripId)}</p>
         </div>
+        <div class="trip-timetable-container" data-trip-id="${this.escapeHtml(tripInfo.tripId)}">
+          <!-- 時刻表はRealtimeVehicleControllerによって動的に追加されます -->
+        </div>
       </div>
     `;
     
@@ -1407,10 +1419,10 @@ class MapController {
    * @param {string} tripId - 便ID
    * @param {number} lat - 新しい緯度
    * @param {number} lng - 新しい経度
-   * @param {string} status - 運行状態
+   * @param {HTMLElement|string} popupContent - ポップアップコンテンツ（HTMLElementまたはHTML文字列）
    * @param {Object} tripInfo - 便情報
    */
-  updateVehicleMarkerPosition(tripId, lat, lng, status, tripInfo) {
+  updateVehicleMarkerPosition(tripId, lat, lng, popupContent, tripInfo) {
     try {
       // 座標の妥当性チェック
       if (!this.isValidCoordinate(lat, lng)) {
@@ -1429,21 +1441,29 @@ class MapController {
         // 既存マーカーの位置を更新
         marker.setLatLng([lat, lng]);
         
-        // アイコンを更新
-        marker.setIcon(this.createVehicleIcon(status));
+        // アイコンを更新（statusが含まれている場合は使用、ない場合は既存のアイコンを維持）
+        // popupContentが渡された場合は、status情報がない可能性があるため、アイコン更新はスキップ
         
         // ポップアップの内容を更新
-        const popupContent = this.createVehiclePopupContent(status, tripInfo);
-        marker.setPopupContent(popupContent);
+        // popupContentが渡された場合はそれを使用、ない場合は既存の方法で生成
+        if (popupContent) {
+          marker.setPopupContent(popupContent);
+        } else {
+          // 後方互換性のため、popupContentが渡されない場合は既存の方法で生成
+          const status = tripInfo.status || 'in_transit';
+          const defaultPopupContent = this.createVehiclePopupContent(status, tripInfo);
+          marker.setPopupContent(defaultPopupContent);
+        }
         
         console.log('[MapController] 車両マーカーを更新しました:', {
           tripId: tripId,
-          position: [lat, lng]
+          position: [lat, lng],
+          hasCustomPopup: !!popupContent
         });
       } else {
         // マーカーが存在しない場合は新規作成
         console.log('[MapController] 車両マーカーが存在しないため新規作成します:', tripId);
-        this.createVehicleMarker(lat, lng, status, tripInfo);
+        this.createVehicleMarker(lat, lng, null, tripInfo, popupContent);
       }
       
     } catch (error) {
@@ -1516,6 +1536,110 @@ class MapController {
         message: error.message,
         details: error.stack,
         tripId: tripId
+      });
+    }
+  }
+  
+  /**
+   * 車両マーカーの吹き出しに時刻表HTMLを追加する
+   * @param {string} tripId - 便ID
+   * @param {string} timetableHTML - 時刻表HTML
+   */
+  appendTimetableToPopup(tripId, timetableHTML) {
+    try {
+      const marker = this.vehicleMarkers.get(tripId);
+      
+      if (!marker) {
+        this.logError('時刻表を追加するマーカーが見つかりません', {
+          tripId: tripId
+        });
+        return;
+      }
+      
+      // ポップアップが開いている場合は、DOMを直接更新
+      const popup = marker.getPopup();
+      if (popup && popup.isOpen()) {
+        const popupElement = popup.getElement();
+        if (popupElement) {
+          const container = popupElement.querySelector('.trip-timetable-container');
+          if (container) {
+            container.innerHTML = timetableHTML;
+            
+            // 折りたたみリンクのイベントリスナーを設定
+            this.setupTimetableToggleListeners(popupElement);
+            
+            console.log('[MapController] 時刻表を吹き出しに追加しました:', tripId);
+          }
+        }
+      }
+      
+    } catch (error) {
+      this.logError('時刻表の追加に失敗しました', {
+        message: error.message,
+        details: error.stack,
+        tripId: tripId
+      });
+    }
+  }
+  
+  /**
+   * 折りたたみリンクのイベントリスナーを設定する
+   * @param {HTMLElement} popupElement - ポップアップ要素
+   */
+  setupTimetableToggleListeners(popupElement) {
+    try {
+      const toggleLink = popupElement.querySelector('.timetable-toggle');
+      
+      if (!toggleLink) {
+        // 折りたたみリンクが存在しない場合は何もしない
+        return;
+      }
+      
+      // 既存のイベントリスナーを削除（重複防止）
+      const newToggleLink = toggleLink.cloneNode(true);
+      toggleLink.parentNode.replaceChild(newToggleLink, toggleLink);
+      
+      // クリックイベントを設定
+      newToggleLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        const action = newToggleLink.getAttribute('data-action');
+        const timetableContent = popupElement.querySelector('.timetable-content');
+        const timetableStops = popupElement.querySelector('.timetable-stops');
+        
+        if (!timetableContent || !timetableStops) {
+          console.error('[MapController] 時刻表要素が見つかりません');
+          return;
+        }
+        
+        if (action === 'expand') {
+          // 展開
+          timetableContent.setAttribute('data-collapsed', 'false');
+          timetableStops.style.display = 'block';
+          newToggleLink.textContent = '時刻表を折りたたむ';
+          newToggleLink.setAttribute('data-action', 'collapse');
+          
+          console.log('[MapController] 時刻表を展開しました');
+        } else {
+          // 折りたたみ
+          timetableContent.setAttribute('data-collapsed', 'true');
+          timetableStops.style.display = 'none';
+          
+          // 停車数を取得
+          const stopCount = timetableStops.querySelectorAll('.stop-item').length;
+          newToggleLink.textContent = `時刻表を表示（全${stopCount}停車）`;
+          newToggleLink.setAttribute('data-action', 'expand');
+          
+          console.log('[MapController] 時刻表を折りたたみました');
+        }
+      });
+      
+      console.log('[MapController] 折りたたみリンクのイベントリスナーを設定しました');
+      
+    } catch (error) {
+      this.logError('折りたたみリンクのイベントリスナー設定に失敗しました', {
+        message: error.message,
+        details: error.stack
       });
     }
   }
