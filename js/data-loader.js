@@ -107,6 +107,9 @@ class DataLoader {
     
     // GTFSバージョン情報
     this.gtfsVersion = null;
+    
+    // 進捗コールバック
+    this.onProgress = null;
   }
 
   /**
@@ -116,12 +119,22 @@ class DataLoader {
    */
   async loadAllData() {
     try {
+      // 進捗コールバック: データロード開始
+      if (this.onProgress) {
+        this.onProgress('GTFSデータを検索しています...');
+      }
+      
       // 3つのデータを並列読み込み
       const [busStopsData, timetableData, faresData] = await Promise.all([
         this.loadBusStops(),
         this.loadTimetable(),
         this.loadFares()
       ]);
+
+      // 進捗コールバック: データロード完了
+      if (this.onProgress) {
+        this.onProgress('データの読み込みが完了しました');
+      }
 
       return {
         busStops: busStopsData,
@@ -155,6 +168,11 @@ class DataLoader {
     try {
       this.logDebug('バス停データの読み込み開始');
       const overallStartTime = Date.now();
+      
+      // 進捗コールバック: バス停データ読み込み開始
+      if (this.onProgress) {
+        this.onProgress('バス停データを読み込んでいます...');
+      }
       
       // GTFS ZIPファイルを検索
       const zipPath = await this.findGTFSZipFile();
@@ -208,6 +226,11 @@ class DataLoader {
     try {
       this.logDebug('時刻表データの読み込み開始');
       const overallStartTime = Date.now();
+      
+      // 進捗コールバック: 時刻表データ読み込み開始
+      if (this.onProgress) {
+        this.onProgress('時刻表データを読み込んでいます...');
+      }
       
       // GTFS ZIPファイルを検索
       const zipPath = await this.findGTFSZipFile();
@@ -267,6 +290,11 @@ class DataLoader {
     try {
       this.logDebug('運賃データの読み込み開始');
       const overallStartTime = Date.now();
+      
+      // 進捗コールバック: 運賃データ読み込み開始
+      if (this.onProgress) {
+        this.onProgress('運賃データを読み込んでいます...');
+      }
       
       // GTFS ZIPファイルを検索
       const zipPath = await this.findGTFSZipFile();

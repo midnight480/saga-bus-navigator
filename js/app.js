@@ -1858,29 +1858,37 @@ function showInitializationError(message) {
 async function initializeApp() {
   const startTime = Date.now();
   
+  // LoadingScreenControllerのインスタンスを作成
+  const loadingController = new LoadingScreenController();
+  
   try {
     // UIを無効化
     disableUI();
     
-    // ローディング表示
-    showInitialLoading(true);
+    // ローディング画面を表示
+    loadingController.show();
+    
+    // タイムアウトタイマーを開始（30秒で警告、60秒でエラー）
+    loadingController.startTimeout(30000, () => {
+      loadingController.updateProgress('データの読み込みに時間がかかっています...');
+    });
     
     // データローダーの初期化
+    loadingController.updateProgress('GTFSデータを検索しています...');
     const dataLoader = new DataLoader();
     
-    // データの読み込み（5秒タイムアウト）
+    // 進捗コールバックを設定
+    dataLoader.onProgress = (message) => {
+      loadingController.updateProgress(message);
+    };
+    
+    // データの読み込み
     console.log('データを読み込んでいます...');
     
-    const loadPromise = Promise.all([
+    await Promise.all([
       dataLoader.loadAllData(),
       dataLoader.loadGTFSData()
     ]);
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('データ読み込みがタイムアウトしました（5秒超過）')), 5000);
-    });
-    
-    // タイムアウト付きでデータ読み込み
-    await Promise.race([loadPromise, timeoutPromise]);
     
     const loadTime = Date.now() - startTime;
     console.log(`データの読み込みが完了しました（${loadTime}ms）`);
@@ -2030,11 +2038,14 @@ async function initializeApp() {
       window.realtimeDataLoader = null;
     }
     
+    // タイムアウトタイマーをクリア
+    loadingController.clearTimeout();
+    
+    // ローディング画面を非表示
+    loadingController.hide();
+    
     // UIを有効化
     enableUI();
-    
-    // ローディング非表示
-    showInitialLoading(false);
     
     // プレースホルダーを表示
     const placeholder = document.querySelector('.results-placeholder');
@@ -2045,11 +2056,14 @@ async function initializeApp() {
   } catch (error) {
     console.error('初期化エラー:', error);
     
-    // ローディング非表示
-    showInitialLoading(false);
+    // タイムアウトタイマーをクリア
+    loadingController.clearTimeout();
     
     // エラーメッセージとリトライボタンを表示
-    showInitializationError('データの読み込みに失敗しました。再読み込みボタンをクリックしてください。');
+    loadingController.showError(
+      'データの読み込みに失敗しました。再試行してください。',
+      () => initializeApp() // リトライコールバック
+    );
     
     // UIは無効のまま
   }

@@ -145,9 +145,9 @@ class TripTimetableFormatter {
 
       const { currentStopSequence = null, highlightCurrent = true } = options;
 
-      // 各停車バス停を「バス停名(到着HH:MM)」形式で生成
+      // 各停車バス停を「バス停名（到着HH:MM）」形式で生成
       const stopTexts = timetableData.stops.map(stop => {
-        const text = `${stop.stopName}(${stop.formattedTime})`;
+        const text = `${stop.stopName}（${stop.formattedTime}）`;
         
         // 現在位置の強調表示
         if (highlightCurrent && currentStopSequence !== null && 

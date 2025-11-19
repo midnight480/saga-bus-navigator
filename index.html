@@ -29,6 +29,21 @@
   <link rel="stylesheet" href="/css/footer-pages.css">
 </head>
 <body>
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading-screen" role="status" aria-live="polite" aria-label="データ読み込み状態">
+    <div class="loading-content">
+      <div class="loading-logo">
+        <h1>佐賀バスナビ</h1>
+      </div>
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <div class="loading-message" aria-live="polite" aria-atomic="true">データを読み込んでいます...</div>
+      <div class="loading-error" role="alert" aria-live="assertive" hidden>
+        <p class="error-message"></p>
+        <button type="button" class="retry-button" aria-label="データ読み込みを再試行">再試行</button>
+      </div>
+    </div>
+  </div>
+
   <div class="container">
     <!-- Header -->
     <header class="header">

@@ -264,10 +264,20 @@ saga-bus-navigator/
 
 ## 🌐 ブラウザサポート
 
+### 対応ブラウザ
+
 - Chrome（最新版）
-- Safari（iOS 14+）
-- Firefox（最新版）
 - Edge（最新版）
+
+### 非対応ブラウザ
+
+以下のブラウザは動作保証の対象外です：
+
+- Firefox
+- Safari（iOS Safari含む）
+- その他WebKitベースのブラウザ
+
+**注意**: 本アプリケーションはChromiumベースのブラウザ（Chrome、Edge）での動作を前提として開発・テストされています。
 
 ## 📄 ライセンス
 
