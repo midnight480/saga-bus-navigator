@@ -62,12 +62,16 @@ class MapController {
       // バス停データを保存
       this.busStops = busStops;
       
+      // iPhoneのChromeを検出（実機でのみ発生する問題のため）
+      const isIPhoneChrome = /iPhone|iPad|iPod/i.test(navigator.userAgent) && /Chrome/i.test(navigator.userAgent);
+      
       // Leafletマップを初期化（佐賀市中心部を中心にズームレベル13）
+      // iPhoneのChromeでは最大ズームレベルを16に制限（読み込みエラーを防ぐため）
       this.map = L.map(containerId, {
         center: [33.2635, 130.3005],
         zoom: 13,
         minZoom: 10,  // ズームレベルを10〜18に制限
-        maxZoom: 18,
+        maxZoom: isIPhoneChrome ? 16 : 18,  // iPhoneのChromeでは16に制限
         // 地図の境界を日本国内に制限
         maxBounds: [
           [20.0, 122.0],  // 南西端
@@ -159,11 +163,12 @@ class MapController {
     // iPhoneのChromeでは、ズーム中のタイル更新を無効化し、ズーム完了後に更新する
     if (isIPhoneChrome) {
       tileLayerOptions.updateWhenZooming = false; // ズーム中はタイルを更新しない
-      tileLayerOptions.updateWhenIdle = true;     // ズーム完了後にタイルを更新
-      tileLayerOptions.keepBuffer = 1;             // バッファを最小限に（メモリ使用量を削減）
-      tileLayerOptions.updateInterval = 500;       // タイル更新間隔を500msに設定（デフォルトは200ms）
-      tileLayerOptions.maxNativeZoom = 17;         // 最大ズームレベルを17に制限（18は読み込みが重い）
-      console.log('[MapController] iPhoneのChromeを検出しました。タイル読み込み速度を遅くします。');
+      tileLayerOptions.updateWhenIdle = false;    // 自動更新も無効化（手動で制御）
+      tileLayerOptions.keepBuffer = 0;             // バッファを0に（メモリ使用量を最小化）
+      tileLayerOptions.updateInterval = 1000;      // タイル更新間隔を1000msに設定（デフォルトは200ms）
+      tileLayerOptions.maxNativeZoom = 16;         // 最大ズームレベルを16に制限（17以上は読み込みが重い）
+      tileLayerOptions.maxZoom = 16;               // 最大ズームレベルを16に制限
+      console.log('[MapController] iPhoneのChromeを検出しました。タイル読み込みを大幅に制限します（maxZoom: 16）。');
     }
     
     currentTileLayer = L.tileLayer(primaryTileUrl, tileLayerOptions);
@@ -216,10 +221,11 @@ class MapController {
         
         if (isIPhoneChrome) {
           fallbackTileLayerOptions.updateWhenZooming = false;
-          fallbackTileLayerOptions.updateWhenIdle = true;
-          fallbackTileLayerOptions.keepBuffer = 1;
-          fallbackTileLayerOptions.updateInterval = 500;
-          fallbackTileLayerOptions.maxNativeZoom = 17;
+          fallbackTileLayerOptions.updateWhenIdle = false;
+          fallbackTileLayerOptions.keepBuffer = 0;
+          fallbackTileLayerOptions.updateInterval = 1000;
+          fallbackTileLayerOptions.maxNativeZoom = 16;
+          fallbackTileLayerOptions.maxZoom = 16;
         }
         
         currentTileLayer = L.tileLayer(fallbackTileUrl, fallbackTileLayerOptions);
@@ -273,14 +279,15 @@ class MapController {
         if (zoomTimeout) {
           clearTimeout(zoomTimeout);
         }
-        // より長い遅延（500ms）を入れてからタイルを更新
+        // より長い遅延（1000ms）を入れてからタイルを更新
         zoomTimeout = setTimeout(() => {
           if (currentTileLayer && this.map) {
             // タイルを段階的に読み込む（一度に全てを読み込まない）
+            // iPhoneのChromeでは、タイルの読み込みを手動で制御
             currentTileLayer.redraw();
           }
           zoomTimeout = null;
-        }, 500); // 500msの遅延
+        }, 1000); // 1000ms（1秒）の遅延
       });
       
       // パン完了後にもタイルを更新
@@ -297,16 +304,16 @@ class MapController {
         if (moveTimeout) {
           clearTimeout(moveTimeout);
         }
-        // より長い遅延（300ms）を入れてからタイルを更新
+        // より長い遅延（800ms）を入れてからタイルを更新
         moveTimeout = setTimeout(() => {
           if (currentTileLayer && this.map) {
             currentTileLayer.redraw();
           }
           moveTimeout = null;
-        }, 300); // 300msの遅延
+        }, 800); // 800msの遅延
       });
       
-      console.log('[MapController] iPhoneのChrome用のズーム/パン完了イベントリスナーを設定しました（遅延: ズーム500ms、パン300ms）。');
+      console.log('[MapController] iPhoneのChrome用のズーム/パン完了イベントリスナーを設定しました（遅延: ズーム1000ms、パン800ms）。');
     }
     
     // タイルレイヤーを保存
@@ -506,7 +513,7 @@ class MapController {
           // モバイルではポップアップが地図の上下からはみ出ないように調整
           const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
           marker.bindPopup(this.createPopupContent(stop), {
-            maxWidth: isMobile ? 200 : 300, // モバイルでは幅を小さく
+            maxWidth: isMobile ? 150 : 300, // モバイルでは幅をさらに小さく（150px）
             className: isMobile ? 'bus-stop-popup-container mobile-popup' : 'bus-stop-popup-container',
             // モバイルではautoPanを無効化し、autoPanPaddingを小さくして地図内に収める
             autoPan: !isMobile,
