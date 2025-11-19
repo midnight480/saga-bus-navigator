@@ -989,12 +989,18 @@ class UIController {
     resultsList.className = 'results-list';
     resultsList.setAttribute('role', 'list');
     
+    // 全ての結果をリストに追加
     results.forEach(result => {
       const listItem = this.createResultItem(result);
       resultsList.appendChild(listItem);
     });
     
-    resultsContainer.appendChild(resultsList);
+    // スクロール可能なコンテナを作成（5件まで初期表示）
+    const scrollableContainer = document.createElement('div');
+    scrollableContainer.className = 'results-list-scrollable';
+    
+    scrollableContainer.appendChild(resultsList);
+    resultsContainer.appendChild(scrollableContainer);
     
     // もっと見るボタンは現在非表示（20件制限のため）
     // 将来的に実装する場合はここで表示制御

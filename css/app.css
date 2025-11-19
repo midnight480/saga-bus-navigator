@@ -506,11 +506,41 @@ body {
   font-size: 0.9375rem;
 }
 
+.results-list-scrollable {
+  max-height: 650px; /* 約5件分の高さ（各アイテム約120px + gap 1rem） */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #888 #f5f5f5;
+}
+
+/* スクロールバーのスタイリング（Webkit系ブラウザ） */
+.results-list-scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.results-list-scrollable::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.results-list-scrollable::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.results-list-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
 .results-list {
   display: flex;
   flex-direction: column;
   gap: 1rem;
   list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .no-results-message {
@@ -1989,4 +2019,44 @@ body {
     font-size: 0.8125rem;
     padding: 0.5rem;
   }
+}
+
+/* 車両マーカーの吹き出し内の時刻表テキスト */
+.trip-timetable-text {
+  margin-top: 10px;
+  padding: 8px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.trip-timetable-text > div:last-child {
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #888 #f5f5f5;
+}
+
+/* スクロールバーのスタイリング（Webkit系ブラウザ） */
+.trip-timetable-text > div:last-child::-webkit-scrollbar {
+  width: 8px;
+}
+
+.trip-timetable-text > div:last-child::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.trip-timetable-text > div:last-child::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.trip-timetable-text > div:last-child::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
