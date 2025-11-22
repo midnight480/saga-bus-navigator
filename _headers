@@ -11,8 +11,9 @@
   # - object-src 'none': Flash等のプラグイン禁止
   # - base-uri 'self': base要素は同一オリジンのみ
   # - form-action 'self': フォーム送信は同一オリジンのみ
+  # - frame-src 'self' https://docs.google.com: iframe埋め込み許可（同一オリジン + Google Form用）
   # - frame-ancestors 'none': iframe埋め込み禁止
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' https://static.cloudflareinsights.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.tile.openstreetmap.org https://*.tile.openstreetmap.fr; connect-src 'self' https://ntp-a1.nict.go.jp https://holidays-jp.github.io http://opendata.sagabus.info https://cdn.jsdelivr.net https://raw.githubusercontent.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' https://static.cloudflareinsights.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.tile.openstreetmap.org https://*.tile.openstreetmap.fr; connect-src 'self' https://ntp-a1.nict.go.jp https://holidays-jp.github.io http://opendata.sagabus.info https://cdn.jsdelivr.net https://raw.githubusercontent.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'self' https://docs.google.com; frame-ancestors 'none';
   
   # X-Frame-Options: iframe埋め込み禁止（クリックジャッキング対策）
   X-Frame-Options: DENY
