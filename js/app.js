@@ -1882,13 +1882,11 @@ async function initializeApp() {
       loadingController.updateProgress(message);
     };
     
-    // データの読み込み
+    // データの読み込み（要件1.1, 1.2: GTFSファイルを1回だけ読み込む）
     console.log('データを読み込んでいます...');
     
-    await Promise.all([
-      dataLoader.loadAllData(),
-      dataLoader.loadGTFSData()
-    ]);
+    // loadAllDataOnce()を1回だけ呼び出す（Promise.allによる並列呼び出しを削除）
+    await dataLoader.loadAllDataOnce();
     
     const loadTime = Date.now() - startTime;
     console.log(`データの読み込みが完了しました（${loadTime}ms）`);

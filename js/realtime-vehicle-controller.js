@@ -156,6 +156,10 @@ class RealtimeVehicleController {
       return;
     }
     
+    // 運行終了バスのカウンター
+    let filteredCount = 0;
+    const filteredTripIds = [];
+    
     // 各車両データをループ処理
     vehiclePositions.forEach(vehicleData => {
       try {
@@ -167,13 +171,37 @@ class RealtimeVehicleController {
           return;
         }
         
-        // updateVehicleMarker()を呼び出してマーカーを更新
+        // 運行状態を判定
+        const vehicleStatus = this.determineVehicleStatus(vehicleData, trip);
+        
+        // 運行終了状態の場合はスキップ
+        if (vehicleStatus.state === 'after_end') {
+          // 既存のマーカーがあれば削除
+          this.mapController.removeVehicleMarker(vehicleData.tripId);
+          
+          // フィルタリングされたバスをカウント
+          filteredCount++;
+          filteredTripIds.push(vehicleData.tripId);
+          
+          console.log('[RealtimeVehicleController] 運行終了バスをフィルタリングしました:', vehicleData.tripId);
+          return;
+        }
+        
+        // 運行中のバスのみマーカーを更新
         this.updateVehicleMarker(vehicleData, trip);
         
       } catch (error) {
         console.error('[RealtimeVehicleController] 車両位置情報の処理に失敗しました:', error, vehicleData);
       }
     });
+    
+    // フィルタリングされたバス数をログ出力
+    if (filteredCount > 0) {
+      console.log('[RealtimeVehicleController] 運行終了バスをフィルタリングしました:', {
+        count: filteredCount,
+        tripIds: filteredTripIds
+      });
+    }
     
     // 古い車両マーカーを削除（30秒以上更新がないもの）
     this.removeStaleVehicleMarkers();

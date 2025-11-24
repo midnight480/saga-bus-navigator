@@ -784,6 +784,170 @@ describe('RealtimeVehicleController', () => {
   });
 
   /**
+   * タスク6.3: RealtimeVehicleController.handleVehiclePositionsUpdate()のテスト
+   * 要件: 2.1, 2.2, 2.3
+   */
+  describe('handleVehiclePositionsUpdate() - 運行終了バスのフィルタリング', () => {
+    beforeEach(async () => {
+      await controller.initialize();
+    });
+
+    it('運行終了バスがフィルタリングされることを検証', () => {
+      vi.useFakeTimers();
+      // 現在時刻を9:00に設定（到着時刻8:10より後）
+      vi.setSystemTime(new Date('2025-11-16T09:00:00'));
+
+      const vehiclePositions = [
+        {
+          tripId: 'trip_123',
+          latitude: 33.2649,
+          longitude: 130.3008,
+          vehicleId: 'bus_001',
+          vehicleLabel: '佐賀1号'
+        }
+      ];
+
+      // handleVehiclePositionsUpdateを呼び出し
+      controller.handleVehiclePositionsUpdate(vehiclePositions);
+
+      // 運行終了バスのマーカーが削除されることを確認
+      expect(mapControllerMock.removeVehicleMarker).toHaveBeenCalledWith('trip_123');
+      
+      // 運行終了バスのマーカーが作成されないことを確認
+      expect(mapControllerMock.createVehicleMarker).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it('運行中バスのみがマーカー更新されることを検証', () => {
+      vi.useFakeTimers();
+      // 現在時刻を8:05に設定（運行中）
+      vi.setSystemTime(new Date('2025-11-16T08:05:00'));
+
+      const vehiclePositions = [
+        {
+          tripId: 'trip_123',
+          latitude: 33.2600,
+          longitude: 130.3000,
+          vehicleId: 'bus_001',
+          vehicleLabel: '佐賀1号',
+          currentStopSequence: 1
+        }
+      ];
+
+      // handleVehiclePositionsUpdateを呼び出し
+      controller.handleVehiclePositionsUpdate(vehiclePositions);
+
+      // 運行中バスのマーカーが作成されることを確認
+      expect(mapControllerMock.createVehicleMarker).toHaveBeenCalled();
+      
+      // 運行終了バスのマーカーが削除されないことを確認
+      expect(mapControllerMock.removeVehicleMarker).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it('運行終了バスと運行中バスが混在する場合の処理を検証', () => {
+      vi.useFakeTimers();
+      // 現在時刻を8:05に設定
+      vi.setSystemTime(new Date('2025-11-16T08:05:00'));
+
+      // 運行中バスと運行終了バスを含む配列
+      const vehiclePositions = [
+        {
+          tripId: 'trip_123',
+          latitude: 33.2600,
+          longitude: 130.3000,
+          vehicleId: 'bus_001',
+          vehicleLabel: '佐賀1号',
+          currentStopSequence: 1
+        },
+        {
+          tripId: 'trip_456',
+          latitude: 33.2700,
+          longitude: 130.3100,
+          vehicleId: 'bus_002',
+          vehicleLabel: '佐賀2号'
+        }
+      ];
+
+      // trip_456の運行終了時刻を過去に設定
+      dataLoaderMock.stopTimes.push({
+        trip_id: 'trip_456',
+        stop_id: 'stop_001',
+        stop_sequence: '1',
+        arrival_time: '07:00:00',
+        departure_time: '07:00:00'
+      });
+      dataLoaderMock.stopTimes.push({
+        trip_id: 'trip_456',
+        stop_id: 'stop_002',
+        stop_sequence: '2',
+        arrival_time: '07:10:00',
+        departure_time: '07:10:00'
+      });
+      dataLoaderMock.trips.push({
+        trip_id: 'trip_456',
+        route_id: 'route_789',
+        service_id: 'weekday'
+      });
+
+      // handleVehiclePositionsUpdateを呼び出し
+      controller.handleVehiclePositionsUpdate(vehiclePositions);
+
+      // 運行中バス(trip_123)のマーカーが作成されることを確認
+      expect(mapControllerMock.createVehicleMarker).toHaveBeenCalledWith(
+        33.2600,
+        130.3000,
+        expect.objectContaining({ state: expect.not.stringMatching('after_end') }),
+        expect.objectContaining({ tripId: 'trip_123' })
+      );
+
+      // 運行終了バス(trip_456)のマーカーが削除されることを確認
+      expect(mapControllerMock.removeVehicleMarker).toHaveBeenCalledWith('trip_456');
+
+      vi.useRealTimers();
+    });
+
+    it('空の車両位置情報配列を処理できることを検証', () => {
+      const vehiclePositions = [];
+
+      // エラーが発生しないことを確認
+      expect(() => {
+        controller.handleVehiclePositionsUpdate(vehiclePositions);
+      }).not.toThrow();
+
+      // マーカーが作成されないことを確認
+      expect(mapControllerMock.createVehicleMarker).not.toHaveBeenCalled();
+    });
+
+    it('不正なtripIdを持つ車両をスキップすることを検証', () => {
+      const vehiclePositions = [
+        {
+          tripId: 'invalid_trip_id',
+          latitude: 33.2600,
+          longitude: 130.3000,
+          vehicleId: 'bus_999',
+          vehicleLabel: '不明'
+        }
+      ];
+
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // handleVehiclePositionsUpdateを呼び出し
+      controller.handleVehiclePositionsUpdate(vehiclePositions);
+
+      // 警告ログが出力されることを確認
+      expect(consoleSpy).toHaveBeenCalled();
+
+      // マーカーが作成されないことを確認
+      expect(mapControllerMock.createVehicleMarker).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  /**
    * Property 6: 吹き出しへの統合
    * Feature: trip-timetable-display, Property 6: 吹き出しへの統合
    * 
