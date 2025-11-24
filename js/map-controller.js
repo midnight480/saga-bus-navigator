@@ -765,6 +765,19 @@ class MapController {
   }
   
   /**
+   * 路線表示時のコールバック関数を設定する（要件4.3）
+   * @param {Function} callback - コールバック関数 (routeId: string) => void
+   */
+  setOnRouteDisplayedCallback(callback) {
+    if (typeof callback !== 'function') {
+      console.error('[MapController] コールバックは関数である必要があります');
+      return;
+    }
+    this.onRouteDisplayed = callback;
+    console.log('[MapController] 路線表示コールバックを設定しました');
+  }
+  
+  /**
    * 選択モードを設定する
    * @param {string} mode - 選択モード ('none' | 'departure' | 'arrival')
    */
@@ -868,10 +881,11 @@ class MapController {
   /**
    * 経路を地図上に表示する
    * @param {Object} routeData - 経路データ
+   * @param {string} direction - 表示する方向（オプション: '0'=往路, '1'=復路, null=全方向）
    */
-  displayRoute(routeData) {
+  displayRoute(routeData, direction = null) {
     try {
-      console.log('[MapController] 経路を表示します:', routeData);
+      console.log('[MapController] 経路を表示します:', routeData, '方向:', direction);
       
       // 既存の経路をクリア
       this.clearRoute();
@@ -946,9 +960,18 @@ class MapController {
       // ソート後の座標配列を作成
       const sortedCoordinates = allStops.map(stop => [stop.lat, stop.lng]);
       
-      // 経路線を描画（青色）
+      // 方向に応じて経路線の色を決定（要件4.4）
+      // direction='0': 青色（往路）
+      // direction='1': 緑色（復路）
+      // direction=null: 青色（デフォルト）
+      let routeColor = '#2196F3'; // デフォルト: 青色
+      if (direction === '1') {
+        routeColor = '#4CAF50'; // 復路: 緑色
+      }
+      
+      // 経路線を描画
       const polyline = L.polyline(sortedCoordinates, {
-        color: '#2196F3',
+        color: routeColor,
         weight: 4,
         opacity: 0.7,
         smoothFactor: 1
@@ -971,9 +994,9 @@ class MapController {
         // （90度ではなく-90度にすることで180度反転した正しい方向になる）
         const angle = Math.atan2(end[1] - start[1], end[0] - start[0]) * 180 / Math.PI - 90;
         
-        // 矢印アイコンを作成
+        // 矢印アイコンを作成（経路線と同じ色を使用）
         const arrowIcon = L.divIcon({
-          html: `<div style="transform: rotate(${angle}deg); color: #2196F3; font-size: 20px;">▶</div>`,
+          html: `<div style="transform: rotate(${angle}deg); color: ${routeColor}; font-size: 20px;">▶</div>`,
           className: 'route-arrow-marker',
           iconSize: [20, 20],
           iconAnchor: [10, 10]
@@ -1005,6 +1028,213 @@ class MapController {
         timestamp: new Date().toISOString()
       });
       throw error;
+    }
+  }
+  
+  /**
+   * 路線の全方向のバス停を取得
+   * @param {string} routeId - 路線ID
+   * @param {string} direction - 方向フィルタ（オプション: '0', '1', null=全方向）
+   * @returns {Array<Object>} バス停座標の配列
+   */
+  getRouteStops(routeId, direction = null) {
+    try {
+      console.log('[MapController] 路線のバス停を取得します:', routeId, '方向:', direction);
+      
+      // TimetableControllerが初期化されているか確認
+      if (!window.timetableController) {
+        console.error('[MapController] TimetableControllerが初期化されていません');
+        return [];
+      }
+      
+      // DataLoaderからstop_timesとtripsを取得
+      if (!window.dataLoader || !window.dataLoader.stopTimes || !window.dataLoader.trips) {
+        console.error('[MapController] DataLoaderのデータが利用できません');
+        return [];
+      }
+      
+      const stopTimes = window.dataLoader.stopTimes;
+      const trips = window.dataLoader.trips;
+      
+      // 指定された路線のtripsを取得
+      const routeTrips = trips.filter(t => t.route_id === routeId);
+      
+      if (routeTrips.length === 0) {
+        console.warn('[MapController] 指定された路線のtripが見つかりません:', routeId);
+        return [];
+      }
+      
+      // 方向フィルタが指定されている場合は、該当する方向のtripsのみを対象とする
+      let filteredTrips = routeTrips;
+      if (direction !== null) {
+        // DirectionDetectorを使用して方向を判定
+        if (window.DirectionDetector) {
+          filteredTrips = routeTrips.filter(trip => {
+            const detectedDirection = window.DirectionDetector.detectDirection(trip, routeId, trips);
+            return detectedDirection === direction;
+          });
+        }
+      }
+      
+      // 各tripのstop_timesからバス停IDを収集
+      const stopIds = new Set();
+      filteredTrips.forEach(trip => {
+        const tripStopTimes = stopTimes.filter(st => st.trip_id === trip.trip_id);
+        tripStopTimes.forEach(st => {
+          stopIds.add(st.stop_id);
+        });
+      });
+      
+      // バス停IDから座標情報を取得
+      const routeStops = [];
+      stopIds.forEach(stopId => {
+        const stop = this.busStops.find(s => s.id === stopId);
+        if (stop && this.isValidCoordinate(stop.lat, stop.lng)) {
+          routeStops.push({
+            id: stop.id,
+            name: stop.name,
+            lat: stop.lat,
+            lng: stop.lng
+          });
+        }
+      });
+      
+      console.log('[MapController] 路線のバス停を取得しました:', routeStops.length, '件');
+      return routeStops;
+      
+    } catch (error) {
+      this.logError('路線のバス停取得に失敗しました', {
+        message: error.message,
+        details: error.stack,
+        routeId: routeId,
+        direction: direction
+      });
+      return [];
+    }
+  }
+  
+  /**
+   * 路線を地図上に表示（方向別に色分け）
+   * @param {string} routeId - 路線ID
+   * @param {string} direction - 表示する方向（オプション: '0', '1', null=全方向）
+   */
+  displayRouteStops(routeId, direction = null) {
+    try {
+      console.log('[MapController] 路線を地図上に表示します:', routeId, '方向:', direction);
+      
+      // 既存の経路をクリア
+      this.clearRoute();
+      
+      // 路線のバス停を取得
+      const stops = this.getRouteStops(routeId, direction);
+      
+      if (stops.length === 0) {
+        console.warn('[MapController] 表示するバス停が見つかりません');
+        return;
+      }
+      
+      // 方向に応じてマーカーの色を決定
+      let markerColor = 'blue'; // デフォルト
+      if (direction === '0') {
+        markerColor = 'blue'; // 往路: 青色
+      } else if (direction === '1') {
+        markerColor = 'green'; // 復路: 緑色
+      }
+      
+      // 各バス停にマーカーを配置
+      stops.forEach(stop => {
+        const marker = L.marker([stop.lat, stop.lng], {
+          icon: this.createBusStopIcon(markerColor)
+        });
+        
+        marker.bindPopup(`
+          <div class="route-stop-popup">
+            <h4>${this.escapeHtml(stop.name)}</h4>
+            <p>路線ID: ${this.escapeHtml(routeId)}</p>
+            ${direction !== null ? `<p>方向: ${direction === '0' ? '往路' : '復路'}</p>` : ''}
+          </div>
+        `);
+        
+        this.routeLayer.addLayer(marker);
+      });
+      
+      // 全てのバス停が見える範囲に自動ズーム
+      const bounds = L.latLngBounds(stops.map(s => [s.lat, s.lng]));
+      this.map.fitBounds(bounds, { 
+        padding: [50, 50],
+        maxZoom: 15
+      });
+      
+      // 「経路をクリア」ボタンを表示
+      this.showClearRouteButton();
+      
+      // 路線表示コールバックを呼び出す（要件4.3）
+      if (this.onRouteDisplayed && typeof this.onRouteDisplayed === 'function') {
+        this.onRouteDisplayed(routeId);
+      }
+      
+      console.log('[MapController] 路線の表示が完了しました');
+      
+    } catch (error) {
+      this.logError('路線の表示に失敗しました', {
+        message: error.message,
+        details: error.stack,
+        routeId: routeId,
+        direction: direction
+      });
+    }
+  }
+  
+  /**
+   * 特定の方向のバス停をハイライト表示する
+   * @param {string} routeId - 路線ID
+   * @param {string} direction - ハイライトする方向（'0', '1', null=全て通常表示）
+   */
+  highlightRouteDirection(routeId, direction) {
+    try {
+      console.log('[MapController] 方向をハイライト表示します:', routeId, '方向:', direction);
+      
+      if (direction === null) {
+        // 全てのマーカーを通常表示に戻す
+        this.markers.forEach(marker => {
+          const element = marker.getElement();
+          if (element) {
+            element.style.opacity = '1';
+            element.style.filter = 'none';
+          }
+        });
+        return;
+      }
+      
+      // 指定された方向のバス停を取得
+      const highlightStops = this.getRouteStops(routeId, direction);
+      const highlightStopIds = new Set(highlightStops.map(s => s.id));
+      
+      // 全てのマーカーを処理
+      this.markers.forEach((marker, stopId) => {
+        const element = marker.getElement();
+        if (element) {
+          if (highlightStopIds.has(stopId)) {
+            // ハイライト対象: 通常表示
+            element.style.opacity = '1';
+            element.style.filter = 'none';
+          } else {
+            // ハイライト対象外: 半透明にする
+            element.style.opacity = '0.3';
+            element.style.filter = 'grayscale(100%)';
+          }
+        }
+      });
+      
+      console.log('[MapController] 方向のハイライト表示が完了しました');
+      
+    } catch (error) {
+      this.logError('方向のハイライト表示に失敗しました', {
+        message: error.message,
+        details: error.stack,
+        routeId: routeId,
+        direction: direction
+      });
     }
   }
   
@@ -1058,6 +1288,12 @@ class MapController {
     if (clearButton) {
       clearButton.addEventListener('click', () => {
         this.clearRoute();
+        
+        // 方向選択UIを非表示にする（要件4.3）
+        if (window.uiController && typeof window.uiController.hideDirectionSelector === 'function') {
+          window.uiController.hideDirectionSelector();
+          window.uiController.currentDisplayedRouteId = null;
+        }
       });
       console.log('[MapController] 経路クリアボタンのイベントリスナーを設定しました');
     }

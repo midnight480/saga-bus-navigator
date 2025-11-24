@@ -92,6 +92,23 @@
     <!-- Map Section -->
     <section class="map-section">
       <div id="map-container" class="map-container"></div>
+      
+      <!-- 方向選択UI（要件4.3） -->
+      <div id="direction-selector" class="direction-selector" hidden>
+        <label class="direction-selector-label">表示方向:</label>
+        <div class="direction-options">
+          <button type="button" id="direction-both" class="direction-button active" data-direction="both">
+            両方向
+          </button>
+          <button type="button" id="direction-outbound" class="direction-button" data-direction="0">
+            往路
+          </button>
+          <button type="button" id="direction-inbound" class="direction-button" data-direction="1">
+            復路
+          </button>
+        </div>
+      </div>
+      
       <button type="button" id="clear-route-button" class="btn-clear-route" hidden>
         経路をクリア
       </button>
@@ -572,6 +589,7 @@
   
   <script src="/js/utils.js"></script>
   <script src="/js/safari-warning-dialog.js"></script>
+  <script src="/js/direction-detector.js"></script>
   <script src="/js/data-loader.js"></script>
   <script src="/js/fare-calculator.js"></script>
   <script src="/js/calendar-exporter.js"></script>

@@ -1043,6 +1043,15 @@ class DataTransformer {
       // 曜日区分を判定
       const weekdayType = this.determineWeekdayType(calendar);
 
+      // 要件1.4: DirectionDetectorを使用して方向を判定
+      let direction = 'unknown';
+      if (trip && route) {
+        // DirectionDetectorが利用可能な場合のみ方向を判定
+        if (typeof DirectionDetector !== 'undefined') {
+          direction = DirectionDetector.detectDirection(trip, route.route_id, tripsData);
+        }
+      }
+
       processedRecords++;
       
       // 要件7.3: データ変換の進捗状況をログ出力
@@ -1064,7 +1073,8 @@ class DataTransformer {
         minute: minute,
         weekdayType: weekdayType,
         routeName: route ? route.route_long_name : '',
-        operator: agency ? agency.agency_name : ''
+        operator: agency ? agency.agency_name : '',
+        direction: direction // 要件1.4: 方向情報を追加
       };
     });
     

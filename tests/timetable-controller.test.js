@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import '../js/direction-detector.js';
 import '../js/timetable-controller.js';
 
 describe('TimetableController - 基本機能', () => {
