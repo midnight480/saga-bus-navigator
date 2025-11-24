@@ -149,6 +149,7 @@ class TimetableController {
 
     // 時刻表データを構築
     const timetable = [];
+    const seenKeys = new Set(); // 重複チェック用のSet
     let filteredCount = 0;
     
     stopTimesAtStop.forEach(stopTime => {
@@ -169,6 +170,19 @@ class TimetableController {
 
       // departure_timeをパース（HH:MM:SS形式）
       const [hour, minute, second] = stopTime.departure_time.split(':').map(Number);
+      
+      // 重複チェック: trip_id + departure_timeの組み合わせで一意性を確保
+      const uniqueKey = `${stopTime.trip_id}_${stopTime.departure_time}`;
+      if (seenKeys.has(uniqueKey)) {
+        console.warn('TimetableController: 重複データを検出しました', {
+          tripId: stopTime.trip_id,
+          departureTime: stopTime.departure_time,
+          stopId: stopId,
+          routeId: routeId
+        });
+        return;
+      }
+      seenKeys.add(uniqueKey);
       
       timetable.push({
         stopId: stopId,

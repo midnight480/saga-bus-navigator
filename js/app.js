@@ -79,6 +79,7 @@ class SearchController {
    */
   searchDirectTrips(departureStop, arrivalStop, searchCriteria, weekdayType) {
     const results = [];
+    const seenKeys = new Set(); // 重複チェック用のSet
     
     // 各tripを検索
     Object.keys(this.tripIndex).forEach(tripId => {
@@ -105,6 +106,20 @@ class SearchController {
       if (!this.matchesTimeFilter(departureEntry, arrivalEntry, searchCriteria)) {
         return;
       }
+      
+      // 重複チェック: trip_id + departure_time + arrival_timeの組み合わせで一意性を確保
+      const uniqueKey = `${tripId}_${departureEntry.hour}:${departureEntry.minute}_${arrivalEntry.hour}:${arrivalEntry.minute}`;
+      if (seenKeys.has(uniqueKey)) {
+        console.warn('SearchController: 重複データを検出しました', {
+          tripId: tripId,
+          departureStop: departureStop,
+          arrivalStop: arrivalStop,
+          departureTime: `${departureEntry.hour}:${departureEntry.minute}`,
+          arrivalTime: `${arrivalEntry.hour}:${arrivalEntry.minute}`
+        });
+        return;
+      }
+      seenKeys.add(uniqueKey);
       
       // 所要時間を計算
       const duration = this.calculateTravelTime(
