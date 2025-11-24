@@ -676,6 +676,196 @@ SAGA-002,県庁前,33.2495,130.3005`;
   });
 });
 
+/**
+ * タスク6.1: DataLoader.loadAllDataOnce()のテスト
+ * 要件: 1.1, 1.2
+ */
+describe('DataLoader.loadAllDataOnce()', () => {
+  let dataLoader;
+  let fetchSpy;
+
+  beforeEach(() => {
+    dataLoader = new window.DataLoader();
+    
+    // JSZipのモック
+    global.JSZip = {
+      loadAsync: vi.fn().mockResolvedValue({
+        file: vi.fn((filename) => ({
+          async: vi.fn().mockResolvedValue(getMockGTFSContent(filename))
+        })),
+        files: {
+          'stops.txt': {},
+          'stop_times.txt': {},
+          'routes.txt': {},
+          'trips.txt': {},
+          'calendar.txt': {},
+          'agency.txt': {},
+          'fare_attributes.txt': {},
+          'fare_rules.txt': {}
+        }
+      })
+    };
+  });
+
+  afterEach(() => {
+    if (fetchSpy) {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  /**
+   * モックGTFSコンテンツを生成
+   */
+  function getMockGTFSContent(filename) {
+    const mockData = {
+      'stops.txt': `stop_id,stop_code,stop_name,stop_desc,stop_lat,stop_lon,zone_id,stop_url,location_type,parent_station
+1001002-01,,佐賀駅バスセンター 1番のりば,,33.26451,130.29974,1001002-01,,0,1001002
+1001002-02,,佐賀駅バスセンター 2番のりば,,33.26451,130.29974,1001002-02,,0,1001002`,
+      'stop_times.txt': `trip_id,arrival_time,departure_time,stop_id,stop_sequence,stop_headsign,pickup_type,drop_off_type
+trip_123,08:00:00,08:00:00,1001002-01,1,,,
+trip_123,08:10:00,08:10:00,1001002-02,2,,,`,
+      'routes.txt': `route_id,agency_id,route_short_name,route_long_name,route_desc,route_type
+route_456,agency_1,1,佐賀駅～大和線,,3`,
+      'trips.txt': `route_id,service_id,trip_id,trip_headsign,trip_short_name,direction_id,block_id,shape_id
+route_456,weekday,trip_123,大和方面,,,0,`,
+      'calendar.txt': `service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date
+weekday,1,1,1,1,1,0,0,20250101,20251231`,
+      'agency.txt': `agency_id,agency_name,agency_url,agency_timezone,agency_lang
+agency_1,佐賀市営バス,https://example.com,Asia/Tokyo,ja`,
+      'fare_attributes.txt': `fare_id,price,currency_type,payment_method,transfers,agency_id
+fare_1,160,JPY,0,0,agency_1`,
+      'fare_rules.txt': `fare_id,route_id,origin_id,destination_id,contains_id
+fare_1,route_456,,,`
+    };
+    return mockData[filename] || '';
+  }
+
+  it('GTFSファイルが1回のみ読み込まれることを検証', async () => {
+    // fetchをモック
+    fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((url) => {
+      if (url === 'data/saga-current.zip') {
+        return Promise.resolve({
+          ok: true,
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(1024))
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    });
+
+    // 1回目の呼び出し
+    await dataLoader.loadAllDataOnce();
+    const firstCallCount = fetchSpy.mock.calls.length;
+
+    // 2回目の呼び出し（キャッシュから取得されるべき）
+    await dataLoader.loadAllDataOnce();
+    const secondCallCount = fetchSpy.mock.calls.length;
+
+    // fetchが追加で呼ばれていないことを確認
+    expect(secondCallCount).toBe(firstCallCount);
+  });
+
+  it('全てのデータが正しく取得されることを検証', async () => {
+    // fetchをモック
+    fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((url) => {
+      if (url === 'data/saga-current.zip') {
+        return Promise.resolve({
+          ok: true,
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(1024))
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    });
+
+    await dataLoader.loadAllDataOnce();
+
+    // 変換済みデータが取得されていることを確認
+    expect(dataLoader.busStops).not.toBeNull();
+    expect(dataLoader.timetable).not.toBeNull();
+    expect(dataLoader.fares).not.toBeNull();
+    expect(dataLoader.fareRules).not.toBeNull();
+
+    // 生データが取得されていることを確認
+    expect(dataLoader.stopTimes).not.toBeNull();
+    expect(dataLoader.trips).not.toBeNull();
+    expect(dataLoader.routes).not.toBeNull();
+    expect(dataLoader.calendar).not.toBeNull();
+    expect(dataLoader.gtfsStops).not.toBeNull();
+
+    // データの内容を確認
+    expect(dataLoader.busStops.length).toBeGreaterThan(0);
+    expect(dataLoader.timetable.length).toBeGreaterThan(0);
+    expect(dataLoader.stopTimes.length).toBeGreaterThan(0);
+    expect(dataLoader.trips.length).toBeGreaterThan(0);
+  });
+
+  it('キャッシュが正しく機能することを検証', async () => {
+    // fetchをモック
+    fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((url) => {
+      if (url === 'data/saga-current.zip') {
+        return Promise.resolve({
+          ok: true,
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(1024))
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    });
+
+    // 1回目の呼び出し
+    await dataLoader.loadAllDataOnce();
+    const firstBusStops = dataLoader.busStops;
+    const firstTimetable = dataLoader.timetable;
+
+    // 2回目の呼び出し
+    await dataLoader.loadAllDataOnce();
+    const secondBusStops = dataLoader.busStops;
+    const secondTimetable = dataLoader.timetable;
+
+    // 同じオブジェクトが返されることを確認（キャッシュが機能している）
+    expect(secondBusStops).toBe(firstBusStops);
+    expect(secondTimetable).toBe(firstTimetable);
+  });
+});
+
+/**
+ * タスク6.2: DataLoader.isDataLoaded()のテスト
+ * 要件: 1.5
+ */
+describe('DataLoader.isDataLoaded()', () => {
+  let dataLoader;
+
+  beforeEach(() => {
+    dataLoader = new window.DataLoader();
+  });
+
+  it('データ読み込み前はfalseを返すことを検証', () => {
+    expect(dataLoader.isDataLoaded()).toBe(false);
+  });
+
+  it('データ読み込み後はtrueを返すことを検証', () => {
+    // データを手動で設定
+    dataLoader.busStops = [];
+    dataLoader.timetable = [];
+    dataLoader.fares = [];
+    dataLoader.fareRules = [];
+    dataLoader.stopTimes = [];
+    dataLoader.trips = [];
+    dataLoader.routes = [];
+    dataLoader.calendar = [];
+    dataLoader.gtfsStops = [];
+
+    expect(dataLoader.isDataLoaded()).toBe(true);
+  });
+
+  it('一部のデータのみ読み込まれている場合はfalseを返すことを検証', () => {
+    // 一部のデータのみ設定
+    dataLoader.busStops = [];
+    dataLoader.timetable = [];
+    // 他のデータはnullのまま
+
+    expect(dataLoader.isDataLoaded()).toBe(false);
+  });
+});
+
 describe('app.jsのinitializeApp()関数との連携テスト', () => {
   beforeEach(() => {
     // DOM要素をモック
