@@ -8,7 +8,7 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('運賃計算・表示機能', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:8080');
+    await page.goto('http://localhost:8788');
     
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {

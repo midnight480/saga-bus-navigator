@@ -7,7 +7,7 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('時刻表検索 - 重複チェック', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:8080');
+    await page.goto('http://localhost:8788');
     // データ読み込み完了を待つ
     await page.waitForTimeout(3000);
   });
@@ -295,7 +295,7 @@ test.describe('時刻表検索 - 重複チェック', () => {
     });
 
     // ページを読み込む
-    await page.goto('http://localhost:8080');
+    await page.goto('http://localhost:8788');
     
     // データ読み込み完了を待つ
     await page.waitForTimeout(3000);

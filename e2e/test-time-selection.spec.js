@@ -6,7 +6,7 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('時刻選択UI', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:8080');
+    await page.goto('http://localhost:8788');
     // データ読み込み完了を待つ
     await page.waitForTimeout(2000);
   });

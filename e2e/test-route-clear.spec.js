@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 test.describe('地図経路クリア機能', () => {
   test('初期状態では経路クリアボタンが非表示', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -20,7 +20,7 @@ test.describe('地図経路クリア機能', () => {
 
   test('経路を表示すると経路クリアボタンが表示される', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -78,7 +78,7 @@ test.describe('地図経路クリア機能', () => {
 
   test('経路クリアボタンをクリックすると経路がクリアされる', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -146,7 +146,7 @@ test.describe('地図経路クリア機能', () => {
 
   test('経路クリアボタンをクリックするとボタンが非表示になる', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -207,7 +207,7 @@ test.describe('地図経路クリア機能', () => {
 
   test('経路クリア後に地図は表示されたまま', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -274,7 +274,7 @@ test.describe('地図経路クリア機能', () => {
 
   test('複数の経路を表示してクリアを繰り返しても正常に動作する', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -361,7 +361,7 @@ test.describe('地図経路クリア機能', () => {
 test.describe('地図経路クリアフロー統合テスト', () => {
   test('地図で表示 → 経路表示 → クリアボタン表示 → クリア → 非表示の完全フロー', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {

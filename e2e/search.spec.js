@@ -7,7 +7,7 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('時刻表検索機能 - 統合テスト', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:8080');
+    await page.goto('http://localhost:8788');
     
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -490,7 +490,7 @@ test.describe('時刻表検索機能 - 統合テスト', () => {
       // ビューポートをiPhone SE相当に設定
       await page.setViewportSize({ width: 375, height: 667 });
       
-      await page.goto('http://localhost:8080');
+      await page.goto('http://localhost:8788');
       
       // データ読み込み完了を待つ
       await page.waitForFunction(() => {
@@ -521,7 +521,7 @@ test.describe('時刻表検索機能 - 統合テスト', () => {
       // ビューポートをiPad相当に設定
       await page.setViewportSize({ width: 768, height: 1024 });
       
-      await page.goto('http://localhost:8080');
+      await page.goto('http://localhost:8788');
       
       // データ読み込み完了を待つ
       await page.waitForFunction(() => {
@@ -543,7 +543,7 @@ test.describe('時刻表検索機能 - 統合テスト', () => {
       // ビューポートをフルHDに設定
       await page.setViewportSize({ width: 1920, height: 1080 });
       
-      await page.goto('http://localhost:8080');
+      await page.goto('http://localhost:8788');
       
       // データ読み込み完了を待つ
       await page.waitForFunction(() => {
@@ -572,7 +572,7 @@ test.describe('時刻表検索機能 - 統合テスト', () => {
         console.log(`${viewport.name}でテスト中...`);
         
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
-        await page.goto('http://localhost:8080');
+        await page.goto('http://localhost:8788');
         
         // データ読み込み完了を待つ
         await page.waitForFunction(() => {

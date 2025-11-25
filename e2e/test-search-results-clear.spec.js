@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 test.describe('検索結果クリア機能', () => {
   test('初期状態では検索結果クリアボタンが非表示', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -20,7 +20,7 @@ test.describe('検索結果クリア機能', () => {
 
   test('検索結果が表示されるとクリアボタンが表示される', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -75,7 +75,7 @@ test.describe('検索結果クリア機能', () => {
 
   test('クリアボタンをクリックすると検索結果がクリアされる', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -136,7 +136,7 @@ test.describe('検索結果クリア機能', () => {
 
   test('クリアボタンをクリックすると検索フォームがリセットされる', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -196,7 +196,7 @@ test.describe('検索結果クリア機能', () => {
 
   test('クリアボタンをクリックするとクリアボタン自体が非表示になる', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -252,7 +252,7 @@ test.describe('検索結果クリア機能', () => {
 
   test('クリアボタンをクリックすると検索ボタンが無効化される', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -308,7 +308,7 @@ test.describe('検索結果クリア機能', () => {
 
   test('検索結果が0件の場合はクリアボタンが表示されない', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -343,7 +343,7 @@ test.describe('検索結果クリア機能', () => {
 test.describe('検索結果クリアフロー統合テスト', () => {
   test('検索 → 結果表示 → クリアボタン表示 → クリア → リセットの完全フロー', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -430,7 +430,7 @@ test.describe('検索結果クリアフロー統合テスト', () => {
 
   test('複数回の検索とクリアを繰り返しても正常に動作する', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {

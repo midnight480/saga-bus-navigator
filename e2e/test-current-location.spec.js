@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 test.describe('現在地表示機能', () => {
   test('現在地ボタンが地図上に表示される', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -24,7 +24,7 @@ test.describe('現在地表示機能', () => {
 
   test('現在地ボタンに正しいアイコンが表示される', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -48,7 +48,7 @@ test.describe('現在地表示機能', () => {
     await context.setGeolocation({ latitude: 33.2635, longitude: 130.3005 }); // 佐賀市の座標
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -76,7 +76,7 @@ test.describe('現在地表示機能', () => {
     await context.setGeolocation({ latitude: 33.2635, longitude: 130.3005 });
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -112,7 +112,7 @@ test.describe('現在地表示機能', () => {
     await context.setGeolocation({ latitude: 33.2635, longitude: 130.3005 });
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -147,7 +147,7 @@ test.describe('現在地表示機能', () => {
     await context.grantPermissions([]);
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -183,7 +183,7 @@ test.describe('現在地表示機能', () => {
     await context.grantPermissions([]);
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -211,7 +211,7 @@ test.describe('現在地表示機能', () => {
     await context.setGeolocation({ latitude: 33.2635, longitude: 130.3005 });
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -246,7 +246,7 @@ test.describe('現在地表示機能', () => {
     await context.setGeolocation({ latitude: testLat, longitude: testLng });
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -287,7 +287,7 @@ test.describe('現在地表示フロー統合テスト', () => {
     await context.setGeolocation({ latitude: testLat, longitude: testLng });
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {

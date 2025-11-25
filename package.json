@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "佐賀市内バスナビゲーションアプリ",
   "scripts": {
-    "dev": "http-server . -p 8080",
+    "dev": "wrangler pages dev . --port 8788",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
@@ -28,9 +28,9 @@
     "@playwright/test": "^1.40.0",
     "eslint": "^8.0.0",
     "fast-check": "^4.3.0",
-    "http-server": "^14.0.0",
     "jsdom": "^23.0.0",
     "prettier": "^3.0.0",
-    "vitest": "^1.0.0"
+    "vitest": "^1.0.0",
+    "wrangler": "^4.50.0"
   }
 }

@@ -125,17 +125,33 @@
 git clone https://github.com/yourusername/saga-bus-navigator.git
 cd saga-bus-navigator
 
-# 依存関係をインストール
+# 依存関係をインストール（wranglerを含む）
 npm install
 
 # GTFSデータを配置
 # ./dataディレクトリにsaga-current.zipまたはsaga-YYYY-MM-DD.zip形式のGTFSファイルを配置
 
-# 開発サーバーを起動
+# 開発サーバーを起動（Cloudflare Pages互換環境）
 npm run dev
 ```
 
-ブラウザで `http://localhost:8080` を開きます。
+ブラウザで `http://localhost:8788` を開きます。
+
+### 開発環境について
+
+開発環境では `wrangler pages dev` を使用しています。これにより、本番環境（Cloudflare Pages）とほぼ同じ環境でローカル開発が可能です。
+
+**主な利点:**
+- **Pages Functions の動作確認**: `/functions` ディレクトリ配下のサーバーサイド処理をローカルで実行・テスト可能
+- **本番環境との一致**: Cloudflare Pages と同じルーティング・ミドルウェア動作
+- **Cloudflare 固有機能のテスト**: 環境変数、KV、D1 などの機能をローカルでテスト可能
+- **デプロイ前の動作確認**: 本番環境にデプロイする前に正確な動作確認が可能
+
+**開発サーバーの動作:**
+- ポート番号: `8788`（デフォルト）
+- 静的ファイル配信: ルートディレクトリの HTML、CSS、JavaScript などを配信
+- Pages Functions 実行: `/functions` ディレクトリ配下の TypeScript/JavaScript ファイルを自動検出して実行
+- ホットリロード: ファイル変更時に自動的に再読み込み
 
 ### GTFSデータの取得
 
@@ -159,6 +175,81 @@ npm run dev
 
 複数のGTFSファイルを配置することで、過去データや未来データを保持できます。
 
+## 🔧 Pages Functions の開発
+
+### Pages Functions とは
+
+Pages Functions は Cloudflare Pages でサーバーサイド処理を実行する機能です。`/functions` ディレクトリ配下に TypeScript または JavaScript ファイルを配置することで、API エンドポイントを作成できます。
+
+### ディレクトリ構造
+
+```
+functions/
+├── api/
+│   ├── alert.ts      # /api/alert エンドポイント
+│   ├── route.ts      # /api/route エンドポイント
+│   └── vehicle.ts    # /api/vehicle エンドポイント
+├── package.json      # Functions 用の依存関係
+└── tsconfig.json     # TypeScript 設定
+```
+
+### エンドポイントの作成
+
+ファイルパスが URL パスに対応します：
+
+- `functions/api/alert.ts` → `/api/alert`
+- `functions/api/route.ts` → `/api/route`
+- `functions/api/vehicle.ts` → `/api/vehicle`
+
+### 基本的な実装例
+
+```typescript
+// functions/api/example.ts
+export async function onRequest(context) {
+  return new Response(JSON.stringify({ message: "Hello from Pages Functions!" }), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+```
+
+### ローカルでのテスト
+
+1. 開発サーバーを起動:
+   ```bash
+   npm run dev
+   ```
+
+2. ブラウザまたは curl でエンドポイントにアクセス:
+   ```bash
+   curl http://localhost:8788/api/example
+   ```
+
+3. ファイルを編集すると自動的に再読み込みされます
+
+### 依存関係の管理
+
+Pages Functions 用の依存関係は `functions/package.json` で管理します：
+
+```bash
+cd functions
+npm install <package-name>
+```
+
+### デバッグ
+
+開発サーバーのコンソール出力でエラーやログを確認できます：
+
+```bash
+npm run dev
+# コンソールに Pages Functions のログが表示されます
+```
+
+### 本番環境へのデプロイ
+
+`main` ブランチにマージすると、Cloudflare Pages が自動的に Pages Functions をデプロイします。ローカルで動作確認してからデプロイすることで、本番環境でのエラーを防げます。
+
 ## 🧪 テスト
 
 ### 単体テスト
@@ -173,12 +264,24 @@ npm run test:watch
 
 ### E2Eテスト
 
+E2Eテストは開発サーバー（`http://localhost:8788`）に対して実行されます。
+
 ```bash
 # E2Eテストを実行
 npm run test:e2e
 
 # UIモードで実行
 npm run test:e2e:ui
+```
+
+**注意**: E2Eテストを実行する前に、別のターミナルで開発サーバーを起動しておく必要があります：
+
+```bash
+# ターミナル1: 開発サーバーを起動
+npm run dev
+
+# ターミナル2: E2Eテストを実行
+npm run test:e2e
 ```
 
 ## 📝 開発
@@ -337,6 +440,13 @@ saga-bus-navigator/
 - holidays-jp.github.ioの祝日カレンダーAPI
 
 ## 📅 更新履歴
+
+### v2.4.0 (2025-11-25)
+
+- **開発環境の改善**: `wrangler pages dev` を使用した本番環境互換の開発環境に移行
+- **Pages Functions のローカルテスト**: サーバーサイド処理をローカルで実行・テスト可能に
+- **ポート番号変更**: 開発サーバーのデフォルトポートを 8788 に変更
+- **ドキュメント更新**: Pages Functions の開発方法について詳細な説明を追加
 
 ### v2.3.0 (2025-11-25)
 

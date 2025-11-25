@@ -1,6 +1,5 @@
+name = "saga-bus-navigator"
+pages_build_output_dir = "."
 compatibility_date = "2025-11-16"
-node_compat = true
-
-[functions]
-node_compat = true
+compatibility_flags = ["nodejs_compat"]
 
