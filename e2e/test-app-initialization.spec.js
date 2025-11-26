@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 test.describe('アプリ初期化処理', () => {
   test('初期状態でUIが無効化されている', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // 初期状態でローディングが表示されている
     const loading = page.locator('#loading');
@@ -28,7 +28,7 @@ test.describe('アプリ初期化処理', () => {
 
   test('データ読み込み完了後にUIが有効化される', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ（最大5秒）
     await page.waitForFunction(() => {
@@ -63,7 +63,7 @@ test.describe('アプリ初期化処理', () => {
     const startTime = Date.now();
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -87,7 +87,7 @@ test.describe('アプリ初期化処理', () => {
     });
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -122,7 +122,7 @@ test.describe('データ読み込みエラー処理', () => {
     await page.route('**/data/**/*.zip', route => route.abort());
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // エラーメッセージが表示されるまで待つ（最大10秒）
     const errorMessage = page.locator('#error-message');
@@ -154,7 +154,7 @@ test.describe('データ読み込みエラー処理', () => {
     await page.route('**/data/**/*.zip', route => route.abort());
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // エラーメッセージが表示されるまで待つ（最大10秒）
     const errorMessage = page.locator('#error-message');

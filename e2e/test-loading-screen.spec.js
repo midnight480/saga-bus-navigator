@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 test.describe('ローディング画面の表示機能', () => {
   test('初期表示時にローディング画面が表示される', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // ローディング画面が表示されていることを確認
     const loadingScreen = page.locator('#loading-screen');
@@ -29,7 +29,7 @@ test.describe('ローディング画面の表示機能', () => {
 
   test('ローディング画面にARIA属性が設定されている', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // ローディング画面のARIA属性を確認
     const loadingScreen = page.locator('#loading-screen');
@@ -49,7 +49,7 @@ test.describe('ローディング画面の表示機能', () => {
 
   test('進捗メッセージが表示される', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // ローディング画面が表示されている間、進捗メッセージを監視
     const loadingMessage = page.locator('#loading-screen .loading-message');
@@ -69,7 +69,7 @@ test.describe('エラー時のリトライ機能', () => {
     await page.route('**/data/**/*.zip', route => route.abort());
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // ローディング画面が表示されている
     const loadingScreen = page.locator('#loading-screen');
@@ -102,7 +102,7 @@ test.describe('エラー時のリトライ機能', () => {
     await page.route('**/data/**/*.zip', route => route.abort());
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // エラーメッセージが表示されるまで待つ
     const loadingError = page.locator('#loading-screen .loading-error');
@@ -124,7 +124,7 @@ test.describe('エラー時のリトライ機能', () => {
     await page.route('**/data/**/*.zip', route => route.abort());
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // エラーメッセージが表示されるまで待つ
     const loadingError = page.locator('#loading-screen .loading-error');
@@ -147,7 +147,7 @@ test.describe('タイムアウト処理', () => {
     });
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // ローディング画面が表示されている
     const loadingScreen = page.locator('#loading-screen');
@@ -174,7 +174,7 @@ test.describe('タイムアウト処理', () => {
     });
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // ローディング画面が表示されている
     const loadingScreen = page.locator('#loading-screen');
@@ -198,7 +198,7 @@ test.describe('タイムアウト処理', () => {
 test.describe('フェードアウトアニメーション', () => {
   test('ローディング画面にfade-outクラスが存在する', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // ローディング画面が表示されている
     const loadingScreen = page.locator('#loading-screen');

@@ -5,7 +5,7 @@ test.describe('地図パフォーマンステスト', () => {
     const startTime = Date.now();
 
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -25,7 +25,7 @@ test.describe('地図パフォーマンステスト', () => {
 
   test('地図操作時のフレームレートが60FPS以上を維持する', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -61,7 +61,7 @@ test.describe('地図パフォーマンステスト', () => {
 
   test('メモリ使用量が適切である', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -108,7 +108,7 @@ test.describe('地図パフォーマンステスト', () => {
 
   test('大量のマーカー表示でもパフォーマンスが維持される', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -168,7 +168,7 @@ test.describe('地図パフォーマンステスト', () => {
 
   test('経路表示のパフォーマンスが適切である', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -235,7 +235,7 @@ test.describe('地図パフォーマンステスト', () => {
 
   test('連続した経路表示でメモリリークが発生しない', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {

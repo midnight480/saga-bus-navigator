@@ -79,6 +79,7 @@ class SearchController {
    */
   searchDirectTrips(departureStop, arrivalStop, searchCriteria, weekdayType) {
     const results = [];
+    const seenKeys = new Set(); // 重複チェック用のSet
     
     // 各tripを検索
     Object.keys(this.tripIndex).forEach(tripId => {
@@ -105,6 +106,20 @@ class SearchController {
       if (!this.matchesTimeFilter(departureEntry, arrivalEntry, searchCriteria)) {
         return;
       }
+      
+      // 重複チェック: trip_id + departure_time + arrival_timeの組み合わせで一意性を確保
+      const uniqueKey = `${tripId}_${departureEntry.hour}:${departureEntry.minute}_${arrivalEntry.hour}:${arrivalEntry.minute}`;
+      if (seenKeys.has(uniqueKey)) {
+        console.warn('SearchController: 重複データを検出しました', {
+          tripId: tripId,
+          departureStop: departureStop,
+          arrivalStop: arrivalStop,
+          departureTime: `${departureEntry.hour}:${departureEntry.minute}`,
+          arrivalTime: `${arrivalEntry.hour}:${arrivalEntry.minute}`
+        });
+        return;
+      }
+      seenKeys.add(uniqueKey);
       
       // 所要時間を計算
       const duration = this.calculateTravelTime(
@@ -143,7 +158,8 @@ class SearchController {
         adultFare: fare.adultFare,
         childFare: fare.childFare,
         weekdayType: weekdayType,
-        viaStops: viaStops
+        viaStops: viaStops,
+        tripHeadsign: departureEntry.tripHeadsign || '' // 行き先を追加（要件3.2）
       });
     });
     
@@ -409,6 +425,12 @@ class UIController {
     this.calendarExporter = null;
     this.calendarModal = null;
     this.currentScheduleForCalendar = null;
+    
+    // 方向選択関連（要件4.3）
+    this.directionSelector = null;
+    this.directionButtons = null;
+    this.selectedDirection = 'both'; // デフォルトは両方向
+    this.currentDisplayedRouteId = null; // 現在表示中の路線ID
   }
 
   /**
@@ -443,6 +465,14 @@ class UIController {
     // カレンダーエクスポーターの初期化
     this.calendarExporter = new CalendarExporter();
     
+    // 方向選択UIのDOM要素
+    this.directionSelector = document.getElementById('direction-selector');
+    this.directionButtons = {
+      both: document.getElementById('direction-both'),
+      outbound: document.getElementById('direction-outbound'),
+      inbound: document.getElementById('direction-inbound')
+    };
+    
     // イベントリスナーの設定
     this.setupAutocomplete();
     this.setupClickOutside();
@@ -452,6 +482,7 @@ class UIController {
     this.setupMapSelectionButtons();
     this.setupClearSearchResultsButton();
     this.setupCalendarModal();
+    this.setupDirectionSelector();
   }
 
   /**
@@ -1314,10 +1345,26 @@ class UIController {
     route.appendChild(routeLabel);
     route.appendChild(routeValue);
     
+    // 行き先（trip_headsign）を表示（要件3.2）
+    const headsign = document.createElement('div');
+    headsign.className = 'result-headsign';
+    
+    const headsignLabel = document.createElement('span');
+    headsignLabel.className = 'result-detail-label';
+    headsignLabel.textContent = '行き先: ';
+    
+    const headsignValue = document.createElement('span');
+    headsignValue.className = 'result-detail-value';
+    headsignValue.textContent = result.tripHeadsign || '情報なし';
+    
+    headsign.appendChild(headsignLabel);
+    headsign.appendChild(headsignValue);
+    
     detailsContainer.appendChild(duration);
     detailsContainer.appendChild(fare);
     detailsContainer.appendChild(operator);
     detailsContainer.appendChild(route);
+    detailsContainer.appendChild(headsign);
     
     // 経由バス停（ある場合のみ表示）
     if (result.viaStops && result.viaStops.length > 0) {
@@ -1410,6 +1457,10 @@ class UIController {
     
     // MapControllerに経路表示を依頼
     window.mapController.displayRoute(routeData);
+    
+    // 方向選択UIを表示し、現在の路線IDを保存（要件4.3）
+    // 注: 検索結果からの表示では特定の経路のみなので、方向選択UIは表示しない
+    // 路線全体を表示する場合のみ方向選択UIを表示する
     
     // 地図エリアにスクロール
     const mapContainer = document.getElementById('map-container');
@@ -1639,6 +1690,83 @@ class UIController {
     
     // エラーメッセージをクリア
     this.clearError();
+  }
+
+  /**
+   * 方向選択UIのセットアップ（要件4.3）
+   */
+  setupDirectionSelector() {
+    // 各方向ボタンのイベントリスナー
+    Object.keys(this.directionButtons).forEach(key => {
+      const button = this.directionButtons[key];
+      if (button) {
+        button.addEventListener('click', () => {
+          const direction = button.getAttribute('data-direction');
+          this.handleDirectionChange(direction);
+        });
+      }
+    });
+  }
+  
+  /**
+   * 方向選択変更ハンドラー（要件4.3, 4.4）
+   * @param {string} direction - 選択された方向（'both', '0', '1'）
+   */
+  handleDirectionChange(direction) {
+    console.log('[UIController] 方向が変更されました:', direction);
+    
+    // 選択状態を更新
+    this.selectedDirection = direction;
+    
+    // ボタンのアクティブ状態を更新
+    Object.keys(this.directionButtons).forEach(key => {
+      const button = this.directionButtons[key];
+      if (button) {
+        if (button.getAttribute('data-direction') === direction) {
+          button.classList.add('active');
+        } else {
+          button.classList.remove('active');
+        }
+      }
+    });
+    
+    // 現在表示中の路線がある場合は再表示
+    if (this.currentDisplayedRouteId && window.mapController) {
+      const directionParam = direction === 'both' ? null : direction;
+      window.mapController.displayRouteStops(this.currentDisplayedRouteId, directionParam);
+    }
+  }
+  
+  /**
+   * 方向選択UIを表示
+   */
+  showDirectionSelector() {
+    if (this.directionSelector) {
+      this.directionSelector.removeAttribute('hidden');
+    }
+  }
+  
+  /**
+   * 方向選択UIを非表示
+   */
+  hideDirectionSelector() {
+    if (this.directionSelector) {
+      this.directionSelector.setAttribute('hidden', '');
+    }
+  }
+  
+  /**
+   * 路線が表示された時の処理（要件4.3）
+   * @param {string} routeId - 表示された路線ID
+   */
+  handleRouteDisplayed(routeId) {
+    console.log('[UIController] 路線が表示されました:', routeId);
+    
+    // 現在表示中の路線IDを保存
+    this.currentDisplayedRouteId = routeId;
+    
+    // 方向選択UIを表示
+    this.showDirectionSelector();
   }
 
   /**
@@ -1973,6 +2101,11 @@ async function initializeApp() {
     // MapControllerのコールバックを設定（地図からバス停選択時）
     window.mapController.setOnStopSelectedCallback((type, stopName) => {
       window.uiController.handleMapStopSelection(type, stopName);
+    });
+    
+    // MapControllerのコールバックを設定（路線表示時）
+    window.mapController.setOnRouteDisplayedCallback((routeId) => {
+      window.uiController.handleRouteDisplayed(routeId);
     });
     
     const mapLoadTime = performance.now() - mapStartTime;

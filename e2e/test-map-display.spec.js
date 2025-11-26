@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 test.describe('地図表示機能', () => {
   test('初期状態で地図が表示される', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -22,7 +22,7 @@ test.describe('地図表示機能', () => {
 
   test('地図上にバス停マーカーが表示される', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -43,7 +43,7 @@ test.describe('地図表示機能', () => {
 
   test('バス停マーカーをクリックするとポップアップが表示される', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -69,7 +69,7 @@ test.describe('地図表示機能', () => {
 
   test('地図の操作（ズーム、パン）が正常に動作する', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -112,7 +112,7 @@ test.describe('地図表示機能', () => {
 test.describe('バス停選択フロー', () => {
   test('地図から乗車バス停を選択できる', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -150,7 +150,7 @@ test.describe('バス停選択フロー', () => {
 
   test('地図から降車バス停を選択できる', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -188,7 +188,7 @@ test.describe('バス停選択フロー', () => {
 
   test('地図から乗車・降車バス停を選択して検索できる', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -242,7 +242,7 @@ test.describe('バス停選択フロー', () => {
 
   test('選択を中止ボタンで選択モードを終了できる', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -268,7 +268,7 @@ test.describe('バス停選択フロー', () => {
 test.describe('経路表示フロー', () => {
   test('検索結果から「地図で表示」ボタンをクリックして経路を表示できる', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -334,7 +334,7 @@ test.describe('経路表示フロー', () => {
 
   test('「経路をクリア」ボタンで経路表示をクリアできる', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {
@@ -398,7 +398,7 @@ test.describe('経路表示フロー', () => {
 
   test('複数の経路を表示すると前の経路がクリアされる', async ({ page }) => {
     // ページを開く
-    await page.goto('http://localhost:8080/');
+    await page.goto('http://localhost:8788/');
 
     // データ読み込み完了を待つ
     await page.waitForFunction(() => {

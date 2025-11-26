@@ -16,9 +16,10 @@
 
 - 🔍 **バス停検索**: インクリメンタルサーチで素早くバス停を選択
 - ⏰ **時刻検索**: 出発時刻指定、到着時刻指定、今すぐ、始発、終電から選択
-- 📊 **検索結果表示**: 出発時刻、到着時刻、所要時間、運賃を一覧表示
+- 🔄 **双方向検索**: 往路・復路の両方向のバスを検索可能（佐賀駅を降車バス停とした検索にも対応）
+- 📊 **検索結果表示**: 出発時刻、到着時刻、所要時間、運賃、行き先を一覧表示
 - 💰 **運賃表示**: 大人・子供料金を表示
-- 🗺️ **地図表示**: OpenStreetMapでバス停位置と経路を表示
+- 🗺️ **地図表示**: OpenStreetMapでバス停位置と経路を表示（往路・復路を視覚的に区別）
 - 📍 **現在地表示**: ワンタップで現在地を地図上に表示
 - 🚍 **リアルタイム車両追跡**: 運行中のバスの位置をリアルタイムで地図上に表示
 - 📋 **便の時刻表表示**: 車両マーカーをクリックすると、その便の全停車バス停と到着時刻を時刻表形式で表示
@@ -32,6 +33,39 @@
 本番環境: https://saga-bus.midnight480.com
 
 ## 📖 使い方
+
+### 双方向検索機能
+
+佐賀バスナビゲーターは、往路（例：佐賀駅から目的地へ）と復路（例：目的地から佐賀駅へ）の両方向のバスを検索できます。
+
+#### 機能の特徴
+
+- **自動方向判定**: 乗車バス停と降車バス停を指定すると、システムが自動的に正しい方向のバスを検索
+- **行き先表示**: 検索結果に各バスの行き先（trip_headsign）を表示
+- **地図上の視覚的区別**: 往路と復路のバス停を地図上で色分けして表示
+- **方向選択**: 地図上で特定の方向のバス停のみをハイライト表示可能
+
+#### 使用例
+
+**往路の検索（佐賀駅から目的地へ）**
+1. 乗車バス停: 「佐賀駅バスセンター」を選択
+2. 降車バス停: 「県庁前」を選択
+3. 検索実行 → 佐賀駅から県庁前へ向かうバスが表示されます
+
+**復路の検索（目的地から佐賀駅へ）**
+1. 乗車バス停: 「県庁前」を選択
+2. 降車バス停: 「佐賀駅バスセンター」を選択
+3. 検索実行 → 県庁前から佐賀駅へ向かうバスが表示されます
+
+#### 技術的な仕組み
+
+システムは以下の情報を使用して方向を判定します：
+
+1. **direction_id**: GTFSデータの方向フィールド（0=往路、1=復路）
+2. **trip_headsign**: 便の行き先情報
+3. **stop_sequence**: バス停の停車順序
+
+これらの情報を組み合わせて、乗車バス停から降車バス停への経路が存在するバスのみを検索結果に表示します。
 
 ### 便の時刻表表示機能
 
@@ -91,17 +125,33 @@
 git clone https://github.com/yourusername/saga-bus-navigator.git
 cd saga-bus-navigator
 
-# 依存関係をインストール
+# 依存関係をインストール（wranglerを含む）
 npm install
 
 # GTFSデータを配置
 # ./dataディレクトリにsaga-current.zipまたはsaga-YYYY-MM-DD.zip形式のGTFSファイルを配置
 
-# 開発サーバーを起動
+# 開発サーバーを起動（Cloudflare Pages互換環境）
 npm run dev
 ```
 
-ブラウザで `http://localhost:8080` を開きます。
+ブラウザで `http://localhost:8788` を開きます。
+
+### 開発環境について
+
+開発環境では `wrangler pages dev` を使用しています。これにより、本番環境（Cloudflare Pages）とほぼ同じ環境でローカル開発が可能です。
+
+**主な利点:**
+- **Pages Functions の動作確認**: `/functions` ディレクトリ配下のサーバーサイド処理をローカルで実行・テスト可能
+- **本番環境との一致**: Cloudflare Pages と同じルーティング・ミドルウェア動作
+- **Cloudflare 固有機能のテスト**: 環境変数、KV、D1 などの機能をローカルでテスト可能
+- **デプロイ前の動作確認**: 本番環境にデプロイする前に正確な動作確認が可能
+
+**開発サーバーの動作:**
+- ポート番号: `8788`（デフォルト）
+- 静的ファイル配信: ルートディレクトリの HTML、CSS、JavaScript などを配信
+- Pages Functions 実行: `/functions` ディレクトリ配下の TypeScript/JavaScript ファイルを自動検出して実行
+- ホットリロード: ファイル変更時に自動的に再読み込み
 
 ### GTFSデータの取得
 
@@ -125,6 +175,81 @@ npm run dev
 
 複数のGTFSファイルを配置することで、過去データや未来データを保持できます。
 
+## 🔧 Pages Functions の開発
+
+### Pages Functions とは
+
+Pages Functions は Cloudflare Pages でサーバーサイド処理を実行する機能です。`/functions` ディレクトリ配下に TypeScript または JavaScript ファイルを配置することで、API エンドポイントを作成できます。
+
+### ディレクトリ構造
+
+```
+functions/
+├── api/
+│   ├── alert.ts      # /api/alert エンドポイント
+│   ├── route.ts      # /api/route エンドポイント
+│   └── vehicle.ts    # /api/vehicle エンドポイント
+├── package.json      # Functions 用の依存関係
+└── tsconfig.json     # TypeScript 設定
+```
+
+### エンドポイントの作成
+
+ファイルパスが URL パスに対応します：
+
+- `functions/api/alert.ts` → `/api/alert`
+- `functions/api/route.ts` → `/api/route`
+- `functions/api/vehicle.ts` → `/api/vehicle`
+
+### 基本的な実装例
+
+```typescript
+// functions/api/example.ts
+export async function onRequest(context) {
+  return new Response(JSON.stringify({ message: "Hello from Pages Functions!" }), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+```
+
+### ローカルでのテスト
+
+1. 開発サーバーを起動:
+   ```bash
+   npm run dev
+   ```
+
+2. ブラウザまたは curl でエンドポイントにアクセス:
+   ```bash
+   curl http://localhost:8788/api/example
+   ```
+
+3. ファイルを編集すると自動的に再読み込みされます
+
+### 依存関係の管理
+
+Pages Functions 用の依存関係は `functions/package.json` で管理します：
+
+```bash
+cd functions
+npm install <package-name>
+```
+
+### デバッグ
+
+開発サーバーのコンソール出力でエラーやログを確認できます：
+
+```bash
+npm run dev
+# コンソールに Pages Functions のログが表示されます
+```
+
+### 本番環境へのデプロイ
+
+`main` ブランチにマージすると、Cloudflare Pages が自動的に Pages Functions をデプロイします。ローカルで動作確認してからデプロイすることで、本番環境でのエラーを防げます。
+
 ## 🧪 テスト
 
 ### 単体テスト
@@ -139,12 +264,24 @@ npm run test:watch
 
 ### E2Eテスト
 
+E2Eテストは開発サーバー（`http://localhost:8788`）に対して実行されます。
+
 ```bash
 # E2Eテストを実行
 npm run test:e2e
 
 # UIモードで実行
 npm run test:e2e:ui
+```
+
+**注意**: E2Eテストを実行する前に、別のターミナルで開発サーバーを起動しておく必要があります：
+
+```bash
+# ターミナル1: 開発サーバーを起動
+npm run dev
+
+# ターミナル2: E2Eテストを実行
+npm run test:e2e
 ```
 
 ## 📝 開発
@@ -227,6 +364,9 @@ saga-bus-navigator/
 - [時刻表検索 - 要件定義書](.kiro/specs/timetable-search/requirements.md)
 - [時刻表検索 - 設計書](.kiro/specs/timetable-search/design.md)
 - [時刻表検索 - 実装タスク](.kiro/specs/timetable-search/tasks.md)
+- [双方向検索 - 要件定義書](.kiro/specs/bidirectional-route-support/requirements.md)
+- [双方向検索 - 設計書](.kiro/specs/bidirectional-route-support/design.md)
+- [双方向検索 - 実装タスク](.kiro/specs/bidirectional-route-support/tasks.md)
 - [ユーザー操作機能強化 - 要件定義書](.kiro/specs/user-interaction-enhancements/requirements.md)
 - [ユーザー操作機能強化 - 設計書](.kiro/specs/user-interaction-enhancements/design.md)
 - [ユーザー操作機能強化 - 実装タスク](.kiro/specs/user-interaction-enhancements/tasks.md)
@@ -243,6 +383,7 @@ saga-bus-navigator/
 
 ### その他
 
+- [APIドキュメント](docs/API.md)
 - [デプロイ手順](docs/deployment/DEPLOYMENT.md)
 - [プロジェクト構成](docs/FILES_STRUCTURE.md)
 - [セキュリティ](docs/SECURITY.md)
@@ -298,7 +439,115 @@ saga-bus-navigator/
 - NICT（情報通信研究機構）のNTPサービス
 - holidays-jp.github.ioの祝日カレンダーAPI
 
+## 🚀 データ構造最適化
+
+佐賀バスナビゲーターは、効率的なデータ検索とパフォーマンス向上のため、複数のインデックス戦略を実装しています。
+
+### 最適化の概要
+
+GTFSデータを読み込む際に、以下のインデックスを自動生成します：
+
+1. **方向別時刻表インデックス**: 路線と方向の組み合わせで時刻表を高速検索
+2. **Trip-Stopマッピング**: 各便がどの停留所を順番に経由するかを即座に取得
+3. **路線メタデータ**: 路線レベルの方向情報、行き先一覧、便数を簡単に取得
+4. **逆引きインデックス**: 停留所から便、路線から便への効率的な検索
+5. **停留所グループ化**: 親駅による停留所の整理
+
+### 主な機能
+
+#### 方向別時刻表インデックス
+
+路線と方向の組み合わせで時刻表データを高速に検索できます。
+
+```javascript
+// 路線001の往路（direction='0'）の時刻表を取得
+const timetable = dataLoader.timetableByRouteAndDirection['route_001']['0'];
+```
+
+#### Trip-Stopマッピング
+
+各便の全停留所を順序付きで取得できます。
+
+```javascript
+// 便001の全停留所を取得
+const stops = dataLoader.tripStops['trip_001'];
+// [{ stopId, stopName, sequence, arrivalTime }, ...]
+```
+
+#### 路線メタデータ
+
+路線の方向情報、行き先、便数を簡単に取得できます。
+
+```javascript
+// 路線001のメタデータを取得
+const metadata = dataLoader.routeMetadata['route_001'];
+// { directions: ['0', '1'], headsigns: ['佐賀駅', '県庁'], tripCount: { '0': 20, '1': 18 } }
+```
+
+#### 逆引きインデックス
+
+停留所や路線から便を効率的に検索できます。
+
+```javascript
+// 停留所001に停車する全便を取得
+const trips = dataLoader.stopToTrips['stop_001'];
+
+// 路線001の往路の全便を取得
+const routeTrips = dataLoader.routeToTrips['route_001']['0'];
+```
+
+#### 停留所グループ化
+
+親駅単位で停留所をグループ化して表示できます。
+
+```javascript
+// 佐賀駅バスセンターの全乗り場を取得
+const platforms = dataLoader.stopsGrouped['station_001'];
+// [{ id, name, lat, lng }, ...]
+```
+
+### パフォーマンス
+
+- **インデックス生成**: データ読み込み時に1回のみ実行
+- **検索速度**: O(1)またはO(log n)の高速検索
+- **メモリ効率**: 既存データを参照し、重複を最小化
+
+### 技術詳細
+
+詳細な設計と実装については、以下のドキュメントを参照してください：
+
+- [データ構造最適化 - 要件定義書](.kiro/specs/data-structure-optimization/requirements.md)
+- [データ構造最適化 - 設計書](.kiro/specs/data-structure-optimization/design.md)
+- [データ構造最適化 - 実装タスク](.kiro/specs/data-structure-optimization/tasks.md)
+
 ## 📅 更新履歴
+
+### v2.5.0 (2025-11-26)
+
+- **データ構造最適化**: 効率的なインデックス戦略の実装
+- **方向別時刻表インデックス**: 路線と方向の組み合わせで高速検索
+- **Trip-Stopマッピング**: 各便の全停留所を順序付きで取得
+- **路線メタデータ**: 路線レベルの方向情報、行き先一覧、便数を簡単に取得
+- **逆引きインデックス**: 停留所から便、路線から便への効率的な検索
+- **停留所グループ化**: 親駅による停留所の整理
+- **方向判定の改善**: 停留所順序ベースの方向推測とキャッシュ機能
+- **パフォーマンス向上**: インデックスによる検索速度の大幅な改善
+
+### v2.4.0 (2025-11-25)
+
+- **開発環境の改善**: `wrangler pages dev` を使用した本番環境互換の開発環境に移行
+- **Pages Functions のローカルテスト**: サーバーサイド処理をローカルで実行・テスト可能に
+- **ポート番号変更**: 開発サーバーのデフォルトポートを 8788 に変更
+- **ドキュメント更新**: Pages Functions の開発方法について詳細な説明を追加
+
+### v2.3.0 (2025-11-25)
+
+- **双方向検索機能**: 往路・復路の両方向のバスを検索可能に
+- **自動方向判定**: バス停の順序から自動的に正しい方向のバスを検索
+- **行き先表示**: 検索結果に各バスの行き先を表示
+- **地図表示の改善**: 往路・復路のバス停を視覚的に区別して表示
+- **方向選択機能**: 地図上で特定の方向のバス停のみをハイライト表示
+- **後方互換性**: 既存の機能を維持しながら新機能を追加
 
 ### v2.2.0 (2025-11-19)
 

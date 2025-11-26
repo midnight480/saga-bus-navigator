@@ -99,6 +99,14 @@ class DataLoader {
     this.calendar = null;
     this.gtfsStops = null; // 生のstops.txtデータ（stop_idプロパティを持つ）
     
+    // 新規インデックス（要件2.1）
+    this.timetableByRouteAndDirection = null; // 方向別時刻表インデックス
+    this.tripStops = null; // Trip-Stopマッピング（要件3.1）
+    this.routeMetadata = null; // 路線メタデータ（要件4.1）
+    this.stopToTrips = null; // 停留所→trip逆引きインデックス（要件5.1）
+    this.routeToTrips = null; // 路線→trip逆引きインデックス（要件5.3）
+    this.stopsGrouped = null; // 停留所グループ化（要件6.1）
+    
     // タイムアウト設定（ミリ秒）- ZIPファイルサイズを考慮して5秒に延長
     this.timeout = 5000;
     
@@ -201,11 +209,22 @@ class DataLoader {
       this.calendar = gtfsData.calendar;
       this.gtfsStops = gtfsData.stops;
       
+      // 進捗コールバック: インデックス生成
+      if (this.onProgress) {
+        this.onProgress('インデックスを生成しています...');
+      }
+      
+      // インデックスを生成（要件2.1, 7.1）
+      const indexStartTime = Date.now();
+      this.generateIndexes();
+      const indexEndTime = Date.now();
+      
       const overallEndTime = Date.now();
       
       this.logDebug('全データの読み込み完了', {
         totalDuration: `${overallEndTime - overallStartTime}ms`,
         transformDuration: `${transformEndTime - transformStartTime}ms`,
+        indexDuration: `${indexEndTime - indexStartTime}ms`,
         busStopsCount: this.busStops.length,
         timetableCount: this.timetable.length,
         faresCount: this.fares.length,
@@ -893,6 +912,464 @@ class DataLoader {
   }
 
   /**
+   * 全インデックスを生成（要件2.1, 7.1）
+   * loadAllDataOnce()から呼び出される
+   */
+  generateIndexes() {
+    this.logDebug('インデックス生成開始');
+    
+    // 方向別時刻表インデックスを生成（要件2.1）
+    this.timetableByRouteAndDirection = this.generateTimetableByRouteAndDirection();
+    
+    // Trip-Stopマッピングを生成（要件3.1）
+    this.tripStops = this.generateTripStops();
+    
+    // 路線メタデータを生成（要件4.1）
+    this.routeMetadata = this.generateRouteMetadata();
+    
+    // stopToTrips逆引きインデックスを生成（要件5.1）
+    this.stopToTrips = this.generateStopToTrips();
+    
+    // routeToTrips逆引きインデックスを生成（要件5.3）
+    this.routeToTrips = this.generateRouteToTrips();
+    
+    // 停留所グループ化を生成（要件6.1）
+    this.stopsGrouped = this.generateStopsGrouped();
+    
+    this.logDebug('インデックス生成完了');
+  }
+
+  /**
+   * 方向別時刻表インデックスを生成（要件2.1, 2.2, 2.3, 2.4）
+   * @returns {Object} { routeId: { '0': [...], '1': [...], 'unknown': [...] } }
+   */
+  generateTimetableByRouteAndDirection() {
+    if (!this.timetable) {
+      this.logDebug('時刻表データが読み込まれていないため、方向別インデックスを生成できません');
+      return {};
+    }
+    
+    this.logDebug('方向別時刻表インデックス生成開始', { timetableCount: this.timetable.length });
+    const startTime = Date.now();
+    
+    const index = {};
+    
+    // 各時刻表エントリを路線IDと方向でグループ化
+    this.timetable.forEach(entry => {
+      const routeId = entry.routeNumber;
+      const direction = entry.direction || 'unknown'; // 要件2.4: 方向がない場合は'unknown'
+      
+      // 路線IDのエントリを初期化
+      if (!index[routeId]) {
+        index[routeId] = {};
+      }
+      
+      // 方向のエントリを初期化
+      if (!index[routeId][direction]) {
+        index[routeId][direction] = [];
+      }
+      
+      // 時刻表エントリを追加
+      index[routeId][direction].push(entry);
+    });
+    
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    // 統計情報を収集
+    const stats = {
+      routeCount: Object.keys(index).length,
+      directionCounts: {},
+      totalEntries: 0
+    };
+    
+    Object.keys(index).forEach(routeId => {
+      Object.keys(index[routeId]).forEach(direction => {
+        const count = index[routeId][direction].length;
+        stats.totalEntries += count;
+        
+        if (!stats.directionCounts[direction]) {
+          stats.directionCounts[direction] = 0;
+        }
+        stats.directionCounts[direction] += count;
+      });
+    });
+    
+    this.logDebug('方向別時刻表インデックス生成完了', {
+      duration: `${duration}ms`,
+      routeCount: stats.routeCount,
+      directionCounts: stats.directionCounts,
+      totalEntries: stats.totalEntries
+    });
+    
+    return index;
+  }
+
+  /**
+   * Trip-Stopマッピングを生成（要件3.1, 3.2, 3.3, 3.4）
+   * @returns {Object} { tripId: [{ stopId, stopName, sequence, arrivalTime }] }
+   */
+  generateTripStops() {
+    if (!this.stopTimes || !this.gtfsStops) {
+      this.logDebug('stop_timesまたはstopsデータが読み込まれていないため、Trip-Stopマッピングを生成できません');
+      return {};
+    }
+    
+    this.logDebug('Trip-Stopマッピング生成開始', { stopTimesCount: this.stopTimes.length });
+    const startTime = Date.now();
+    
+    const mapping = {};
+    
+    // stop_idから停留所名を取得するためのインデックスを作成
+    const stopsIndex = {};
+    this.gtfsStops.forEach(stop => {
+      stopsIndex[stop.stop_id] = stop.stop_name;
+    });
+    
+    // 各stop_timeをtripIdでグループ化
+    this.stopTimes.forEach(st => {
+      const tripId = st.trip_id;
+      
+      if (!mapping[tripId]) {
+        mapping[tripId] = [];
+      }
+      
+      const stopName = stopsIndex[st.stop_id] || '';
+      
+      mapping[tripId].push({
+        stopId: st.stop_id,
+        stopName: stopName,
+        sequence: parseInt(st.stop_sequence),
+        arrivalTime: st.arrival_time
+      });
+    });
+    
+    // 各tripの停留所リストをstop_sequenceでソート（要件3.4）
+    Object.keys(mapping).forEach(tripId => {
+      mapping[tripId].sort((a, b) => a.sequence - b.sequence);
+    });
+    
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    // 統計情報を収集
+    const stats = {
+      tripCount: Object.keys(mapping).length,
+      totalStops: 0,
+      avgStopsPerTrip: 0
+    };
+    
+    Object.keys(mapping).forEach(tripId => {
+      stats.totalStops += mapping[tripId].length;
+    });
+    
+    if (stats.tripCount > 0) {
+      stats.avgStopsPerTrip = (stats.totalStops / stats.tripCount).toFixed(2);
+    }
+    
+    this.logDebug('Trip-Stopマッピング生成完了', {
+      duration: `${duration}ms`,
+      tripCount: stats.tripCount,
+      totalStops: stats.totalStops,
+      avgStopsPerTrip: stats.avgStopsPerTrip
+    });
+    
+    return mapping;
+  }
+
+  /**
+   * 路線メタデータを生成（要件4.1, 4.2, 4.3, 4.4）
+   * @returns {Object} { routeId: { directions: [...], headsigns: [...], tripCount: {...} } }
+   */
+  generateRouteMetadata() {
+    if (!this.trips) {
+      this.logDebug('tripsデータが読み込まれていないため、路線メタデータを生成できません');
+      return {};
+    }
+    
+    this.logDebug('路線メタデータ生成開始', { tripsCount: this.trips.length });
+    const startTime = Date.now();
+    
+    const metadata = {};
+    
+    // 各tripを路線IDでグループ化し、メタデータを収集
+    this.trips.forEach(trip => {
+      const routeId = trip.route_id;
+      
+      // 路線IDのエントリを初期化
+      if (!metadata[routeId]) {
+        metadata[routeId] = {
+          directions: new Set(),
+          headsigns: new Set(),
+          tripCount: {}
+        };
+      }
+      
+      // 方向を追加（要件4.2）
+      const direction = trip.direction || 'unknown';
+      metadata[routeId].directions.add(direction);
+      
+      // headsignを追加（要件4.3）
+      if (trip.trip_headsign) {
+        metadata[routeId].headsigns.add(trip.trip_headsign);
+      }
+      
+      // trip数をカウント（要件4.4）
+      if (!metadata[routeId].tripCount[direction]) {
+        metadata[routeId].tripCount[direction] = 0;
+      }
+      metadata[routeId].tripCount[direction]++;
+    });
+    
+    // SetをArrayに変換
+    Object.keys(metadata).forEach(routeId => {
+      metadata[routeId].directions = Array.from(metadata[routeId].directions);
+      metadata[routeId].headsigns = Array.from(metadata[routeId].headsigns);
+    });
+    
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    // 統計情報を収集
+    const stats = {
+      routeCount: Object.keys(metadata).length,
+      totalTrips: this.trips.length,
+      avgTripsPerRoute: 0,
+      bidirectionalRoutes: 0
+    };
+    
+    Object.keys(metadata).forEach(routeId => {
+      // 双方向路線をカウント
+      if (metadata[routeId].directions.length >= 2) {
+        stats.bidirectionalRoutes++;
+      }
+    });
+    
+    if (stats.routeCount > 0) {
+      stats.avgTripsPerRoute = (stats.totalTrips / stats.routeCount).toFixed(2);
+    }
+    
+    this.logDebug('路線メタデータ生成完了', {
+      duration: `${duration}ms`,
+      routeCount: stats.routeCount,
+      totalTrips: stats.totalTrips,
+      avgTripsPerRoute: stats.avgTripsPerRoute,
+      bidirectionalRoutes: stats.bidirectionalRoutes
+    });
+    
+    return metadata;
+  }
+
+  /**
+   * stopToTrips逆引きインデックスを生成（要件5.1, 5.2）
+   * @returns {Object} { stopId: [tripId1, tripId2, ...] }
+   */
+  generateStopToTrips() {
+    if (!this.stopTimes) {
+      this.logDebug('stop_timesデータが読み込まれていないため、stopToTripsインデックスを生成できません');
+      return {};
+    }
+    
+    this.logDebug('stopToTripsインデックス生成開始', { stopTimesCount: this.stopTimes.length });
+    const startTime = Date.now();
+    
+    const index = {};
+    
+    // 各stop_timeを停留所IDでグループ化
+    this.stopTimes.forEach(st => {
+      const stopId = st.stop_id;
+      const tripId = st.trip_id;
+      
+      // 停留所IDのエントリを初期化
+      if (!index[stopId]) {
+        index[stopId] = [];
+      }
+      
+      // tripIdを追加（重複チェック）
+      if (!index[stopId].includes(tripId)) {
+        index[stopId].push(tripId);
+      }
+    });
+    
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    // 統計情報を収集
+    const stats = {
+      stopCount: Object.keys(index).length,
+      totalTrips: 0,
+      avgTripsPerStop: 0,
+      maxTripsPerStop: 0,
+      minTripsPerStop: Infinity
+    };
+    
+    Object.keys(index).forEach(stopId => {
+      const tripCount = index[stopId].length;
+      stats.totalTrips += tripCount;
+      stats.maxTripsPerStop = Math.max(stats.maxTripsPerStop, tripCount);
+      stats.minTripsPerStop = Math.min(stats.minTripsPerStop, tripCount);
+    });
+    
+    if (stats.stopCount > 0) {
+      stats.avgTripsPerStop = (stats.totalTrips / stats.stopCount).toFixed(2);
+    }
+    
+    this.logDebug('stopToTripsインデックス生成完了', {
+      duration: `${duration}ms`,
+      stopCount: stats.stopCount,
+      totalTrips: stats.totalTrips,
+      avgTripsPerStop: stats.avgTripsPerStop,
+      maxTripsPerStop: stats.maxTripsPerStop,
+      minTripsPerStop: stats.minTripsPerStop === Infinity ? 0 : stats.minTripsPerStop
+    });
+    
+    return index;
+  }
+
+  /**
+   * routeToTrips逆引きインデックスを生成（要件5.3, 5.4）
+   * @returns {Object} { routeId: { '0': [tripIds], '1': [tripIds], 'unknown': [tripIds] } }
+   */
+  generateRouteToTrips() {
+    if (!this.trips) {
+      this.logDebug('tripsデータが読み込まれていないため、routeToTripsインデックスを生成できません');
+      return {};
+    }
+    
+    this.logDebug('routeToTripsインデックス生成開始', { tripsCount: this.trips.length });
+    const startTime = Date.now();
+    
+    const index = {};
+    
+    // 各tripを路線IDと方向でグループ化
+    this.trips.forEach(trip => {
+      const routeId = trip.route_id;
+      const direction = trip.direction || 'unknown';
+      const tripId = trip.trip_id;
+      
+      // 路線IDのエントリを初期化
+      if (!index[routeId]) {
+        index[routeId] = {};
+      }
+      
+      // 方向のエントリを初期化
+      if (!index[routeId][direction]) {
+        index[routeId][direction] = [];
+      }
+      
+      // tripIdを追加
+      index[routeId][direction].push(tripId);
+    });
+    
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    // 統計情報を収集
+    const stats = {
+      routeCount: Object.keys(index).length,
+      totalTrips: this.trips.length,
+      directionCounts: {},
+      avgTripsPerRoute: 0
+    };
+    
+    Object.keys(index).forEach(routeId => {
+      Object.keys(index[routeId]).forEach(direction => {
+        const count = index[routeId][direction].length;
+        
+        if (!stats.directionCounts[direction]) {
+          stats.directionCounts[direction] = 0;
+        }
+        stats.directionCounts[direction] += count;
+      });
+    });
+    
+    if (stats.routeCount > 0) {
+      stats.avgTripsPerRoute = (stats.totalTrips / stats.routeCount).toFixed(2);
+    }
+    
+    this.logDebug('routeToTripsインデックス生成完了', {
+      duration: `${duration}ms`,
+      routeCount: stats.routeCount,
+      totalTrips: stats.totalTrips,
+      directionCounts: stats.directionCounts,
+      avgTripsPerRoute: stats.avgTripsPerRoute
+    });
+    
+    return index;
+  }
+
+  /**
+   * 停留所グループ化を生成（要件6.1, 6.2, 6.3, 6.4）
+   * @returns {Object} { parentStation: [{ id, name, lat, lng }] }
+   */
+  generateStopsGrouped() {
+    if (!this.busStops) {
+      this.logDebug('バス停データが読み込まれていないため、停留所グループ化を生成できません');
+      return {};
+    }
+    
+    this.logDebug('停留所グループ化生成開始', { busStopsCount: this.busStops.length });
+    const startTime = Date.now();
+    
+    const grouped = {};
+    
+    // 各バス停をparent_stationでグループ化
+    this.busStops.forEach(stop => {
+      // parent_stationが存在する場合のみグループ化
+      if (stop.parentStation) {
+        const parentStation = stop.parentStation;
+        
+        // 親駅のエントリを初期化
+        if (!grouped[parentStation]) {
+          grouped[parentStation] = [];
+        }
+        
+        // バス停を追加
+        grouped[parentStation].push({
+          id: stop.id,
+          name: stop.name,
+          lat: stop.lat,
+          lng: stop.lng
+        });
+      }
+    });
+    
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    // 統計情報を収集
+    const stats = {
+      parentStationCount: Object.keys(grouped).length,
+      totalStops: 0,
+      avgStopsPerParent: 0,
+      maxStopsPerParent: 0,
+      minStopsPerParent: Infinity
+    };
+    
+    Object.keys(grouped).forEach(parentStation => {
+      const stopCount = grouped[parentStation].length;
+      stats.totalStops += stopCount;
+      stats.maxStopsPerParent = Math.max(stats.maxStopsPerParent, stopCount);
+      stats.minStopsPerParent = Math.min(stats.minStopsPerParent, stopCount);
+    });
+    
+    if (stats.parentStationCount > 0) {
+      stats.avgStopsPerParent = (stats.totalStops / stats.parentStationCount).toFixed(2);
+    }
+    
+    this.logDebug('停留所グループ化生成完了', {
+      duration: `${duration}ms`,
+      parentStationCount: stats.parentStationCount,
+      totalStops: stats.totalStops,
+      avgStopsPerParent: stats.avgStopsPerParent,
+      maxStopsPerParent: stats.maxStopsPerParent,
+      minStopsPerParent: stats.minStopsPerParent === Infinity ? 0 : stats.minStopsPerParent
+    });
+    
+    return grouped;
+  }
+
+  /**
    * データが既に読み込まれているかチェック（要件1.5）
    * @returns {boolean} 全てのデータが読み込まれている場合はtrue
    */
@@ -905,7 +1382,13 @@ class DataLoader {
            this.trips !== null &&
            this.routes !== null &&
            this.calendar !== null &&
-           this.gtfsStops !== null;
+           this.gtfsStops !== null &&
+           this.timetableByRouteAndDirection !== null && // 要件2.1: インデックスもチェック
+           this.tripStops !== null && // 要件3.1: Trip-Stopマッピングもチェック
+           this.routeMetadata !== null && // 要件4.1: 路線メタデータもチェック
+           this.stopToTrips !== null && // 要件5.1: stopToTripsインデックスもチェック
+           this.routeToTrips !== null && // 要件5.3: routeToTripsインデックスもチェック
+           this.stopsGrouped !== null; // 要件6.1: 停留所グループ化もチェック
   }
 
   /**
@@ -940,6 +1423,17 @@ class DataLoader {
     this.timetable = null;
     this.fares = null;
     this.fareRules = null;
+    this.stopTimes = null;
+    this.trips = null;
+    this.routes = null;
+    this.calendar = null;
+    this.gtfsStops = null;
+    this.timetableByRouteAndDirection = null; // 要件2.1: インデックスもクリア
+    this.tripStops = null; // 要件3.1: Trip-Stopマッピングもクリア
+    this.routeMetadata = null; // 要件4.1: 路線メタデータもクリア
+    this.stopToTrips = null; // 要件5.1: stopToTripsインデックスもクリア
+    this.routeToTrips = null; // 要件5.3: routeToTripsインデックスもクリア
+    this.stopsGrouped = null; // 要件6.1: 停留所グループ化もクリア
   }
 }
 
@@ -971,7 +1465,8 @@ class DataTransformer {
         id: row.stop_id,
         name: row.stop_name,
         lat: parseFloat(row.stop_lat),
-        lng: parseFloat(row.stop_lon)
+        lng: parseFloat(row.stop_lon),
+        parentStation: row.parent_station || null // 要件6.1: parent_stationフィールドを保持
       }));
     
     const endTime = Date.now();
@@ -1043,6 +1538,15 @@ class DataTransformer {
       // 曜日区分を判定
       const weekdayType = this.determineWeekdayType(calendar);
 
+      // 要件1.4: DirectionDetectorを使用して方向を判定
+      let direction = 'unknown';
+      if (trip && route) {
+        // DirectionDetectorが利用可能な場合のみ方向を判定
+        if (typeof DirectionDetector !== 'undefined') {
+          direction = DirectionDetector.detectDirection(trip, route.route_id, tripsData);
+        }
+      }
+
       processedRecords++;
       
       // 要件7.3: データ変換の進捗状況をログ出力
@@ -1064,7 +1568,8 @@ class DataTransformer {
         minute: minute,
         weekdayType: weekdayType,
         routeName: route ? route.route_long_name : '',
-        operator: agency ? agency.agency_name : ''
+        operator: agency ? agency.agency_name : '',
+        direction: direction // 要件1.4: 方向情報を追加
       };
     });
     

@@ -6,7 +6,7 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('バス停検索UI', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:8080');
+    await page.goto('http://localhost:8788');
     
     // データの読み込みを待つ
     await page.waitForFunction(() => {

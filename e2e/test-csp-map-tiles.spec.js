@@ -46,7 +46,7 @@ test.describe('CSP設定と地図タイル表示の確認', () => {
       }
     });
 
-    await page.goto('http://localhost:8080');
+    await page.goto('http://localhost:8788');
   });
 
   test('サブタスク2.1: OpenStreetMapタイルが正常に読み込まれること', async ({ page }) => {

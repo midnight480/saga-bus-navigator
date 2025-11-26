@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
 test.describe('CalendarExporter', () => {
   test.beforeEach(async ({ page }) => {
     // テストページに移動
-    await page.goto('http://localhost:8080');
+    await page.goto('http://localhost:8788');
     
     // データ読み込み完了を待つ
     await page.waitForSelector('#search-button:not([disabled])', { timeout: 10000 });
@@ -267,7 +267,7 @@ test.describe('CalendarExporter', () => {
 
 test.describe('カレンダー登録フロー統合テスト', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:8080');
+    await page.goto('http://localhost:8788');
     await page.waitForSelector('#search-button:not([disabled])', { timeout: 10000 });
   });
 

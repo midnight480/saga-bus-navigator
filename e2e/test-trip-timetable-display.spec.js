@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
 test.describe('便の時刻表表示機能', () => {
   test.beforeEach(async ({ page }) => {
     // アプリケーションを起動
-    await page.goto('http://localhost:8080');
+    await page.goto('http://localhost:8788');
     
     // データが読み込まれるまで待機
     await page.waitForTimeout(2000);

@@ -101,7 +101,7 @@ class TimetableController {
    * @param {string} stopId - バス停ID
    * @param {string} routeId - 路線ID
    * @param {string} serviceDayType - 運行日種別（'平日' or '土日祝'）
-   * @returns {Array<Object>} 時刻表データの配列
+   * @returns {Array<Object>} 時刻表データの配列（方向情報を含む）
    */
   getTimetable(stopId, routeId, serviceDayType) {
     // 入力値の検証
@@ -149,7 +149,9 @@ class TimetableController {
 
     // 時刻表データを構築
     const timetable = [];
+    const seenKeys = new Set(); // 重複チェック用のSet
     let filteredCount = 0;
+    let dataErrors = 0; // データ不整合カウント
     
     stopTimesAtStop.forEach(stopTime => {
       const trip = this.tripsIndex[stopTime.trip_id];
@@ -167,8 +169,50 @@ class TimetableController {
         return;
       }
 
+      // エラーケース3: stop_sequenceのデータ不整合チェック（要件2.4）
+      const stopSequence = parseInt(stopTime.stop_sequence);
+      if (isNaN(stopSequence) || stopSequence < 0) {
+        console.warn('TimetableController: 不正なstop_sequenceを検出しました', {
+          tripId: stopTime.trip_id,
+          stopId: stopTime.stop_id,
+          stopSequence: stopTime.stop_sequence,
+          routeId: routeId
+        });
+        dataErrors++;
+        return; // このstop_timeをスキップ
+      }
+
       // departure_timeをパース（HH:MM:SS形式）
-      const [hour, minute, second] = stopTime.departure_time.split(':').map(Number);
+      const timeMatch = stopTime.departure_time.match(/^(\d+):(\d+):(\d+)$/);
+      if (!timeMatch) {
+        console.warn('TimetableController: 不正なdeparture_time形式を検出しました', {
+          tripId: stopTime.trip_id,
+          stopId: stopTime.stop_id,
+          departureTime: stopTime.departure_time,
+          routeId: routeId
+        });
+        dataErrors++;
+        return; // このstop_timeをスキップ
+      }
+      
+      const [hour, minute, second] = timeMatch.slice(1).map(Number);
+      
+      // 重複チェック: trip_id + departure_timeの組み合わせで一意性を確保
+      const uniqueKey = `${stopTime.trip_id}_${stopTime.departure_time}`;
+      if (seenKeys.has(uniqueKey)) {
+        console.warn('TimetableController: 重複データを検出しました', {
+          tripId: stopTime.trip_id,
+          departureTime: stopTime.departure_time,
+          stopId: stopId,
+          routeId: routeId
+        });
+        dataErrors++;
+        return;
+      }
+      seenKeys.add(uniqueKey);
+      
+      // 方向情報を判定（要件1.4）
+      const direction = DirectionDetector.detectDirection(trip, routeId, this.trips);
       
       timetable.push({
         stopId: stopId,
@@ -181,7 +225,8 @@ class TimetableController {
         departureHour: hour,
         departureMinute: minute,
         serviceDayType: serviceDayType,
-        stopSequence: parseInt(stopTime.stop_sequence)
+        stopSequence: stopSequence,
+        direction: direction // 方向情報を追加
       });
     });
 
@@ -189,8 +234,215 @@ class TimetableController {
       serviceDayType,
       totalStopTimes: stopTimesAtStop.length,
       filteredByServiceType: filteredCount,
+      dataErrors: dataErrors,
       resultCount: timetable.length
     });
+
+    // エラーケース3: データ不整合が多い場合は警告（要件2.4）
+    if (dataErrors > 0) {
+      console.warn('TimetableController: データ不整合が検出されました', {
+        stopId: stopId,
+        routeId: routeId,
+        serviceDayType: serviceDayType,
+        errorCount: dataErrors,
+        message: 'データに不整合があるため、一部の便が表示されていない可能性があります。'
+      });
+    }
+
+    // 発車時刻順にソート
+    timetable.sort((a, b) => {
+      if (a.departureHour !== b.departureHour) {
+        return a.departureHour - b.departureHour;
+      }
+      return a.departureMinute - b.departureMinute;
+    });
+
+    return timetable;
+  }
+
+  /**
+   * 2つのバス停間の時刻表を取得（新規メソッド）
+   * @param {string} fromStopId - 乗車バス停ID
+   * @param {string} toStopId - 降車バス停ID
+   * @param {string} routeId - 路線ID
+   * @param {string} serviceDayType - 運行日種別（'平日' or '土日祝'）
+   * @returns {Array<Object>} 時刻表データの配列
+   */
+  getTimetableBetweenStops(fromStopId, toStopId, routeId, serviceDayType) {
+    // 入力値の検証
+    if (!fromStopId || !toStopId || !routeId || !serviceDayType) {
+      console.warn('TimetableController: 必須パラメータが不足しています', {
+        fromStopId,
+        toStopId,
+        routeId,
+        serviceDayType
+      });
+      return [];
+    }
+
+    // バス停が存在するか確認
+    const fromStop = this.stopsIndex[fromStopId];
+    const toStop = this.stopsIndex[toStopId];
+    
+    if (!fromStop) {
+      console.warn('TimetableController: 存在しない乗車バス停が指定されました', { fromStopId });
+      return [];
+    }
+    
+    if (!toStop) {
+      console.warn('TimetableController: 存在しない降車バス停が指定されました', { toStopId });
+      return [];
+    }
+
+    // 路線が存在するか確認
+    const route = this.routesIndex[routeId];
+    if (!route) {
+      console.warn('TimetableController: 存在しない路線が指定されました', { routeId });
+      return [];
+    }
+
+    // DirectionDetectorを使用してバス停間の経路が存在するtripを検索（要件2.1, 2.2）
+    const validTripIds = DirectionDetector.findTripsForRoute(
+      fromStopId,
+      toStopId,
+      this.stopTimes,
+      this.tripsIndex
+    );
+
+    // エラーケース1: バス停間に経路が存在しない場合（要件2.4）
+    if (validTripIds.length === 0) {
+      console.error('TimetableController: バス停間の経路が見つかりません', {
+        fromStopId: fromStopId,
+        fromStopName: fromStop.stop_name,
+        toStopId: toStopId,
+        toStopName: toStop.stop_name,
+        routeId: routeId,
+        routeName: route.route_long_name || route.route_short_name,
+        serviceDayType: serviceDayType,
+        message: '該当する便が見つかりません。別の路線または時間帯をお試しください。'
+      });
+      return [];
+    }
+
+    // 該当するtripの時刻表データを構築
+    const timetable = [];
+    const seenKeys = new Set(); // 重複チェック用のSet
+    let dataErrors = 0; // データ不整合カウント
+
+    validTripIds.forEach(tripId => {
+      const trip = this.tripsIndex[tripId];
+      if (!trip) {
+        return;
+      }
+
+      // 路線IDでフィルタ
+      if (trip.route_id !== routeId) {
+        return;
+      }
+
+      // service_idから運行日種別を判定
+      const calendar = this.calendarIndex[trip.service_id];
+      const weekdayType = this.determineWeekdayType(calendar);
+      
+      // 指定された運行日種別でフィルタ
+      if (weekdayType !== serviceDayType) {
+        return;
+      }
+
+      // 乗車バス停のstop_timeを取得
+      const fromStopTime = this.stopTimes.find(st => 
+        st.trip_id === tripId && st.stop_id === fromStopId
+      );
+
+      if (!fromStopTime) {
+        return;
+      }
+
+      // エラーケース3: stop_sequenceのデータ不整合チェック（要件2.4）
+      const stopSequence = parseInt(fromStopTime.stop_sequence);
+      if (isNaN(stopSequence) || stopSequence < 0) {
+        console.warn('TimetableController: 不正なstop_sequenceを検出しました', {
+          tripId: tripId,
+          stopId: fromStopId,
+          stopSequence: fromStopTime.stop_sequence,
+          routeId: routeId
+        });
+        dataErrors++;
+        return; // このstop_timeをスキップ
+      }
+
+      // departure_timeをパース（HH:MM:SS形式）
+      const timeMatch = fromStopTime.departure_time.match(/^(\d+):(\d+):(\d+)$/);
+      if (!timeMatch) {
+        console.warn('TimetableController: 不正なdeparture_time形式を検出しました', {
+          tripId: tripId,
+          stopId: fromStopId,
+          departureTime: fromStopTime.departure_time,
+          routeId: routeId
+        });
+        dataErrors++;
+        return; // このstop_timeをスキップ
+      }
+      
+      const [hour, minute, second] = timeMatch.slice(1).map(Number);
+      
+      // 重複チェック: trip_id + departure_timeの組み合わせで一意性を確保
+      const uniqueKey = `${tripId}_${fromStopTime.departure_time}`;
+      if (seenKeys.has(uniqueKey)) {
+        console.warn('TimetableController: 重複データを検出しました', {
+          tripId: tripId,
+          departureTime: fromStopTime.departure_time,
+          fromStopId: fromStopId,
+          toStopId: toStopId,
+          routeId: routeId
+        });
+        dataErrors++;
+        return;
+      }
+      seenKeys.add(uniqueKey);
+      
+      // 方向情報を判定
+      const direction = DirectionDetector.detectDirection(trip, routeId, this.trips);
+      
+      timetable.push({
+        stopId: fromStopId,
+        stopName: fromStop.stop_name,
+        routeId: routeId,
+        routeName: route.route_long_name || route.route_short_name || routeId,
+        tripId: tripId,
+        tripHeadsign: trip.trip_headsign || '', // 要件3.2: 行き先を表示
+        departureTime: this.formatTime(hour, minute),
+        departureHour: hour,
+        departureMinute: minute,
+        serviceDayType: serviceDayType,
+        stopSequence: stopSequence,
+        direction: direction,
+        toStopId: toStopId,
+        toStopName: toStop.stop_name
+      });
+    });
+
+    console.log('TimetableController: バス停間時刻表データ構築完了', {
+      fromStopId,
+      toStopId,
+      routeId,
+      serviceDayType,
+      validTripIds: validTripIds.length,
+      dataErrors: dataErrors,
+      resultCount: timetable.length
+    });
+
+    // エラーケース3: データ不整合が多い場合は警告（要件2.4）
+    if (dataErrors > 0) {
+      console.warn('TimetableController: データ不整合が検出されました', {
+        fromStopId: fromStopId,
+        toStopId: toStopId,
+        routeId: routeId,
+        serviceDayType: serviceDayType,
+        errorCount: dataErrors,
+        message: 'データに不整合があるため、一部の便が表示されていない可能性があります。'
+      });
+    }
 
     // 発車時刻順にソート
     timetable.sort((a, b) => {
@@ -206,10 +458,10 @@ class TimetableController {
   /**
    * 路線の経路情報を取得（地図表示用）
    * @param {string} routeId - 路線ID
-   * @param {string} tripId - 便ID（オプション）
+   * @param {string} direction - 方向フィルタ（オプション: '0', '1', null=全方向）
    * @returns {Array<Object>} バス停座標の配列
    */
-  getRouteStops(routeId, tripId = null) {
+  getRouteStops(routeId, direction = null) {
     // 入力値の検証
     if (!routeId) {
       console.warn('TimetableController: routeIdが指定されていません');
@@ -223,22 +475,54 @@ class TimetableController {
       return [];
     }
 
-    // tripIdが指定されている場合は、その便の経路を取得
-    if (tripId) {
-      return this.getRouteStopsForTrip(tripId);
-    }
-
-    // tripIdが指定されていない場合は、路線の代表的な便を選択
-    // 路線に属する最初の便を使用
-    const tripsForRoute = this.trips.filter(trip => trip.route_id === routeId);
+    // 路線に属する全ての便を取得
+    let tripsForRoute = this.trips.filter(trip => trip.route_id === routeId);
     
     if (tripsForRoute.length === 0) {
       console.warn('TimetableController: 路線に属する便が見つかりません', { routeId });
       return [];
     }
 
-    // 最初の便の経路を取得
-    return this.getRouteStopsForTrip(tripsForRoute[0].trip_id);
+    // 方向でフィルタ（要件4.1, 4.2, 4.3）
+    if (direction !== null) {
+      tripsForRoute = tripsForRoute.filter(trip => {
+        const tripDirection = DirectionDetector.detectDirection(trip, routeId, this.trips);
+        return tripDirection === direction;
+      });
+      
+      if (tripsForRoute.length === 0) {
+        console.warn('TimetableController: 指定された方向の便が見つかりません', { 
+          routeId, 
+          direction 
+        });
+        return [];
+      }
+    }
+
+    // 全ての便のバス停を収集（重複を除く）
+    const stopMap = new Map();
+    
+    tripsForRoute.forEach(trip => {
+      const tripStops = this.getRouteStopsForTrip(trip.trip_id);
+      
+      tripStops.forEach(stop => {
+        const key = stop.stopId;
+        
+        // 既に存在する場合は、より詳細な情報を保持
+        if (!stopMap.has(key)) {
+          stopMap.set(key, {
+            ...stop,
+            direction: DirectionDetector.detectDirection(trip, routeId, this.trips)
+          });
+        }
+      });
+    });
+
+    // Mapを配列に変換してstop_sequence順にソート
+    const routeStops = Array.from(stopMap.values());
+    routeStops.sort((a, b) => a.stopSequence - b.stopSequence);
+
+    return routeStops;
   }
 
   /**
@@ -267,14 +551,29 @@ class TimetableController {
 
     // バス停情報を取得
     const routeStops = [];
+    let dataErrors = 0; // データ不整合カウント
     
     stopTimesForTrip.forEach(stopTime => {
       const stop = this.stopsIndex[stopTime.stop_id];
       if (!stop) {
         console.warn('TimetableController: stop_idに対応するstopが見つかりません', { 
-          stopId: stopTime.stop_id 
+          stopId: stopTime.stop_id,
+          tripId: tripId
         });
+        dataErrors++;
         return;
+      }
+
+      // エラーケース3: stop_sequenceのデータ不整合チェック（要件2.4）
+      const stopSequence = parseInt(stopTime.stop_sequence);
+      if (isNaN(stopSequence) || stopSequence < 0) {
+        console.warn('TimetableController: 不正なstop_sequenceを検出しました', {
+          tripId: tripId,
+          stopId: stopTime.stop_id,
+          stopSequence: stopTime.stop_sequence
+        });
+        dataErrors++;
+        return; // このstop_timeをスキップ
       }
 
       // 時刻をパース
@@ -284,17 +583,33 @@ class TimetableController {
         const hour = parseInt(timeMatch[1]);
         const minute = parseInt(timeMatch[2]);
         formattedTime = this.formatTime(hour, minute);
+      } else {
+        console.warn('TimetableController: 不正なdeparture_time形式を検出しました', {
+          tripId: tripId,
+          stopId: stopTime.stop_id,
+          departureTime: stopTime.departure_time
+        });
+        dataErrors++;
       }
 
       routeStops.push({
         stopId: stop.stop_id,
         stopName: stop.stop_name,
-        stopSequence: parseInt(stopTime.stop_sequence),
+        stopSequence: stopSequence,
         lat: parseFloat(stop.stop_lat),
         lng: parseFloat(stop.stop_lon),
         time: formattedTime
       });
     });
+
+    // エラーケース3: データ不整合が多い場合は警告（要件2.4）
+    if (dataErrors > 0) {
+      console.warn('TimetableController: 路線バス停データに不整合が検出されました', {
+        tripId: tripId,
+        errorCount: dataErrors,
+        message: 'データに不整合があるため、一部のバス停が表示されていない可能性があります。'
+      });
+    }
 
     return routeStops;
   }

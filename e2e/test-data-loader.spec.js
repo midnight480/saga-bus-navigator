@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 
 test('データローダーが正しく動作する', async ({ page }) => {
   // テストページを開く
-  await page.goto('http://localhost:8080/tests/test-data-loader.html');
+  await page.goto('http://localhost:8788/tests/test-data-loader.html');
 
   // 読み込みボタンをクリック
   await page.click('#loadBtn');
