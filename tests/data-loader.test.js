@@ -852,6 +852,9 @@ describe('DataLoader.isDataLoaded()', () => {
     dataLoader.routes = [];
     dataLoader.calendar = [];
     dataLoader.gtfsStops = [];
+    dataLoader.timetableByRouteAndDirection = {};
+    dataLoader.tripStops = {};
+    dataLoader.routeMetadata = {};
 
     expect(dataLoader.isDataLoaded()).toBe(true);
   });

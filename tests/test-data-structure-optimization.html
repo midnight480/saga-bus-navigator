@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>データ構造最適化機能テスト</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    
+    h1 {
+      color: #333;
+      border-bottom: 3px solid #4CAF50;
+      padding-bottom: 10px;
+    }
+    
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .test-section h2 {
+      color: #4CAF50;
+      margin-top: 0;
+    }
+    
+    .form-group {
+      margin: 15px 0;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #555;
+    }
+    
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    
+    input[type="checkbox"] {
+      margin-right: 8px;
+    }
+    
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+    
+    button:hover {
+      background-color: #45a049;
+    }
+    
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-left: 4px solid #4CAF50;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .error {
+      border-left-color: #f44336;
+      background-color: #ffebee;
+      color: #c62828;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .stat-card {
+      background: #e8f5e9;
+      padding: 15px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2e7d32;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>データ構造最適化機能テスト</h1>
+  
+  <div class="loading" id="loading">
+    データを読み込んでいます...
+  </div>
+  
+  <div id="content" style="display: none;">
+    <!-- 統計情報 -->
+    <div class="test-section">
+      <h2>データ統計</h2>
+      <div class="stats" id="stats"></div>
+    </div>
+    
+    <!-- 方向別時刻表の検索 -->
+    <div class="test-section">
+      <h2>1. 方向別時刻表の検索（要件2.2）</h2>
+      <div class="form-group">
+        <label for="route-select">路線を選択:</label>
+        <select id="route-select">
+          <option value="">-- 路線を選択してください --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="direction-select">方向を選択:</label>
+        <select id="direction-select" disabled>
+          <option value="">-- まず路線を選択してください --</option>
+        </select>
+      </div>
+      <button id="search-timetable-btn" disabled>時刻表を検索</button>
+      <div id="timetable-result" class="result" style="display: none;"></div>
+    </div>
+    
+    <!-- Trip経路の表示 -->
+    <div class="test-section">
+      <h2>2. Trip経路の表示（要件3.2）</h2>
+      <div class="form-group">
+        <label for="trip-select">Tripを選択:</label>
+        <select id="trip-select">
+          <option value="">-- Tripを選択してください --</option>
+        </select>
+      </div>
+      <button id="search-trip-btn" disabled>経路を表示</button>
+      <div id="trip-result" class="result" style="display: none;"></div>
+    </div>
+    
+    <!-- 停留所グループ化の表示 -->
+    <div class="test-section">
+      <h2>3. 停留所グループ化の表示（要件6.3）</h2>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="group-by-parent" checked>
+          親駅でグループ化する
+        </label>
+      </div>
+      <div class="form-group">
+        <label for="stop-search-input">停留所名で検索:</label>
+        <input type="text" id="stop-search-input" placeholder="例: 佐賀駅">
+      </div>
+      <button id="search-stops-btn">停留所を検索</button>
+      <div id="stops-result" class="result" style="display: none;"></div>
+    </div>
+  </div>
+
+  <!-- スクリプト -->
+  <script src="/js/jszip.min.js"></script>
+  <script src="/js/data-loader.js"></script>
+  <script src="/js/direction-detector.js"></script>
+  
+  <script>
+    // グローバル変数
+    window.dataLoader = new DataLoader();
+    
+    // データ読み込み
+    async function loadData() {
+      try {
+        await window.dataLoader.loadAllDataOnce();
+        
+        // ローディング非表示、コンテンツ表示
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+        
+        // 統計情報を表示
+        displayStats();
+        
+        // UIを初期化
+        initializeUI();
+        
+      } catch (error) {
+        document.getElementById('loading').innerHTML = 
+          `<div class="error">エラー: ${error.message}</div>`;
+      }
+    }
+    
+    // 統計情報を表示
+    function displayStats() {
+      const stats = document.getElementById('stats');
+      const loader = window.dataLoader;
+      
+      const statsData = [
+        { label: 'バス停数', value: loader.busStops ? loader.busStops.length : 0 },
+        { label: '時刻表エントリ数', value: loader.timetable ? loader.timetable.length : 0 },
+        { label: '路線数', value: loader.routes ? loader.routes.length : 0 },
+        { label: 'Trip数', value: loader.trips ? loader.trips.length : 0 },
+        { 
+          label: '方向別インデックス路線数', 
+          value: loader.timetableByRouteAndDirection ? 
+            Object.keys(loader.timetableByRouteAndDirection).length : 0 
+        },
+        { 
+          label: 'Trip-Stopマッピング数', 
+          value: loader.tripStops ? Object.keys(loader.tripStops).length : 0 
+        },
+        { 
+          label: '親駅グループ数', 
+          value: loader.stopsGrouped ? Object.keys(loader.stopsGrouped).length : 0 
+        },
+        { 
+          label: '路線メタデータ数', 
+          value: loader.routeMetadata ? Object.keys(loader.routeMetadata).length : 0 
+        }
+      ];
+      
+      stats.innerHTML = statsData.map(stat => `
+        <div class="stat-card">
+          <div class="stat-value">${stat.value}</div>
+          <div class="stat-label">${stat.label}</div>
+        </div>
+      `).join('');
+    }
+    
+    // UIを初期化
+    function initializeUI() {
+      const loader = window.dataLoader;
+      
+      // 路線セレクトボックスを初期化
+      const routeSelect = document.getElementById('route-select');
+      if (loader.routes) {
+        loader.routes.forEach(route => {
+          const option = document.createElement('option');
+          option.value = route.route_id;
+          option.textContent = `${route.route_short_name || route.route_id} - ${route.route_long_name}`;
+          routeSelect.appendChild(option);
+        });
+      }
+      
+      // Tripセレクトボックスを初期化（最初の20件のみ）
+      const tripSelect = document.getElementById('trip-select');
+      if (loader.trips) {
+        loader.trips.slice(0, 20).forEach(trip => {
+          const option = document.createElement('option');
+          option.value = trip.trip_id;
+          option.textContent = `${trip.trip_id} - ${trip.trip_headsign || ''}`;
+          tripSelect.appendChild(option);
+        });
+      }
+      
+      // イベントリスナーを設定
+      setupEventListeners();
+    }
+    
+    // イベントリスナーを設定
+    function setupEventListeners() {
+      const loader = window.dataLoader;
+      
+      // 路線選択時
+      document.getElementById('route-select').addEventListener('change', (e) => {
+        const routeId = e.target.value;
+        const directionSelect = document.getElementById('direction-select');
+        const searchBtn = document.getElementById('search-timetable-btn');
+        
+        if (!routeId) {
+          directionSelect.disabled = true;
+          directionSelect.innerHTML = '<option value="">-- まず路線を選択してください --</option>';
+          searchBtn.disabled = true;
+          return;
+        }
+        
+        // 方向セレクトボックスを更新
+        directionSelect.innerHTML = '<option value="">-- 方向を選択してください --</option>';
+        
+        if (loader.timetableByRouteAndDirection && loader.timetableByRouteAndDirection[routeId]) {
+          const directions = Object.keys(loader.timetableByRouteAndDirection[routeId]);
+          directions.forEach(dir => {
+            const option = document.createElement('option');
+            option.value = dir;
+            option.textContent = dir === '0' ? '往路 (0)' : 
+                                dir === '1' ? '復路 (1)' : 
+                                `不明 (${dir})`;
+            directionSelect.appendChild(option);
+          });
+          directionSelect.disabled = false;
+        }
+      });
+      
+      // 方向選択時
+      document.getElementById('direction-select').addEventListener('change', (e) => {
+        const searchBtn = document.getElementById('search-timetable-btn');
+        searchBtn.disabled = !e.target.value;
+      });
+      
+      // 時刻表検索ボタン
+      document.getElementById('search-timetable-btn').addEventListener('click', searchTimetable);
+      
+      // Trip選択時
+      document.getElementById('trip-select').addEventListener('change', (e) => {
+        const searchBtn = document.getElementById('search-trip-btn');
+        searchBtn.disabled = !e.target.value;
+      });
+      
+      // Trip経路検索ボタン
+      document.getElementById('search-trip-btn').addEventListener('click', searchTripRoute);
+      
+      // 停留所検索ボタン
+      document.getElementById('search-stops-btn').addEventListener('click', searchStops);
+      
+      // 停留所検索入力でEnterキー
+      document.getElementById('stop-search-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          searchStops();
+        }
+      });
+    }
+    
+    // 時刻表を検索
+    function searchTimetable() {
+      const routeId = document.getElementById('route-select').value;
+      const direction = document.getElementById('direction-select').value;
+      const resultDiv = document.getElementById('timetable-result');
+      
+      try {
+        const loader = window.dataLoader;
+        const timetableData = loader.timetableByRouteAndDirection[routeId][direction];
+        
+        if (!timetableData || timetableData.length === 0) {
+          resultDiv.className = 'result error';
+          resultDiv.textContent = 'データが見つかりません';
+          resultDiv.style.display = 'block';
+          return;
+        }
+        
+        // 結果を整形
+        let result = `路線: ${routeId}\n方向: ${direction}\n\n`;
+        result += `時刻表エントリ数: ${timetableData.length}\n\n`;
+        result += '最初の10件:\n';
+        result += '----------------------------------------\n';
+        
+        timetableData.slice(0, 10).forEach((entry, index) => {
+          result += `${index + 1}. ${entry.stopName || entry.stopId}\n`;
+          result += `   時刻: ${entry.hour}:${String(entry.minute).padStart(2, '0')}\n`;
+          result += `   路線番号: ${entry.routeNumber}\n`;
+          if (entry.headsign) {
+            result += `   行き先: ${entry.headsign}\n`;
+          }
+          result += '\n';
+        });
+        
+        resultDiv.className = 'result';
+        resultDiv.textContent = result;
+        resultDiv.style.display = 'block';
+        
+      } catch (error) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = `エラー: ${error.message}`;
+        resultDiv.style.display = 'block';
+      }
+    }
+    
+    // Trip経路を検索
+    function searchTripRoute() {
+      const tripId = document.getElementById('trip-select').value;
+      const resultDiv = document.getElementById('trip-result');
+      
+      try {
+        const loader = window.dataLoader;
+        const stops = loader.tripStops[tripId];
+        
+        if (!stops || stops.length === 0) {
+          resultDiv.className = 'result error';
+          resultDiv.textContent = 'データが見つかりません';
+          resultDiv.style.display = 'block';
+          return;
+        }
+        
+        // 結果を整形
+        let result = `Trip ID: ${tripId}\n\n`;
+        result += `停留所数: ${stops.length}\n\n`;
+        result += '経路:\n';
+        result += '----------------------------------------\n';
+        
+        stops.forEach((stop, index) => {
+          result += `${index + 1}. [順序: ${stop.sequence}] ${stop.stopName}\n`;
+          result += `   停留所ID: ${stop.stopId}\n`;
+          result += `   到着時刻: ${stop.arrivalTime}\n`;
+          result += '\n';
+        });
+        
+        resultDiv.className = 'result';
+        resultDiv.textContent = result;
+        resultDiv.style.display = 'block';
+        
+      } catch (error) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = `エラー: ${error.message}`;
+        resultDiv.style.display = 'block';
+      }
+    }
+    
+    // 停留所を検索
+    function searchStops() {
+      const searchText = document.getElementById('stop-search-input').value.trim();
+      const groupByParent = document.getElementById('group-by-parent').checked;
+      const resultDiv = document.getElementById('stops-result');
+      
+      if (!searchText) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = '検索キーワードを入力してください';
+        resultDiv.style.display = 'block';
+        return;
+      }
+      
+      try {
+        const loader = window.dataLoader;
+        
+        if (groupByParent && loader.stopsGrouped) {
+          // グループ化された検索
+          let result = `検索キーワード: ${searchText}\nグループ化: 有効\n\n`;
+          let foundCount = 0;
+          
+          Object.entries(loader.stopsGrouped).forEach(([parentStation, stops]) => {
+            const matchingStops = stops.filter(stop => 
+              stop.name.includes(searchText)
+            );
+            
+            if (matchingStops.length > 0) {
+              foundCount += matchingStops.length;
+              result += `親駅: ${parentStation || '(なし)'}\n`;
+              result += '----------------------------------------\n';
+              matchingStops.forEach(stop => {
+                result += `  - ${stop.name}\n`;
+                result += `    ID: ${stop.id}\n`;
+                result += `    座標: (${stop.lat}, ${stop.lng})\n`;
+              });
+              result += '\n';
+            }
+          });
+          
+          if (foundCount === 0) {
+            result += '該当する停留所が見つかりません';
+          } else {
+            result = `見つかった停留所数: ${foundCount}\n\n` + result;
+          }
+          
+          resultDiv.className = 'result';
+          resultDiv.textContent = result;
+          
+        } else {
+          // 通常の検索
+          const matchingStops = loader.busStops.filter(stop => 
+            stop.name.includes(searchText)
+          );
+          
+          let result = `検索キーワード: ${searchText}\nグループ化: 無効\n\n`;
+          result += `見つかった停留所数: ${matchingStops.length}\n\n`;
+          
+          if (matchingStops.length === 0) {
+            result += '該当する停留所が見つかりません';
+          } else {
+            result += '結果:\n';
+            result += '----------------------------------------\n';
+            matchingStops.slice(0, 20).forEach((stop, index) => {
+              result += `${index + 1}. ${stop.name}\n`;
+              result += `   ID: ${stop.id}\n`;
+              result += `   座標: (${stop.lat}, ${stop.lng})\n`;
+              if (stop.parentStation) {
+                result += `   親駅: ${stop.parentStation}\n`;
+              }
+              result += '\n';
+            });
+            
+            if (matchingStops.length > 20) {
+              result += `\n... 他 ${matchingStops.length - 20} 件`;
+            }
+          }
+          
+          resultDiv.className = 'result';
+          resultDiv.textContent = result;
+        }
+        
+        resultDiv.style.display = 'block';
+        
+      } catch (error) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = `エラー: ${error.message}`;
+        resultDiv.style.display = 'block';
+      }
+    }
+    
+    // ページ読み込み時にデータを読み込む
+    window.addEventListener('load', loadData);
+  </script>
+</body>
+</html>

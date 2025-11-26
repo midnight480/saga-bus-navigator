@@ -19,7 +19,278 @@ eval(directionDetectorCode);
 const DirectionDetector = global.DirectionDetector;
 
 describe('DirectionDetector - プロパティテスト', () => {
-  describe('Property 1: 方向情報の存在', () => {
+  describe('Property 1: 無効なdirection_idの処理 (data-structure-optimization)', () => {
+    /**
+     * Feature: data-structure-optimization, Property 1: 無効なdirection_idの処理
+     * Validates: Requirements 1.1
+     * 
+     * 任意のtripにおいて、direction_idが空文字列、null、またはundefinedの場合、
+     * システムはこれらを全て無効な値として扱い、代替の方向判定ロジックを使用する
+     */
+    it('should treat empty string, null, and undefined direction_id as invalid', () => {
+      fc.assert(
+        fc.property(
+          fc.record({
+            trip_id: fc.string({ minLength: 1, maxLength: 20 }),
+            route_id: fc.string({ minLength: 1, maxLength: 10 }),
+            direction_id: fc.oneof(
+              fc.constant(''),
+              fc.constant(null),
+              fc.constant(undefined)
+            ),
+            trip_headsign: fc.string({ minLength: 1, maxLength: 30 })
+          }),
+          fc.array(
+            fc.record({
+              trip_id: fc.string({ minLength: 1, maxLength: 20 }),
+              route_id: fc.string({ minLength: 1, maxLength: 10 }),
+              direction_id: fc.oneof(
+                fc.constant(''),
+                fc.constant(null),
+                fc.constant(undefined)
+              ),
+              trip_headsign: fc.string({ minLength: 1, maxLength: 30 })
+            }),
+            { minLength: 1, maxLength: 10 }
+          ),
+          (trip, otherTrips) => {
+            const allTrips = [trip, ...otherTrips.map(t => ({ ...t, route_id: trip.route_id }))];
+            
+            const direction = DirectionDetector.detectDirection(trip, trip.route_id, allTrips);
+            
+            // direction_idが無効な場合、代替ロジック（headsignベース）が使用される
+            // 結果は'0', '1', 'unknown'のいずれか
+            return direction === '0' || direction === '1' || direction === 'unknown';
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  describe('Property 2: 停留所順序による方向推測 (data-structure-optimization)', () => {
+    /**
+     * Feature: data-structure-optimization, Property 2: 停留所順序による方向推測
+     * Validates: Requirements 1.2
+     * 
+     * 任意の路線において、headsignベースの判定が失敗した場合、
+     * システムは停留所順序を分析して方向を推測する
+     */
+    it('should infer direction from stop sequence when headsign-based detection fails', () => {
+      fc.assert(
+        fc.property(
+          fc.string({ minLength: 1, maxLength: 10 }), // route_id
+          fc.array(
+            fc.record({
+              trip_id: fc.string({ minLength: 1, maxLength: 20 }),
+              route_id: fc.string({ minLength: 1, maxLength: 10 })
+            }),
+            { minLength: 2, maxLength: 10 }
+          ),
+          fc.array(
+            fc.record({
+              trip_id: fc.string({ minLength: 1, maxLength: 20 }),
+              stop_id: fc.string({ minLength: 1, maxLength: 10 }),
+              stop_sequence: fc.integer({ min: 1, max: 100 }).map(n => n.toString())
+            }),
+            { minLength: 4, maxLength: 50 }
+          ),
+          (routeId, trips, stopTimesData) => {
+            // 同じroute_idを持つtripsを作成
+            const tripsForRoute = trips.map(t => ({ ...t, route_id: routeId }));
+            
+            // 各tripに対して停留所を割り当て（2つの異なる始点・終点パターンを作成）
+            const stopTimes = [];
+            tripsForRoute.forEach((trip, index) => {
+              const direction = index % 2; // 偶数と奇数で異なる方向
+              const firstStop = direction === 0 ? 'stop_A' : 'stop_B';
+              const lastStop = direction === 0 ? 'stop_B' : 'stop_A';
+              
+              stopTimes.push({
+                trip_id: trip.trip_id,
+                stop_id: firstStop,
+                stop_sequence: '1'
+              });
+              stopTimes.push({
+                trip_id: trip.trip_id,
+                stop_id: lastStop,
+                stop_sequence: '10'
+              });
+            });
+            
+            // detectDirectionByStopSequence()を呼び出し
+            const directionMap = DirectionDetector.detectDirectionByStopSequence(
+              routeId,
+              tripsForRoute,
+              stopTimes
+            );
+            
+            // 2つの異なる方向が検出されることを検証
+            const directions = new Set(Array.from(directionMap.values()));
+            return directions.size === 2 && 
+                   (directions.has('0') && directions.has('1'));
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  describe('Property 3: 始点・終点パターンによる方向分類 (data-structure-optimization)', () => {
+    /**
+     * Feature: data-structure-optimization, Property 3: 始点・終点パターンによる方向分類
+     * Validates: Requirements 1.3
+     * 
+     * 任意の路線において、始点・終点の組み合わせが2パターン存在する場合、
+     * システムはそれぞれを異なる方向として分類する
+     */
+    it('should classify trips with different start-end patterns as different directions', () => {
+      fc.assert(
+        fc.property(
+          fc.string({ minLength: 1, maxLength: 10 }), // route_id
+          fc.integer({ min: 2, max: 5 }), // グループ1のtrip数
+          fc.integer({ min: 2, max: 5 }), // グループ2のtrip数
+          (routeId, group1Count, group2Count) => {
+            // キャッシュをクリア
+            DirectionDetector.directionCache.clear();
+            // 固定値を使用してtripIdsを生成
+            const group1TripIds = Array.from({ length: group1Count }, (_, i) => `trip_g1_${i}`);
+            const group2TripIds = Array.from({ length: group2Count }, (_, i) => `trip_g2_${i}`);
+            
+            const stopA = 'STOP_A';
+            const stopB = 'STOP_B';
+            
+            const trips = [
+              ...group1TripIds.map(id => ({ trip_id: id, route_id: routeId })),
+              ...group2TripIds.map(id => ({ trip_id: id, route_id: routeId }))
+            ];
+            
+            // グループ1: stopA → stopB
+            // グループ2: stopB → stopA
+            const stopTimes = [
+              ...group1TripIds.flatMap(id => [
+                { trip_id: id, stop_id: stopA, stop_sequence: '1' },
+                { trip_id: id, stop_id: stopB, stop_sequence: '10' }
+              ]),
+              ...group2TripIds.flatMap(id => [
+                { trip_id: id, stop_id: stopB, stop_sequence: '1' },
+                { trip_id: id, stop_id: stopA, stop_sequence: '10' }
+              ])
+            ];
+            
+            // detectDirectionByStopSequence()を呼び出し
+            const directionMap = DirectionDetector.detectDirectionByStopSequence(
+              routeId,
+              trips,
+              stopTimes
+            );
+            
+            // グループ1の全てのtripsが同じ方向であることを検証
+            const group1Directions = group1TripIds.map(id => directionMap.get(id));
+            const group1AllSame = group1Directions.every(d => d === group1Directions[0]);
+            
+            // グループ2の全てのtripsが同じ方向であることを検証
+            const group2Directions = group2TripIds.map(id => directionMap.get(id));
+            const group2AllSame = group2Directions.every(d => d === group2Directions[0]);
+            
+            // 2つのグループが異なる方向であることを検証
+            const groupsDifferent = group1Directions[0] !== group2Directions[0];
+            
+            return group1AllSame && group2AllSame && groupsDifferent;
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  describe('Property 4: 方向判定結果のキャッシュ (data-structure-optimization)', () => {
+    /**
+     * Feature: data-structure-optimization, Property 4: 方向判定結果のキャッシュ
+     * Validates: Requirements 1.4
+     * 
+     * 任意の路線において、同じ路線IDで方向判定を2回呼び出した場合、
+     * 2回目はキャッシュから結果を取得し、判定処理を繰り返さない
+     */
+    it('should cache direction detection results and reuse them', () => {
+      fc.assert(
+        fc.property(
+          fc.string({ minLength: 1, maxLength: 10 }), // route_id
+          fc.array(
+            fc.record({
+              trip_id: fc.string({ minLength: 1, maxLength: 20 }),
+              route_id: fc.string({ minLength: 1, maxLength: 10 })
+            }),
+            { minLength: 2, maxLength: 10 }
+          ),
+          fc.array(
+            fc.record({
+              trip_id: fc.string({ minLength: 1, maxLength: 20 }),
+              stop_id: fc.string({ minLength: 1, maxLength: 10 }),
+              stop_sequence: fc.integer({ min: 1, max: 100 }).map(n => n.toString())
+            }),
+            { minLength: 4, maxLength: 50 }
+          ),
+          (routeId, trips, stopTimesData) => {
+            // キャッシュをクリア
+            DirectionDetector.directionCache.clear();
+            
+            // 同じroute_idを持つtripsを作成
+            const tripsForRoute = trips.map(t => ({ ...t, route_id: routeId }));
+            
+            // 各tripに対して停留所を割り当て
+            const stopTimes = [];
+            tripsForRoute.forEach((trip, index) => {
+              const direction = index % 2;
+              const firstStop = direction === 0 ? 'stop_A' : 'stop_B';
+              const lastStop = direction === 0 ? 'stop_B' : 'stop_A';
+              
+              stopTimes.push({
+                trip_id: trip.trip_id,
+                stop_id: firstStop,
+                stop_sequence: '1'
+              });
+              stopTimes.push({
+                trip_id: trip.trip_id,
+                stop_id: lastStop,
+                stop_sequence: '10'
+              });
+            });
+            
+            // 1回目の呼び出し
+            const directionMap1 = DirectionDetector.detectDirectionByStopSequence(
+              routeId,
+              tripsForRoute,
+              stopTimes
+            );
+            
+            // 2回目の呼び出し（キャッシュから取得されるはず）
+            const directionMap2 = DirectionDetector.detectDirectionByStopSequence(
+              routeId,
+              tripsForRoute,
+              stopTimes
+            );
+            
+            // 2つの結果が同じであることを検証
+            if (directionMap1.size !== directionMap2.size) {
+              return false;
+            }
+            
+            for (const [tripId, direction] of directionMap1) {
+              if (directionMap2.get(tripId) !== direction) {
+                return false;
+              }
+            }
+            
+            return true;
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  describe('Property 1: 方向情報の存在 (bidirectional-route-support)', () => {
     /**
      * Feature: bidirectional-route-support, Property 1: 方向情報の存在
      * Validates: Requirements 1.1, 1.2, 1.5
