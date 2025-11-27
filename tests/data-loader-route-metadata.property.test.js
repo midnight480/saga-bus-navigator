@@ -4,8 +4,11 @@
  * Feature: data-structure-optimization, Property 11: 路線メタデータの方向リスト
  * Feature: data-structure-optimization, Property 12: 路線メタデータのheadsignリスト
  * Feature: data-structure-optimization, Property 13: 路線メタデータのtrip数
+ * Feature: direction-detection-integration, Property 12: 路線メタデータの成功率
+ * Feature: direction-detection-integration, Property 13: 成功率の計算正確性
+ * Feature: direction-detection-integration, Property 14: 停留所順序ベース判定の集計
  * 
- * 検証: 要件4.2, 4.3, 4.4
+ * 検証: 要件4.2, 4.3, 4.4, 5.1, 5.2, 5.3
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -391,6 +394,187 @@ describe('DataLoader.generateRouteMetadata() プロパティテスト', () => {
         expect(metadata[routeId].headsigns).not.toContain(undefined);
         expect(metadata[routeId].headsigns).not.toContain('');
       }),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * プロパティ12: 路線メタデータの成功率
+   * 
+   * 任意の路線メタデータは方向判定成功率（0.0-1.0の範囲）を含む
+   * 
+   * 検証: 要件5.1
+   */
+  it('プロパティ12: 任意の路線について、メタデータに方向判定成功率が含まれる', () => {
+    fc.assert(
+      fc.property(multipleRoutesTripsArb, (trips) => {
+        // DataLoaderインスタンスを作成
+        const loader = new DataLoader();
+        loader.trips = trips;
+        
+        // 路線メタデータを生成
+        const metadata = loader.generateRouteMetadata();
+        
+        // 各路線について検証
+        const routeIds = [...new Set(trips.map(t => t.route_id))];
+        
+        for (const routeId of routeIds) {
+          // メタデータが存在することを確認
+          expect(metadata[routeId]).toBeDefined();
+          
+          // directionDetectionRateプロパティが存在することを確認
+          expect(metadata[routeId].directionDetectionRate).toBeDefined();
+          
+          // directionDetectionRateが0.0-1.0の範囲内であることを確認
+          expect(metadata[routeId].directionDetectionRate).toBeGreaterThanOrEqual(0.0);
+          expect(metadata[routeId].directionDetectionRate).toBeLessThanOrEqual(1.0);
+        }
+      }),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * プロパティ13: 成功率の計算正確性
+   * 
+   * 任意の路線において、方向判定成功率は（'unknown'以外の方向を持つtrip数 / 全trip数）と等しい
+   * 
+   * 検証: 要件5.2
+   */
+  it('プロパティ13: 任意の路線について、方向判定成功率が正確に計算される', () => {
+    fc.assert(
+      fc.property(multipleRoutesTripsArb, (trips) => {
+        // DataLoaderインスタンスを作成
+        const loader = new DataLoader();
+        loader.trips = trips;
+        
+        // 路線メタデータを生成
+        const metadata = loader.generateRouteMetadata();
+        
+        // 各路線について検証
+        const routeIds = [...new Set(trips.map(t => t.route_id))];
+        
+        for (const routeId of routeIds) {
+          // メタデータが存在することを確認
+          expect(metadata[routeId]).toBeDefined();
+          
+          // 実際の成功率を計算
+          const routeTrips = trips.filter(t => t.route_id === routeId);
+          const totalTrips = routeTrips.length;
+          const unknownCount = routeTrips.filter(t => (t.direction || 'unknown') === 'unknown').length;
+          const expectedRate = totalTrips > 0 ? (totalTrips - unknownCount) / totalTrips : 0;
+          
+          // メタデータの成功率が期待値と一致することを確認
+          expect(metadata[routeId].directionDetectionRate).toBeCloseTo(expectedRate, 10);
+          
+          // unknownDirectionCountが正確であることを確認
+          expect(metadata[routeId].unknownDirectionCount).toBe(unknownCount);
+        }
+      }),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * プロパティ14: 停留所順序ベース判定の集計
+   * 
+   * 任意の路線メタデータにおいて、停留所順序ベースで判定された路線数が正確に集計される
+   * 
+   * 検証: 要件5.3
+   */
+  it('プロパティ14: 任意の路線について、判定方法が正確に記録される', () => {
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc.tuple(
+            routeIdArb,
+            fc.oneof(
+              fc.constant('direction_id'), // direction_idが設定されている
+              fc.constant('stop_sequence'), // 停留所順序ベースで判定
+              fc.constant('unknown') // 判定できない
+            )
+          ),
+          { minLength: 1, maxLength: 5 }
+        ),
+        (routeConfigs) => {
+          // 各路線の設定に基づいてtripsを生成
+          const trips = [];
+          
+          for (const [routeId, detectionMethod] of routeConfigs) {
+            if (detectionMethod === 'direction_id') {
+              // direction_idが設定されているtrip
+              trips.push({
+                trip_id: `trip_${routeId}_1`,
+                route_id: routeId,
+                direction_id: '0',
+                direction: '0',
+                trip_headsign: '佐賀駅'
+              });
+              trips.push({
+                trip_id: `trip_${routeId}_2`,
+                route_id: routeId,
+                direction_id: '1',
+                direction: '1',
+                trip_headsign: '県庁前'
+              });
+            } else if (detectionMethod === 'stop_sequence') {
+              // 停留所順序ベースで判定されたtrip（direction_idなし）
+              trips.push({
+                trip_id: `trip_${routeId}_1`,
+                route_id: routeId,
+                direction_id: '',
+                direction: '0',
+                trip_headsign: '佐賀駅'
+              });
+              trips.push({
+                trip_id: `trip_${routeId}_2`,
+                route_id: routeId,
+                direction_id: '',
+                direction: '1',
+                trip_headsign: '県庁前'
+              });
+            } else {
+              // 判定できないtrip
+              trips.push({
+                trip_id: `trip_${routeId}_1`,
+                route_id: routeId,
+                direction_id: '',
+                direction: 'unknown',
+                trip_headsign: '佐賀駅'
+              });
+            }
+          }
+          
+          // DataLoaderインスタンスを作成
+          const loader = new DataLoader();
+          loader.trips = trips;
+          
+          // 路線メタデータを生成
+          const metadata = loader.generateRouteMetadata();
+          
+          // 各路線について検証
+          for (const [routeId, expectedMethod] of routeConfigs) {
+            // メタデータが存在することを確認
+            expect(metadata[routeId]).toBeDefined();
+            
+            // detectionMethodが正確に記録されていることを確認
+            expect(metadata[routeId].detectionMethod).toBe(expectedMethod);
+            
+            // directionIdCount、stopSequenceCountが正確であることを確認
+            const routeTrips = trips.filter(t => t.route_id === routeId);
+            const directionIdCount = routeTrips.filter(t => 
+              t.direction_id !== '' && t.direction_id !== null && t.direction_id !== undefined
+            ).length;
+            const stopSequenceCount = routeTrips.filter(t => 
+              (t.direction_id === '' || t.direction_id === null || t.direction_id === undefined) &&
+              t.direction !== 'unknown'
+            ).length;
+            
+            expect(metadata[routeId].directionIdCount).toBe(directionIdCount);
+            expect(metadata[routeId].stopSequenceCount).toBe(stopSequenceCount);
+          }
+        }
+      ),
       { numRuns: 100 }
     );
   });

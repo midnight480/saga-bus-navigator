@@ -367,6 +367,9 @@ saga-bus-navigator/
 - [双方向検索 - 要件定義書](.kiro/specs/bidirectional-route-support/requirements.md)
 - [双方向検索 - 設計書](.kiro/specs/bidirectional-route-support/design.md)
 - [双方向検索 - 実装タスク](.kiro/specs/bidirectional-route-support/tasks.md)
+- [方向判定統合 - 要件定義書](.kiro/specs/direction-detection-integration/requirements.md)
+- [方向判定統合 - 設計書](.kiro/specs/direction-detection-integration/design.md)
+- [方向判定統合 - 実装タスク](.kiro/specs/direction-detection-integration/tasks.md)
 - [ユーザー操作機能強化 - 要件定義書](.kiro/specs/user-interaction-enhancements/requirements.md)
 - [ユーザー操作機能強化 - 設計書](.kiro/specs/user-interaction-enhancements/design.md)
 - [ユーザー操作機能強化 - 実装タスク](.kiro/specs/user-interaction-enhancements/tasks.md)
@@ -438,6 +441,63 @@ saga-bus-navigator/
 - OpenStreetMapコミュニティ
 - NICT（情報通信研究機構）のNTPサービス
 - holidays-jp.github.ioの祝日カレンダーAPI
+
+## 🧭 方向判定統合機能
+
+佐賀バスナビゲーターは、GTFSデータの`direction_id`が設定されていない路線でも、停留所順序から自動的に方向を判定する機能を実装しています。
+
+### 方向判定の仕組み
+
+システムは以下の優先順位で方向を判定します：
+
+1. **direction_id優先**: GTFSデータに`direction_id`が設定されている場合は、それを使用
+2. **停留所順序ベース判定**: `direction_id`が空の場合、停留所の停車順序から方向を推測
+3. **キャッシュ活用**: 一度判定した結果はキャッシュに保存し、再判定を回避
+
+### 停留所順序ベースの判定ロジック
+
+1. 各便の最初と最後の停留所を取得
+2. 始点・終点の組み合わせでグループ化
+3. 2つ以上のグループがある場合、それぞれを異なる方向（往路・復路）として扱う
+4. 判定できない場合は`'unknown'`として設定
+
+### 自動統合
+
+方向判定は、データ読み込み時に自動的に実行されます：
+
+```
+GTFSデータ読み込み
+  ↓
+データ変換
+  ↓
+方向判定（enrichTripsWithDirection）← 自動実行
+  ├─ 路線ごとに反復
+  ├─ direction_idをチェック
+  ├─ 停留所順序から方向を推測
+  └─ trip.directionプロパティを設定
+  ↓
+インデックス生成
+  ↓
+統計情報生成
+```
+
+### 統計情報
+
+データ読み込み完了後、コンソールに以下の統計情報が表示されます：
+
+- 処理した路線数
+- 方向判定に成功した路線数
+- 方向判定に失敗した路線数
+- direction_idが設定されていてスキップした路線数
+- 各路線の方向判定成功率
+
+### 技術詳細
+
+詳細な設計と実装については、以下のドキュメントを参照してください：
+
+- [方向判定統合 - 要件定義書](.kiro/specs/direction-detection-integration/requirements.md)
+- [方向判定統合 - 設計書](.kiro/specs/direction-detection-integration/design.md)
+- [方向判定統合 - 実装タスク](.kiro/specs/direction-detection-integration/tasks.md)
 
 ## 🚀 データ構造最適化
 
@@ -521,6 +581,17 @@ const platforms = dataLoader.stopsGrouped['station_001'];
 - [データ構造最適化 - 実装タスク](.kiro/specs/data-structure-optimization/tasks.md)
 
 ## 📅 更新履歴
+
+### v2.6.0 (2025-11-28)
+
+- **方向判定統合機能**: 停留所順序ベースの方向判定をDataLoaderに統合
+- **自動方向判定**: GTFSデータ読み込み時に全路線で自動的に方向を判定
+- **direction_id優先**: GTFSデータに`direction_id`が設定されている場合は優先的に使用
+- **停留所順序ベース判定**: `direction_id`が空の場合、停留所の停車順序から方向を推測
+- **キャッシュ機能**: 方向判定結果をキャッシュし、再判定を回避
+- **統計情報**: 方向判定の成功率と統計情報をコンソールに表示
+- **エラーハンドリング強化**: 方向判定中のエラーを適切に処理し、ログに記録
+- **後方互換性**: 既存の`direction_id`を保持しつつ、新しい`direction`プロパティを追加
 
 ### v2.5.0 (2025-11-26)
 
