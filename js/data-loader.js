@@ -209,6 +209,16 @@ class DataLoader {
       this.calendar = gtfsData.calendar;
       this.gtfsStops = gtfsData.stops;
       
+      // 進捗コールバック: 方向情報判定
+      if (this.onProgress) {
+        this.onProgress('方向情報を判定しています...');
+      }
+      
+      // 方向情報を付与（データ変換後、インデックス生成前）
+      const directionStartTime = Date.now();
+      this.enrichTripsWithDirection();
+      const directionEndTime = Date.now();
+      
       // 進捗コールバック: インデックス生成
       if (this.onProgress) {
         this.onProgress('インデックスを生成しています...');
@@ -224,6 +234,7 @@ class DataLoader {
       this.logDebug('全データの読み込み完了', {
         totalDuration: `${overallEndTime - overallStartTime}ms`,
         transformDuration: `${transformEndTime - transformStartTime}ms`,
+        directionDuration: `${directionEndTime - directionStartTime}ms`,
         indexDuration: `${indexEndTime - indexStartTime}ms`,
         busStopsCount: this.busStops.length,
         timetableCount: this.timetable.length,
@@ -912,6 +923,102 @@ class DataLoader {
   }
 
   /**
+   * 全てのtripに方向情報を付与（新規メソッド）
+   * @returns {void}
+   */
+  enrichTripsWithDirection() {
+    if (!this.trips || this.trips.length === 0) {
+      console.warn('DataLoader.enrichTripsWithDirection: tripsデータが空です');
+      return;
+    }
+
+    if (!this.stopTimes || this.stopTimes.length === 0) {
+      console.warn('DataLoader.enrichTripsWithDirection: stopTimesデータが空です');
+      // 全てのtripにデフォルト値を設定
+      this.trips.forEach(trip => {
+        trip.direction = trip.direction_id || 'unknown';
+      });
+      return;
+    }
+
+    this.logDebug('方向判定開始');
+    const startTime = Date.now();
+
+    // 路線ごとにグループ化
+    const tripsByRoute = new Map();
+    this.trips.forEach(trip => {
+      if (!tripsByRoute.has(trip.route_id)) {
+        tripsByRoute.set(trip.route_id, []);
+      }
+      tripsByRoute.get(trip.route_id).push(trip);
+    });
+
+    let successCount = 0;
+    let failureCount = 0;
+    let skippedCount = 0;
+
+    // 各路線を処理
+    tripsByRoute.forEach((trips, routeId) => {
+      try {
+        // direction_idが全て設定されている場合はスキップ
+        const allHaveDirectionId = trips.every(trip => 
+          trip.direction_id !== '' && 
+          trip.direction_id !== null && 
+          trip.direction_id !== undefined
+        );
+
+        if (allHaveDirectionId) {
+          // direction_idをdirectionにコピー
+          trips.forEach(trip => {
+            trip.direction = trip.direction_id;
+          });
+          skippedCount++;
+          return;
+        }
+
+        // 停留所順序ベースの方向判定を実行
+        const directionMap = DirectionDetector.detectDirectionByStopSequence(
+          routeId,
+          trips,
+          this.stopTimes
+        );
+
+        // 判定結果をtripに反映
+        trips.forEach(trip => {
+          if (trip.direction_id !== '' && trip.direction_id !== null && trip.direction_id !== undefined) {
+            // direction_idが設定されている場合は優先
+            trip.direction = trip.direction_id;
+          } else if (directionMap.has(trip.trip_id)) {
+            // 停留所順序ベースの判定結果を使用
+            trip.direction = directionMap.get(trip.trip_id);
+          } else {
+            // 判定できない場合はunknown
+            trip.direction = 'unknown';
+          }
+        });
+
+        successCount++;
+      } catch (error) {
+        console.error(`DataLoader.enrichTripsWithDirection: 路線${routeId}の方向判定中にエラーが発生しました`, error);
+        // エラーが発生した場合は全てunknownに設定
+        trips.forEach(trip => {
+          trip.direction = trip.direction_id || 'unknown';
+        });
+        failureCount++;
+      }
+    });
+
+    const endTime = Date.now();
+    this.logDebug('方向判定完了', {
+      duration: `${endTime - startTime}ms`,
+      totalRoutes: tripsByRoute.size,
+      successCount: successCount,
+      failureCount: failureCount,
+      skippedCount: skippedCount
+    });
+  }
+
+  /**
    * 全インデックスを生成（要件2.1, 7.1）
    * loadAllDataOnce()から呼び出される
    */
@@ -1101,7 +1208,10 @@ class DataLoader {
         metadata[routeId] = {
           directions: new Set(),
           headsigns: new Set(),
-          tripCount: {}
+          tripCount: {},
+          unknownDirectionCount: 0,
+          directionIdCount: 0,
+          stopSequenceCount: 0
         };
       }
       
@@ -1119,12 +1229,55 @@ class DataLoader {
         metadata[routeId].tripCount[direction] = 0;
       }
       metadata[routeId].tripCount[direction]++;
+      
+      // 方向不明の便数をカウント（要件5.1）
+      if (direction === 'unknown') {
+        metadata[routeId].unknownDirectionCount++;
+      }
+      
+      // 判定方法を記録（要件5.3）
+      if (trip.direction_id !== '' && trip.direction_id !== null && trip.direction_id !== undefined) {
+        metadata[routeId].directionIdCount++;
+      } else if (direction !== 'unknown') {
+        metadata[routeId].stopSequenceCount++;
+      }
     });
     
-    // SetをArrayに変換
+    // SetをArrayに変換し、方向判定成功率を計算
     Object.keys(metadata).forEach(routeId => {
       metadata[routeId].directions = Array.from(metadata[routeId].directions);
       metadata[routeId].headsigns = Array.from(metadata[routeId].headsigns);
+      
+      // 方向判定成功率を計算（要件5.2）
+      const totalTrips = Object.values(metadata[routeId].tripCount).reduce((sum, count) => sum + count, 0);
+      const unknownCount = metadata[routeId].unknownDirectionCount;
+      metadata[routeId].directionDetectionRate = totalTrips > 0 ? (totalTrips - unknownCount) / totalTrips : 0;
+      
+      // 判定方法を決定（要件5.3）
+      if (metadata[routeId].directionIdCount > 0) {
+        metadata[routeId].detectionMethod = 'direction_id';
+      } else if (metadata[routeId].stopSequenceCount > 0) {
+        metadata[routeId].detectionMethod = 'stop_sequence';
+      } else {
+        metadata[routeId].detectionMethod = 'unknown';
+      }
+      
+      // 路線名を取得
+      if (this.routes) {
+        const route = this.routes.find(r => r.route_id === routeId);
+        metadata[routeId].routeName = route ? route.route_long_name : routeId;
+      } else {
+        metadata[routeId].routeName = routeId;
+      }
+      
+      // 成功率が低い路線の警告ログを出力（要件5.5）
+      if (metadata[routeId].directionDetectionRate < 0.5) {
+        console.warn(`DataLoader.generateRouteMetadata: 路線${metadata[routeId].routeName}(${routeId})の方向判定成功率が低いです`, {
+          detectionRate: `${(metadata[routeId].directionDetectionRate * 100).toFixed(1)}%`,
+          unknownCount: unknownCount,
+          totalTrips: totalTrips
+        });
+      }
     });
     
     const endTime = Date.now();
@@ -1135,18 +1288,24 @@ class DataLoader {
       routeCount: Object.keys(metadata).length,
       totalTrips: this.trips.length,
       avgTripsPerRoute: 0,
-      bidirectionalRoutes: 0
+      bidirectionalRoutes: 0,
+      averageDetectionRate: 0
     };
     
+    let totalDetectionRate = 0;
     Object.keys(metadata).forEach(routeId => {
       // 双方向路線をカウント
       if (metadata[routeId].directions.length >= 2) {
         stats.bidirectionalRoutes++;
       }
+      
+      // 平均方向判定成功率を計算
+      totalDetectionRate += metadata[routeId].directionDetectionRate;
     });
     
     if (stats.routeCount > 0) {
       stats.avgTripsPerRoute = (stats.totalTrips / stats.routeCount).toFixed(2);
+      stats.averageDetectionRate = `${(totalDetectionRate / stats.routeCount * 100).toFixed(1)}%`;
     }
     
     this.logDebug('路線メタデータ生成完了', {
@@ -1154,7 +1313,8 @@ class DataLoader {
       routeCount: stats.routeCount,
       totalTrips: stats.totalTrips,
       avgTripsPerRoute: stats.avgTripsPerRoute,
-      bidirectionalRoutes: stats.bidirectionalRoutes
+      bidirectionalRoutes: stats.bidirectionalRoutes,
+      averageDetectionRate: stats.averageDetectionRate
     });
     
     return metadata;
@@ -1538,12 +1698,17 @@ class DataTransformer {
       // 曜日区分を判定
       const weekdayType = this.determineWeekdayType(calendar);
 
-      // 要件1.4: DirectionDetectorを使用して方向を判定
+      // 要件3.1, 3.2: trip.directionプロパティを優先的に参照
       let direction = 'unknown';
       if (trip && route) {
-        // DirectionDetectorが利用可能な場合のみ方向を判定
-        if (typeof DirectionDetector !== 'undefined') {
-          direction = DirectionDetector.detectDirection(trip, route.route_id, tripsData);
+        // trip.directionプロパティが設定されている場合は優先的に使用（要件3.2）
+        if (trip.direction !== undefined && trip.direction !== null) {
+          direction = trip.direction;
+        } else {
+          // フォールバック: DirectionDetectorを使用（要件3.3）
+          if (typeof DirectionDetector !== 'undefined') {
+            direction = DirectionDetector.detectDirection(trip, route.route_id, tripsData);
+          }
         }
       }
 
