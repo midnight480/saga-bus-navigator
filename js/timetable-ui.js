@@ -16,6 +16,7 @@ class TimetableUI {
     this.currentRouteId = null;
     this.currentRouteName = null;
     this.currentTab = 'weekday'; // 'weekday' or 'weekend'
+    this.currentDirectionFilter = 'all'; // 'all', '0', '1'
     
     // モーダル要素への参照
     this.modal = null;
@@ -148,6 +149,13 @@ class TimetableUI {
     instruction.textContent = '路線を選択してください';
     routeList.appendChild(instruction);
 
+    // DataLoaderから路線メタデータを取得
+    const dataLoader = window.dataLoader;
+    let routeMetadata = null;
+    if (dataLoader && typeof dataLoader.generateRouteMetadata === 'function') {
+      routeMetadata = dataLoader.generateRouteMetadata();
+    }
+
     routes.forEach((route, index) => {
       const routeItem = document.createElement('div');
       routeItem.className = 'timetable-route-item';
@@ -176,6 +184,17 @@ class TimetableUI {
       routeItem.appendChild(routeNumber);
       routeItem.appendChild(routeInfo);
 
+      // 方向判定バッジを追加
+      if (routeMetadata && routeMetadata[route.routeId]) {
+        const metadata = routeMetadata[route.routeId];
+        const detectionRate = metadata.directionDetectionRate;
+        // detectionRateがundefined、null、NaNの場合もバッジを表示（N/Aバッジ）
+        const badge = this.createDetectionBadge(detectionRate);
+        if (badge) {
+          routeItem.appendChild(badge);
+        }
+      }
+
       // クリックイベント
       routeItem.addEventListener('click', () => {
         this.onRouteSelected(route.routeId, route.routeName);
@@ -202,6 +221,75 @@ class TimetableUI {
   }
 
   /**
+   * 方向判定バッジを作成
+   * @param {number} detectionRate - 方向判定成功率（0.0-1.0）
+   * @returns {HTMLElement|null} バッジ要素、または成功率80%以上の場合はnull
+   */
+  createDetectionBadge(detectionRate) {
+    try {
+      // 入力値の検証
+      if (detectionRate === undefined || detectionRate === null || isNaN(detectionRate)) {
+        console.warn('TimetableUI: 方向判定成功率が計算できません', { detectionRate });
+        
+        // N/Aバッジを作成
+        const badge = document.createElement('span');
+        badge.className = 'detection-badge detection-badge-na';
+        badge.textContent = 'N/A';
+        badge.setAttribute('role', 'status');
+        badge.setAttribute('aria-label', '方向判定成功率: 不明');
+        
+        // ツールチップ用のID
+        const tooltipId = `tooltip-na-${Math.random().toString(36).substr(2, 9)}`;
+        badge.setAttribute('aria-describedby', tooltipId);
+        badge.setAttribute('data-tooltip', '方向判定成功率が計算できません');
+        
+        return badge;
+      }
+
+      // 成功率80%以上の場合はバッジを表示しない
+      if (detectionRate >= 0.8) {
+        return null;
+      }
+
+      const badge = document.createElement('span');
+      badge.className = 'detection-badge';
+      badge.setAttribute('role', 'status');
+
+      let badgeText = '';
+      let badgeClass = '';
+      let tooltipText = '';
+      const percentage = Math.round(detectionRate * 100);
+
+      if (detectionRate < 0.5) {
+        // 成功率50%未満: 警告バッジ
+        badgeClass = 'detection-badge-warning';
+        badgeText = '⚠';
+        tooltipText = `方向判定成功率: ${percentage}% (低)`;
+        badge.setAttribute('aria-label', `警告: 方向判定成功率が低い (${percentage}%)`);
+      } else if (detectionRate < 0.8) {
+        // 成功率50-80%: 注意バッジ
+        badgeClass = 'detection-badge-caution';
+        badgeText = '!';
+        tooltipText = `方向判定成功率: ${percentage}% (中)`;
+        badge.setAttribute('aria-label', `注意: 方向判定成功率が中程度 (${percentage}%)`);
+      }
+
+      badge.classList.add(badgeClass);
+      badge.textContent = badgeText;
+
+      // ツールチップ用のID
+      const tooltipId = `tooltip-${Math.random().toString(36).substr(2, 9)}`;
+      badge.setAttribute('aria-describedby', tooltipId);
+      badge.setAttribute('data-tooltip', tooltipText);
+
+      return badge;
+    } catch (error) {
+      console.error('TimetableUI: 方向判定バッジの作成中にエラーが発生しました', error);
+      return null;
+    }
+  }
+
+  /**
    * 路線が選択されたときの処理
    * @param {string} routeId - 路線ID
    * @param {string} routeName - 路線名
@@ -211,6 +299,7 @@ class TimetableUI {
     this.currentRouteId = routeId;
     this.currentRouteName = routeName;
     this.currentTab = 'weekday';
+    this.currentDirectionFilter = 'all';
     
     // 時刻表を表示
     this.displayTimetable();
@@ -252,6 +341,9 @@ class TimetableUI {
     // タブを作成
     const tabs = this.createTabs();
 
+    // 方向フィルタを作成
+    const directionFilter = this.createDirectionFilter(this.currentDirectionFilter);
+
     // 地図表示ボタンを作成
     const mapButton = this.createMapButton();
 
@@ -260,7 +352,7 @@ class TimetableUI {
     timetableContent.className = 'timetable-content';
 
     // 平日タブのコンテンツ
-    const weekdayContent = this.createTimetableTable(weekdayTimetable);
+    const weekdayContent = this.createTimetableTable(weekdayTimetable, this.currentDirectionFilter);
     weekdayContent.id = 'timetable-weekday';
     weekdayContent.classList.add('timetable-tab-content');
     weekdayContent.setAttribute('role', 'tabpanel');
@@ -274,7 +366,7 @@ class TimetableUI {
     }
 
     // 土日祝タブのコンテンツ
-    const weekendContent = this.createTimetableTable(weekendTimetable);
+    const weekendContent = this.createTimetableTable(weekendTimetable, this.currentDirectionFilter);
     weekendContent.id = 'timetable-weekend';
     weekendContent.classList.add('timetable-tab-content');
     weekendContent.setAttribute('role', 'tabpanel');
@@ -297,6 +389,7 @@ class TimetableUI {
     contentWrapper.appendChild(header);
     contentWrapper.appendChild(backButton);
     contentWrapper.appendChild(tabs);
+    contentWrapper.appendChild(directionFilter);
     contentWrapper.appendChild(mapButton);
     contentWrapper.appendChild(timetableContent);
     this.modalBody.appendChild(contentWrapper);
@@ -347,6 +440,87 @@ class TimetableUI {
   }
 
   /**
+   * 方向フィルタボタンを作成
+   * @param {string} currentFilter - 現在の方向フィルタ（'all', '0', '1'）
+   * @returns {HTMLElement} フィルタボタンコンテナ
+   */
+  createDirectionFilter(currentFilter) {
+    const container = document.createElement('div');
+    container.className = 'direction-filter';
+    container.setAttribute('role', 'group');
+    container.setAttribute('aria-label', '方向フィルタ');
+
+    // すべてボタン
+    const allButton = document.createElement('button');
+    allButton.type = 'button';
+    allButton.className = 'direction-filter-button';
+    allButton.textContent = 'すべて';
+    allButton.setAttribute('aria-pressed', currentFilter === 'all' ? 'true' : 'false');
+    allButton.setAttribute('aria-label', 'すべての方向を表示');
+    if (currentFilter === 'all') {
+      allButton.classList.add('active');
+    }
+    allButton.addEventListener('click', () => this.applyDirectionFilter('all'));
+
+    // 往路のみボタン
+    const outboundButton = document.createElement('button');
+    outboundButton.type = 'button';
+    outboundButton.className = 'direction-filter-button';
+    outboundButton.textContent = '往路のみ';
+    outboundButton.setAttribute('aria-pressed', currentFilter === '0' ? 'true' : 'false');
+    outboundButton.setAttribute('aria-label', '往路のみを表示');
+    if (currentFilter === '0') {
+      outboundButton.classList.add('active');
+    }
+    outboundButton.addEventListener('click', () => this.applyDirectionFilter('0'));
+
+    // 復路のみボタン
+    const inboundButton = document.createElement('button');
+    inboundButton.type = 'button';
+    inboundButton.className = 'direction-filter-button';
+    inboundButton.textContent = '復路のみ';
+    inboundButton.setAttribute('aria-pressed', currentFilter === '1' ? 'true' : 'false');
+    inboundButton.setAttribute('aria-label', '復路のみを表示');
+    if (currentFilter === '1') {
+      inboundButton.classList.add('active');
+    }
+    inboundButton.addEventListener('click', () => this.applyDirectionFilter('1'));
+
+    container.appendChild(allButton);
+    container.appendChild(outboundButton);
+    container.appendChild(inboundButton);
+
+    return container;
+  }
+
+  /**
+   * 方向フィルタを適用
+   * @param {string} direction - フィルタ方向（'all', '0', '1'）
+   */
+  applyDirectionFilter(direction) {
+    try {
+      console.log('TimetableUI: applyDirectionFilter呼び出し', { direction });
+
+      // 有効な方向値かチェック
+      if (direction !== 'all' && direction !== '0' && direction !== '1') {
+        console.error('TimetableUI: 無効な方向フィルタが指定されました', { direction });
+        return;
+      }
+
+      // 現在のフィルタを更新
+      this.currentDirectionFilter = direction;
+
+      // 時刻表を再表示
+      this.displayTimetable();
+    } catch (error) {
+      console.error('TimetableUI: 方向フィルタの適用中にエラーが発生しました', error);
+      // エラー時はフィルタをリセット
+      this.currentDirectionFilter = 'all';
+      this.displayTimetable();
+    }
+  }
+
+  /**
    * 地図表示ボタンを作成
    * @returns {HTMLElement} ボタン要素
    * @private
@@ -365,17 +539,45 @@ class TimetableUI {
   /**
    * 時刻表テーブルを作成
    * @param {Array<Object>} timetable - 時刻表データ
+   * @param {string} currentFilter - 現在の方向フィルタ（'all', '0', '1'）
    * @returns {HTMLElement} テーブル要素
    * @private
    */
-  createTimetableTable(timetable) {
-    console.log('TimetableUI: createTimetableTable呼び出し', { timetableLength: timetable.length });
+  createTimetableTable(timetable, currentFilter = 'all') {
+    console.log('TimetableUI: createTimetableTable呼び出し', { timetableLength: timetable.length, currentFilter });
     
     const container = document.createElement('div');
     container.className = 'timetable-table-container';
 
-    if (timetable.length === 0) {
-      console.warn('TimetableUI: 時刻表データが空です');
+    // 方向フィルタを適用
+    let filteredTimetable = timetable;
+    if (currentFilter !== 'all') {
+      try {
+        filteredTimetable = timetable.filter(entry => {
+          // エラーケース1: 方向情報が存在しない場合（要件8.1）
+          let direction = entry.direction;
+          if (direction === undefined || direction === null) {
+            console.debug('TimetableUI: 方向情報が存在しません。デフォルト値を使用します', {
+              tripId: entry.tripId,
+              defaultValue: 'unknown'
+            });
+            direction = 'unknown';
+          }
+          return direction === currentFilter;
+        });
+      } catch (error) {
+        // エラーケース4: 方向フィルタリング中のエラー（要件8.4）
+        console.error('TimetableUI: 方向フィルタリング中にエラーが発生しました', {
+          error: error,
+          currentFilter: currentFilter,
+          message: 'フィルタをリセットし、全ての便を表示します'
+        });
+        filteredTimetable = timetable;
+      }
+    }
+
+    if (filteredTimetable.length === 0) {
+      console.warn('TimetableUI: フィルタ後の時刻表データが空です');
       const noData = document.createElement('p');
       noData.className = 'timetable-no-data';
       noData.textContent = '該当する時刻表がありません';
@@ -383,7 +585,7 @@ class TimetableUI {
       return container;
     }
     
-    console.log('TimetableUI: 時刻表テーブルを作成します', { entries: timetable.length });
+    console.log('TimetableUI: 時刻表テーブルを作成します', { entries: filteredTimetable.length });
 
     const table = document.createElement('table');
     table.className = 'timetable-table';
@@ -396,11 +598,16 @@ class TimetableUI {
     timeHeader.textContent = '発車時刻';
     timeHeader.setAttribute('scope', 'col');
     
+    const directionHeader = document.createElement('th');
+    directionHeader.textContent = '方向';
+    directionHeader.setAttribute('scope', 'col');
+    
     const destHeader = document.createElement('th');
     destHeader.textContent = '行き先';
     destHeader.setAttribute('scope', 'col');
 
     headerRow.appendChild(timeHeader);
+    headerRow.appendChild(directionHeader);
     headerRow.appendChild(destHeader);
     thead.appendChild(headerRow);
     table.appendChild(thead);
@@ -408,18 +615,51 @@ class TimetableUI {
     // ボディ
     const tbody = document.createElement('tbody');
     
-    timetable.forEach(entry => {
+    filteredTimetable.forEach(entry => {
       const row = document.createElement('tr');
       
       const timeCell = document.createElement('td');
       timeCell.className = 'timetable-time';
       timeCell.textContent = entry.departureTime;
       
+      const directionCell = document.createElement('td');
+      directionCell.className = 'timetable-direction';
+      
+      // エラーケース1: 方向情報が存在しない場合（要件8.1）
+      let direction = entry.direction;
+      if (direction === undefined || direction === null) {
+        console.debug('TimetableUI: 方向情報が存在しません。デフォルト値を使用します', {
+          tripId: entry.tripId,
+          departureTime: entry.departureTime,
+          defaultValue: 'unknown'
+        });
+        direction = 'unknown';
+      }
+      
+      // 方向ラベルを作成
+      if (direction === '0') {
+        const label = document.createElement('span');
+        label.className = 'direction-label direction-label-outbound';
+        label.textContent = '往路';
+        label.setAttribute('aria-label', '往路');
+        directionCell.appendChild(label);
+      } else if (direction === '1') {
+        const label = document.createElement('span');
+        label.className = 'direction-label direction-label-inbound';
+        label.textContent = '復路';
+        label.setAttribute('aria-label', '復路');
+        directionCell.appendChild(label);
+      } else {
+        // direction='unknown'の場合は「－」を表示
+        directionCell.textContent = '－';
+      }
+      
       const destCell = document.createElement('td');
       destCell.className = 'timetable-destination';
       destCell.textContent = entry.tripHeadsign || '－';
 
       row.appendChild(timeCell);
+      row.appendChild(directionCell);
       row.appendChild(destCell);
       tbody.appendChild(row);
     });
@@ -626,6 +866,7 @@ class TimetableUI {
     this.currentRouteId = null;
     this.currentRouteName = null;
     this.currentTab = 'weekday';
+    this.currentDirectionFilter = 'all';
     this.previousActiveElement = null;
   }
 

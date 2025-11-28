@@ -159,7 +159,8 @@ class SearchController {
         childFare: fare.childFare,
         weekdayType: weekdayType,
         viaStops: viaStops,
-        tripHeadsign: departureEntry.tripHeadsign || '' // 行き先を追加（要件3.2）
+        tripHeadsign: departureEntry.tripHeadsign || '', // 行き先を追加（要件3.2）
+        direction: departureEntry.direction || 'unknown' // 方向情報を追加（要件1.1）
       });
     });
     
@@ -1224,6 +1225,73 @@ class UIController {
   }
 
   /**
+   * 方向ラベルを作成
+   * @param {string} direction - 方向（'0', '1', 'unknown'）
+   * @returns {HTMLElement|null} 方向ラベル要素、またはunknownの場合はnull
+   */
+  createDirectionLabel(direction) {
+    // エラーケース1: 方向情報が存在しない場合（要件8.1）
+    if (direction === undefined || direction === null) {
+      console.debug('UIController: 方向情報が存在しません。デフォルト値を使用します', {
+        direction: direction,
+        defaultValue: 'unknown'
+      });
+      direction = 'unknown';
+    }
+    
+    // direction='unknown'の場合はラベルを生成しない
+    if (direction === 'unknown' || !direction) {
+      return null;
+    }
+    
+    // 方向ラベル要素を作成
+    const label = document.createElement('span');
+    label.className = 'direction-label';
+    
+    // 方向に応じてクラスとテキストを設定
+    if (direction === '0') {
+      // 往路
+      label.classList.add('direction-label-outbound');
+      label.setAttribute('aria-label', '往路');
+      
+      // アイコン要素
+      const icon = document.createElement('span');
+      icon.className = 'direction-label-icon';
+      label.appendChild(icon);
+      
+      // テキスト要素
+      const text = document.createElement('span');
+      text.className = 'direction-label-text';
+      text.setAttribute('data-short', '往');
+      text.setAttribute('data-full', '往路');
+      label.appendChild(text);
+      
+    } else if (direction === '1') {
+      // 復路
+      label.classList.add('direction-label-inbound');
+      label.setAttribute('aria-label', '復路');
+      
+      // アイコン要素
+      const icon = document.createElement('span');
+      icon.className = 'direction-label-icon';
+      label.appendChild(icon);
+      
+      // テキスト要素
+      const text = document.createElement('span');
+      text.className = 'direction-label-text';
+      text.setAttribute('data-short', '復');
+      text.setAttribute('data-full', '復路');
+      label.appendChild(text);
+      
+    } else {
+      // 不明な方向値の場合はnullを返す
+      return null;
+    }
+    
+    return label;
+  }
+
+  /**
    * 検索結果アイテムのHTML生成
    * @param {object} result - 検索結果オブジェクト
    * @returns {HTMLElement} リストアイテム要素
@@ -1344,6 +1412,14 @@ class UIController {
     
     route.appendChild(routeLabel);
     route.appendChild(routeValue);
+    
+    // 方向ラベルを追加（要件1.1, 1.5）
+    if (result.direction) {
+      const directionLabel = this.createDirectionLabel(result.direction);
+      if (directionLabel) {
+        route.appendChild(directionLabel);
+      }
+    }
     
     // 行き先（trip_headsign）を表示（要件3.2）
     const headsign = document.createElement('div');

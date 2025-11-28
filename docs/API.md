@@ -8,6 +8,8 @@
 - [TimetableController](#timetablecontroller)
 - [MapController](#mapcontroller)
 - [DataLoader](#dataloader)
+- [UIController](#uicontroller)
+- [TimetableUI](#timetableui)
 - [データ構造最適化](#データ構造最適化)
 
 ---
@@ -304,6 +306,418 @@ mapController.displayRoute('route_001', '0');
 
 // 復路のみを表示
 mapController.displayRoute('route_001', '1');
+```
+
+---
+
+## UIController
+
+検索結果リストの表示を担当するクラス。
+
+### メソッド
+
+#### `createDirectionLabel(direction)`
+
+方向ラベルを作成します（新規メソッド）。
+
+**パラメータ:**
+
+- `direction` (string): 方向
+  - `'0'`: 往路
+  - `'1'`: 復路
+  - `'unknown'`: 不明
+
+**戻り値:**
+
+- (HTMLElement|null): 方向ラベル要素、または方向が'unknown'の場合はnull
+
+**動作:**
+
+1. direction='0'の場合は「往路」ラベルを生成
+2. direction='1'の場合は「復路」ラベルを生成
+3. direction='unknown'の場合はnullを返す
+4. aria-label属性を設定
+5. レスポンシブ対応（画面幅に応じてラベル形式を変更）
+
+**使用例:**
+
+```javascript
+const uiController = new UIController();
+
+// 往路ラベルを作成
+const outboundLabel = uiController.createDirectionLabel('0');
+// <span class="direction-label direction-label-outbound" aria-label="往路">
+//   <span class="direction-label-icon">→</span>
+//   <span class="direction-label-text" data-short="往" data-full="往路"></span>
+// </span>
+
+// 復路ラベルを作成
+const inboundLabel = uiController.createDirectionLabel('1');
+// <span class="direction-label direction-label-inbound" aria-label="復路">
+//   <span class="direction-label-icon">←</span>
+//   <span class="direction-label-text" data-short="復" data-full="復路"></span>
+// </span>
+
+// 方向不明の場合
+const unknownLabel = uiController.createDirectionLabel('unknown');
+// null
+```
+
+---
+
+#### `createResultItem(result)`
+
+検索結果アイテムのHTML生成（拡張）。
+
+**パラメータ:**
+
+- `result` (Object): 検索結果オブジェクト
+  - `tripId` (string): 便ID
+  - `routeNumber` (string): 路線番号
+  - `routeName` (string): 路線名
+  - `operator` (string): 事業者名
+  - `departureStop` (string): 乗車バス停名
+  - `arrivalStop` (string): 降車バス停名
+  - `departureTime` (string): 発車時刻
+  - `arrivalTime` (string): 到着時刻
+  - `duration` (number): 所要時間（分）
+  - `adultFare` (number): 大人運賃
+  - `childFare` (number): 子供運賃
+  - `weekdayType` (string): 運行日種別
+  - `viaStops` (Array): 経由バス停
+  - `tripHeadsign` (string): 行き先
+  - `direction` (string): 方向（'0'=往路、'1'=復路、'unknown'=不明）
+
+**戻り値:**
+
+- (HTMLElement): リストアイテム要素
+
+**動作:**
+
+1. 検索結果の情報を表示
+2. 方向ラベルを追加（`createDirectionLabel()`を呼び出し）
+3. レスポンシブ対応（画面幅に応じてラベル形式を変更）
+
+**使用例:**
+
+```javascript
+const uiController = new UIController();
+
+const result = {
+  tripId: 'trip_001',
+  routeNumber: '1',
+  routeName: '佐賀駅～大和線',
+  operator: '佐賀市営バス',
+  departureStop: '佐賀駅バスセンター',
+  arrivalStop: '県庁前',
+  departureTime: '08:00',
+  arrivalTime: '08:05',
+  duration: 5,
+  adultFare: 150,
+  childFare: 80,
+  weekdayType: '平日',
+  viaStops: [],
+  tripHeadsign: '県庁',
+  direction: '0'
+};
+
+const listItem = uiController.createResultItem(result);
+// <li class="result-item">
+//   <div class="result-header">
+//     <span class="route-number">1</span>
+//     <span class="route-name">佐賀駅～大和線</span>
+//     <span class="direction-label direction-label-outbound" aria-label="往路">...</span>
+//   </div>
+//   ...
+// </li>
+```
+
+---
+
+## TimetableUI
+
+時刻表モーダルの表示を担当するクラス。
+
+### メソッド
+
+#### `createDirectionFilter(currentFilter)`
+
+方向フィルタボタンを作成します（新規メソッド）。
+
+**パラメータ:**
+
+- `currentFilter` (string): 現在の方向フィルタ
+  - `'all'`: 全て（デフォルト）
+  - `'0'`: 往路のみ
+  - `'1'`: 復路のみ
+
+**戻り値:**
+
+- (HTMLElement): フィルタボタンコンテナ
+
+**動作:**
+
+1. 「すべて」「往路のみ」「復路のみ」ボタンを生成
+2. aria-pressed属性を設定
+3. クリックイベントを設定（`applyDirectionFilter()`を呼び出し）
+
+**使用例:**
+
+```javascript
+const timetableUI = new TimetableUI();
+
+// 方向フィルタボタンを作成
+const filterContainer = timetableUI.createDirectionFilter('all');
+// <div class="direction-filter">
+//   <button class="direction-filter-button" aria-pressed="true">すべて</button>
+//   <button class="direction-filter-button" aria-pressed="false">往路のみ</button>
+//   <button class="direction-filter-button" aria-pressed="false">復路のみ</button>
+// </div>
+```
+
+---
+
+#### `applyDirectionFilter(direction)`
+
+方向フィルタを適用します（新規メソッド）。
+
+**パラメータ:**
+
+- `direction` (string): フィルタ方向
+  - `'all'`: 全て
+  - `'0'`: 往路のみ
+  - `'1'`: 復路のみ
+
+**動作:**
+
+1. フィルタに応じて時刻表データをフィルタリング
+2. フィルタボタンの選択状態を更新
+3. 時刻表テーブルを再描画
+
+**使用例:**
+
+```javascript
+const timetableUI = new TimetableUI();
+
+// 往路のみを表示
+timetableUI.applyDirectionFilter('0');
+
+// 復路のみを表示
+timetableUI.applyDirectionFilter('1');
+
+// 全てを表示
+timetableUI.applyDirectionFilter('all');
+```
+
+---
+
+#### `createTimetableTable(timetable, currentFilter)`
+
+時刻表テーブルを作成します（拡張）。
+
+**パラメータ:**
+
+- `timetable` (Array<Object>): 時刻表データ
+  - 各要素は以下のプロパティを持つ:
+    - `stopId` (string): バス停ID
+    - `stopName` (string): バス停名
+    - `routeId` (string): 路線ID
+    - `routeName` (string): 路線名
+    - `tripId` (string): 便ID
+    - `tripHeadsign` (string): 行き先
+    - `departureTime` (string): 発車時刻
+    - `departureHour` (number): 発車時
+    - `departureMinute` (number): 発車分
+    - `serviceDayType` (string): 運行日種別
+    - `stopSequence` (number): 停車順序
+    - `direction` (string): 方向（'0'=往路、'1'=復路、'unknown'=不明）
+- `currentFilter` (string, optional): 現在の方向フィルタ（デフォルト: 'all'）
+
+**戻り値:**
+
+- (HTMLElement): テーブル要素
+
+**動作:**
+
+1. 時刻表テーブルに「方向」列を追加
+2. 各便の方向ラベルを表示
+3. aria属性を設定
+
+**使用例:**
+
+```javascript
+const timetableUI = new TimetableUI();
+
+const timetable = [
+  {
+    stopId: 'stop_001',
+    stopName: '佐賀駅バスセンター',
+    routeId: 'route_001',
+    routeName: '佐賀駅～大和線',
+    tripId: 'trip_001',
+    tripHeadsign: '県庁',
+    departureTime: '08:00',
+    departureHour: 8,
+    departureMinute: 0,
+    serviceDayType: '平日',
+    stopSequence: 1,
+    direction: '0'
+  },
+  // ...
+];
+
+// 全ての便を表示
+const table = timetableUI.createTimetableTable(timetable, 'all');
+
+// 往路のみを表示
+const outboundTable = timetableUI.createTimetableTable(timetable, '0');
+```
+
+---
+
+#### `createDetectionBadge(detectionRate)`
+
+方向判定バッジを作成します（新規メソッド）。
+
+**パラメータ:**
+
+- `detectionRate` (number): 方向判定成功率（0.0-1.0）
+
+**戻り値:**
+
+- (HTMLElement): バッジ要素
+
+**動作:**
+
+1. 成功率50%未満: 警告バッジ（赤）
+2. 成功率50-80%: 注意バッジ（オレンジ）
+3. 成功率80%以上: 成功バッジ（緑）またはバッジなし
+4. ツールチップを追加
+5. aria-describedby属性を設定
+
+**使用例:**
+
+```javascript
+const timetableUI = new TimetableUI();
+
+// 警告バッジを作成（成功率30%）
+const warningBadge = timetableUI.createDetectionBadge(0.3);
+// <span class="detection-badge detection-badge-warning" 
+//       aria-describedby="tooltip-xxx"
+//       data-tooltip="方向判定成功率: 30.0%">
+//   ⚠
+// </span>
+
+// 注意バッジを作成（成功率60%）
+const cautionBadge = timetableUI.createDetectionBadge(0.6);
+// <span class="detection-badge detection-badge-caution" 
+//       aria-describedby="tooltip-xxx"
+//       data-tooltip="方向判定成功率: 60.0%">
+//   ⚠
+// </span>
+
+// 成功バッジを作成（成功率90%）
+const successBadge = timetableUI.createDetectionBadge(0.9);
+// <span class="detection-badge detection-badge-success" 
+//       aria-describedby="tooltip-xxx"
+//       data-tooltip="方向判定成功率: 90.0%">
+//   ✓
+// </span>
+```
+
+---
+
+#### `displayRouteSelection(routes, routeMetadata)`
+
+路線選択画面を表示します（拡張）。
+
+**パラメータ:**
+
+- `routes` (Array<Object>): 路線一覧
+  - 各要素は以下のプロパティを持つ:
+    - `routeId` (string): 路線ID
+    - `routeName` (string): 路線名
+- `routeMetadata` (Map<string, Object>): 路線メタデータ
+  - 各路線のメタデータは以下のプロパティを持つ:
+    - `routeId` (string): 路線ID
+    - `routeName` (string): 路線名
+    - `tripCount` (number): 便数
+    - `stopCount` (number): バス停数
+    - `directionDetectionRate` (number): 方向判定成功率（0.0-1.0）
+    - `detectionMethod` (string): 判定方法
+    - `unknownDirectionCount` (number): 方向不明の便数
+
+**動作:**
+
+1. DataLoaderから路線メタデータを取得
+2. 各路線に方向判定バッジを表示（`createDetectionBadge()`を呼び出し）
+
+**使用例:**
+
+```javascript
+const timetableUI = new TimetableUI();
+
+const routes = [
+  { routeId: 'route_001', routeName: '佐賀駅～大和線' },
+  // ...
+];
+
+const routeMetadata = new Map([
+  ['route_001', {
+    routeId: 'route_001',
+    routeName: '佐賀駅～大和線',
+    tripCount: 20,
+    stopCount: 15,
+    directionDetectionRate: 0.95,
+    detectionMethod: 'direction_id',
+    unknownDirectionCount: 1
+  }],
+  // ...
+]);
+
+timetableUI.displayRouteSelection(routes, routeMetadata);
+```
+
+---
+
+#### `displayTimetable(timetable)`
+
+時刻表モーダルを表示します（拡張）。
+
+**パラメータ:**
+
+- `timetable` (Array<Object>): 時刻表データ
+
+**動作:**
+
+1. 方向フィルタボタンを表示（`createDirectionFilter()`を呼び出し）
+2. 初期フィルタ状態を設定（'all'）
+3. 時刻表テーブルを表示（`createTimetableTable()`を呼び出し）
+
+**使用例:**
+
+```javascript
+const timetableUI = new TimetableUI();
+
+const timetable = [
+  {
+    stopId: 'stop_001',
+    stopName: '佐賀駅バスセンター',
+    routeId: 'route_001',
+    routeName: '佐賀駅～大和線',
+    tripId: 'trip_001',
+    tripHeadsign: '県庁',
+    departureTime: '08:00',
+    departureHour: 8,
+    departureMinute: 0,
+    serviceDayType: '平日',
+    stopSequence: 1,
+    direction: '0'
+  },
+  // ...
+];
+
+timetableUI.displayTimetable(timetable);
 ```
 
 ---
@@ -1183,6 +1597,9 @@ console.log(`判定方法: ${metadata.detectionMethod}`);
 
 ## 関連ドキュメント
 
+- [時刻表方向情報表示 - 要件定義書](../.kiro/specs/timetable-direction-display/requirements.md)
+- [時刻表方向情報表示 - 設計書](../.kiro/specs/timetable-direction-display/design.md)
+- [時刻表方向情報表示 - 実装タスク](../.kiro/specs/timetable-direction-display/tasks.md)
 - [方向判定統合 - 要件定義書](../.kiro/specs/direction-detection-integration/requirements.md)
 - [方向判定統合 - 設計書](../.kiro/specs/direction-detection-integration/design.md)
 - [方向判定統合 - 実装タスク](../.kiro/specs/direction-detection-integration/tasks.md)

@@ -422,3 +422,361 @@
     transition: none;
   }
 }
+
+/* ========================================
+   方向情報表示スタイル
+   ======================================== */
+
+/* 方向ラベル */
+.direction-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.direction-label-outbound {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.direction-label-inbound {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.direction-label-unknown {
+  background-color: #f5f5f5;
+  color: #757575;
+}
+
+/* 方向ラベルのアイコン */
+.direction-label-icon {
+  display: none;
+  margin-right: 4px;
+}
+
+.direction-label-text {
+  display: inline;
+}
+
+/* 方向フィルタ */
+.direction-filter {
+  display: flex;
+  gap: 8px;
+  margin: 16px 20px;
+  padding: 12px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+}
+
+.direction-filter-button {
+  flex: 1;
+  padding: 8px 16px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #333;
+  font-weight: 500;
+}
+
+.direction-filter-button:hover {
+  background-color: #f0f0f0;
+}
+
+.direction-filter-button:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+.direction-filter-button[aria-pressed="true"] {
+  background-color: #007bff;
+  color: #fff;
+  border-color: #007bff;
+}
+
+/* 方向判定バッジ */
+.detection-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-left: 8px;
+}
+
+.detection-badge-warning {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.detection-badge-caution {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.detection-badge-success {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.detection-badge-na {
+  background-color: #f5f5f5;
+  color: #757575;
+}
+
+/* ツールチップ表示 */
+.detection-badge {
+  position: relative;
+  cursor: help;
+}
+
+.detection-badge:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  background-color: #333;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 4px;
+}
+
+.detection-badge:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: #333;
+  z-index: 1000;
+}
+
+/* ========================================
+   レスポンシブデザイン対応
+   ======================================== */
+
+/* モバイル画面（480px以下）: アイコンのみ表示 */
+@media (max-width: 480px) {
+  .direction-label {
+    padding: 2px 6px;
+    margin-left: 4px;
+  }
+
+  .direction-label-text {
+    display: none;
+  }
+
+  .direction-label-icon {
+    display: inline;
+    margin-right: 0;
+  }
+
+  .direction-label-icon::before {
+    font-size: 14px;
+  }
+
+  .direction-label-outbound .direction-label-icon::before {
+    content: '→';
+  }
+
+  .direction-label-inbound .direction-label-icon::before {
+    content: '←';
+  }
+
+  .direction-label-unknown .direction-label-icon::before {
+    content: '?';
+  }
+
+  .direction-filter {
+    flex-direction: column;
+    margin: 12px 16px;
+    padding: 10px;
+    gap: 6px;
+  }
+
+  .direction-filter-button {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .detection-badge {
+    font-size: 10px;
+    padding: 2px 4px;
+    margin-left: 4px;
+  }
+}
+
+/* タブレット画面（481px-768px）: 短縮形表示 */
+@media (min-width: 481px) and (max-width: 768px) {
+  .direction-label {
+    padding: 2px 6px;
+    margin-left: 6px;
+  }
+
+  .direction-label-text::before {
+    content: attr(data-short);
+  }
+
+  .direction-filter {
+    margin: 14px 18px;
+    padding: 10px;
+    gap: 6px;
+  }
+
+  .direction-filter-button {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+}
+
+/* デスクトップ画面（769px以上）: 完全形表示 */
+@media (min-width: 769px) {
+  .direction-label-text::before {
+    content: attr(data-full);
+  }
+}
+
+/* ========================================
+   アクセシビリティ対応
+   ======================================== */
+
+/* ハイコントラストモード対応 */
+@media (prefers-contrast: high) {
+  .direction-label {
+    border: 2px solid currentColor;
+  }
+
+  .direction-label-outbound {
+    background-color: #bbdefb;
+    color: #0d47a1;
+  }
+
+  .direction-label-inbound {
+    background-color: #ffe0b2;
+    color: #e65100;
+  }
+
+  .direction-label-unknown {
+    background-color: #e0e0e0;
+    color: #424242;
+  }
+
+  .direction-filter-button {
+    border: 2px solid #333;
+  }
+
+  .direction-filter-button[aria-pressed="true"] {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    border-width: 3px;
+  }
+
+  .direction-filter-button:focus {
+    outline: 3px solid #000;
+    outline-offset: 2px;
+  }
+
+  .detection-badge {
+    border: 2px solid currentColor;
+  }
+
+  .detection-badge-warning {
+    background-color: #ffcdd2;
+    color: #b71c1c;
+  }
+
+  .detection-badge-caution {
+    background-color: #ffe0b2;
+    color: #e65100;
+  }
+
+  .detection-badge-success {
+    background-color: #c8e6c9;
+    color: #1b5e20;
+  }
+
+  .detection-badge-na {
+    background-color: #e0e0e0;
+    color: #424242;
+  }
+}
+
+/* 縮小モーション設定 */
+@media (prefers-reduced-motion: reduce) {
+  .direction-filter-button {
+    transition: none;
+  }
+
+  .detection-badge:hover::after,
+  .detection-badge:hover::before {
+    transition: none;
+  }
+}
+
+/* ========================================
+   タッチデバイス対応
+   ======================================== */
+
+/* タッチデバイスでのタップ領域確保 */
+@media (hover: none) and (pointer: coarse) {
+  .direction-filter-button {
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+
+  .detection-badge {
+    cursor: pointer;
+  }
+
+  /* タッチデバイスではホバーではなくタップでツールチップ表示 */
+  .detection-badge:active::after,
+  .detection-badge:active::before {
+    display: block;
+  }
+}
+
+/* ========================================
+   時刻表テーブルの方向列
+   ======================================== */
+
+/* 方向列のスタイル */
+.timetable-table .timetable-direction {
+  width: 80px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.timetable-table th.timetable-direction {
+  font-weight: 600;
+}
+
+/* モバイルでは方向列の幅を最小限に */
+@media (max-width: 480px) {
+  .timetable-table .timetable-direction {
+    width: 50px;
+    padding: 8px 2px;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .timetable-table .timetable-direction {
+    width: 60px;
+    padding: 10px 4px;
+  }
+}
