@@ -190,6 +190,9 @@
     "show_outbound_only": "往路のみを表示",
     "show_inbound_only": "復路のみを表示"
   },
+  "alert": {
+    "delay_title": "お知らせ"
+  },
   "error": {
     "data_load_failed": "データの読み込みに失敗しました",
     "retry": "再試行",

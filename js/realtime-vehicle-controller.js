@@ -646,7 +646,9 @@ class RealtimeVehicleController {
       
       const delayTitle = document.createElement('h3');
       delayTitle.className = 'alert-title';
-      delayTitle.textContent = '遅延情報';
+      delayTitle.textContent = (typeof window !== 'undefined' && window.translationManager) 
+        ? window.translationManager.translate('alert.delay_title')
+        : 'お知らせ';
       delaySection.appendChild(delayTitle);
       
       const displayDelays = delays.slice(0, 5);

@@ -190,6 +190,9 @@
     "show_outbound_only": "Show outbound only",
     "show_inbound_only": "Show inbound only"
   },
+  "alert": {
+    "delay_title": "Information"
+  },
   "error": {
     "data_load_failed": "Failed to load data",
     "retry": "Retry",
