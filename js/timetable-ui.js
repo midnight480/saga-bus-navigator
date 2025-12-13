@@ -7,8 +7,9 @@ class TimetableUI {
    * コンストラクタ
    * @param {TimetableController} timetableController - TimetableControllerインスタンス
    */
-  constructor(timetableController) {
+  constructor(timetableController, translationManager = null) {
     this.timetableController = timetableController;
+    this.translationManager = translationManager;
     
     // 現在の状態を保持
     this.currentStopId = null;
@@ -24,6 +25,116 @@ class TimetableUI {
     
     // イベントリスナーの初期化
     this.initializeEventListeners();
+    
+    // 言語変更イベントをリッスン
+    if (typeof window !== 'undefined') {
+      window.addEventListener('languageChanged', () => {
+        this.updateTimetableTranslations();
+      });
+    }
+  }
+  
+  /**
+   * 時刻表の翻訳を更新
+   */
+  updateTimetableTranslations() {
+    if (!this.translationManager || !this.modal) return;
+    
+    // モーダルが表示されている場合のみ更新
+    if (this.modal.style.display === 'none' || this.modal.hasAttribute('hidden')) {
+      return;
+    }
+    
+    // タイトルを更新
+    const titleElement = this.modal.querySelector('#timetable-modal-title');
+    if (titleElement) {
+      const titleKey = this.translationManager.translate('modal.timetable_title');
+      if (this.currentRouteName) {
+        // 路線選択後の画面（路線名を翻訳）
+        const translatedRouteName = this.translationManager.translateRouteName(this.currentRouteName);
+        titleElement.textContent = `${titleKey} - ${translatedRouteName}`;
+      } else if (this.currentStopName) {
+        // 路線選択前の画面（バス停名を翻訳）
+        const translatedStopName = this.translationManager.translateBusStop(this.currentStopName);
+        titleElement.textContent = `${titleKey} - ${translatedStopName}`;
+      }
+    }
+    
+    // ラベルを更新
+    const labels = this.modal.querySelectorAll('[data-i18n]');
+    labels.forEach(label => {
+      const key = label.getAttribute('data-i18n');
+      if (key) {
+        label.textContent = this.translationManager.translate(key);
+      }
+    });
+    
+    // 説明文を更新（路線選択画面の「路線を選択してください」）
+    const instruction = this.modal.querySelector('.timetable-instruction');
+    if (instruction && instruction.hasAttribute('data-i18n')) {
+      const instructionKey = instruction.getAttribute('data-i18n');
+      if (instructionKey) {
+        instruction.textContent = this.translationManager.translate(instructionKey);
+      }
+    }
+    
+    // 方向ラベルを更新
+    const directionLabels = this.modal.querySelectorAll('.direction-label');
+    directionLabels.forEach(label => {
+      if (label.textContent === '往路') {
+        label.textContent = this.translationManager.translate('map.direction_outbound');
+      } else if (label.textContent === '復路') {
+        label.textContent = this.translationManager.translate('map.direction_inbound');
+      }
+    });
+    
+    // 方向フィルタのaria-labelを更新
+    const directionFilter = this.modal.querySelector('.direction-filter');
+    if (directionFilter) {
+      const directionFilterLabel = this.translationManager.translate('timetable.direction_filter');
+      directionFilter.setAttribute('aria-label', directionFilterLabel);
+    }
+    
+    // 方向フィルタボタンのaria-labelを更新
+    const directionFilterButtons = this.modal.querySelectorAll('.direction-filter-button');
+    directionFilterButtons.forEach(button => {
+      const i18nKey = button.getAttribute('data-i18n');
+      if (i18nKey === 'timetable.all') {
+        button.setAttribute('aria-label', this.translationManager.translate('timetable.show_all_directions'));
+      } else if (i18nKey === 'timetable.outbound') {
+        button.setAttribute('aria-label', this.translationManager.translate('timetable.show_outbound_only'));
+      } else if (i18nKey === 'timetable.inbound') {
+        button.setAttribute('aria-label', this.translationManager.translate('timetable.show_inbound_only'));
+      }
+    });
+    
+    // 路線選択画面の路線名とaria-labelを更新
+    const routeItems = this.modal.querySelectorAll('.timetable-route-item');
+    routeItems.forEach(item => {
+      const routeNameElement = item.querySelector('.timetable-route-name');
+      if (routeNameElement) {
+        // 元の日本語路線名を取得（data属性から、または現在のテキストから逆引き）
+        // 注意: 逆引きは完全一致が必要なため、data属性に保存する方が確実
+        const originalRouteName = routeNameElement.getAttribute('data-original-route-name') || routeNameElement.textContent;
+        
+        // 路線名を翻訳
+        const translatedRouteName = this.translationManager.translateRouteName(originalRouteName);
+        routeNameElement.textContent = translatedRouteName;
+        
+        // aria-labelを更新
+        const selectRouteText = this.translationManager.translate('timetable.select_route_aria');
+        item.setAttribute('aria-label', `${translatedRouteName}${selectRouteText}`);
+      }
+    });
+    
+    // テーブルヘッダーを更新
+    const tableHeaders = this.modal.querySelectorAll('th[data-i18n]');
+    tableHeaders.forEach(header => {
+      const key = header.getAttribute('data-i18n');
+      if (key) {
+        header.textContent = this.translationManager.translate(key);
+      }
+    });
   }
 
   /**
@@ -114,7 +225,9 @@ class TimetableUI {
     const routes = this.timetableController.getRoutesAtStop(stopId);
 
     if (routes.length === 0) {
-      this.showError('この停留所に路線が見つかりません');
+      const errorMessage = this.translationManager ? 
+        this.translationManager.translate('timetable.no_routes_found') : 'この停留所に路線が見つかりません';
+      this.showError(errorMessage);
       return;
     }
 
@@ -137,7 +250,12 @@ class TimetableUI {
    */
   displayRouteSelection(routes) {
     // ヘッダーを作成
-    const header = this.createModalHeader(`時刻表 - ${this.currentStopName}`);
+    const timetableTitle = this.translationManager ? 
+      this.translationManager.translate('modal.timetable_title') : '時刻表';
+    // バス停名を翻訳
+    const translatedStopName = this.translationManager ? 
+      this.translationManager.translateBusStop(this.currentStopName) : this.currentStopName;
+    const header = this.createModalHeader(`${timetableTitle} - ${translatedStopName}`);
     
     // 路線リストを作成
     const routeList = document.createElement('div');
@@ -146,7 +264,12 @@ class TimetableUI {
 
     const instruction = document.createElement('p');
     instruction.className = 'timetable-instruction';
-    instruction.textContent = '路線を選択してください';
+    instruction.setAttribute('data-i18n', 'timetable.select_route');
+    if (this.translationManager) {
+      instruction.textContent = this.translationManager.translate('timetable.select_route');
+    } else {
+      instruction.textContent = '路線を選択してください';
+    }
     routeList.appendChild(instruction);
 
     // DataLoaderから路線メタデータを取得
@@ -161,7 +284,12 @@ class TimetableUI {
       routeItem.className = 'timetable-route-item';
       routeItem.setAttribute('role', 'listitem');
       routeItem.setAttribute('tabindex', '0');
-      routeItem.setAttribute('aria-label', `${route.routeName}を選択`);
+      // aria-labelを翻訳対応（路線名も翻訳）
+      const selectRouteText = this.translationManager ? 
+        this.translationManager.translate('timetable.select_route_aria') : 'を選択';
+      const translatedRouteNameForAria = this.translationManager ? 
+        this.translationManager.translateRouteName(route.routeName) : route.routeName;
+      routeItem.setAttribute('aria-label', `${translatedRouteNameForAria}${selectRouteText}`);
 
       const routeNumber = document.createElement('span');
       routeNumber.className = 'timetable-route-number';
@@ -172,7 +300,12 @@ class TimetableUI {
 
       const routeName = document.createElement('div');
       routeName.className = 'timetable-route-name';
-      routeName.textContent = route.routeName;
+      // 元の日本語路線名をdata属性に保存（言語切り替え時に使用）
+      routeName.setAttribute('data-original-route-name', route.routeName);
+      // 路線名を翻訳
+      const translatedRouteName = this.translationManager ? 
+        this.translationManager.translateRouteName(route.routeName) : route.routeName;
+      routeName.textContent = translatedRouteName;
 
       const agencyName = document.createElement('div');
       agencyName.className = 'timetable-agency-name';
@@ -236,12 +369,16 @@ class TimetableUI {
         badge.className = 'detection-badge detection-badge-na';
         badge.textContent = 'N/A';
         badge.setAttribute('role', 'status');
-        badge.setAttribute('aria-label', '方向判定成功率: 不明');
+        const naAriaLabel = this.translationManager ? 
+          this.translationManager.translate('timetable.detection_rate_unknown') : '方向判定成功率: 不明';
+        badge.setAttribute('aria-label', naAriaLabel);
         
         // ツールチップ用のID
         const tooltipId = `tooltip-na-${Math.random().toString(36).substr(2, 9)}`;
         badge.setAttribute('aria-describedby', tooltipId);
-        badge.setAttribute('data-tooltip', '方向判定成功率が計算できません');
+        const naTooltip = this.translationManager ? 
+          this.translationManager.translate('timetable.detection_rate_calc_failed') : '方向判定成功率が計算できません';
+        badge.setAttribute('data-tooltip', naTooltip);
         
         return badge;
       }
@@ -264,14 +401,28 @@ class TimetableUI {
         // 成功率50%未満: 警告バッジ
         badgeClass = 'detection-badge-warning';
         badgeText = '⚠';
-        tooltipText = `方向判定成功率: ${percentage}% (低)`;
-        badge.setAttribute('aria-label', `警告: 方向判定成功率が低い (${percentage}%)`);
+        if (this.translationManager) {
+          const lowRateText = this.translationManager.translate('timetable.detection_rate_low');
+          tooltipText = `${lowRateText}: ${percentage}%`;
+          const warningText = this.translationManager.translate('timetable.detection_rate_warning');
+          badge.setAttribute('aria-label', `${warningText}: ${lowRateText} (${percentage}%)`);
+        } else {
+          tooltipText = `方向判定成功率: ${percentage}% (低)`;
+          badge.setAttribute('aria-label', `警告: 方向判定成功率が低い (${percentage}%)`);
+        }
       } else if (detectionRate < 0.8) {
         // 成功率50-80%: 注意バッジ
         badgeClass = 'detection-badge-caution';
         badgeText = '!';
-        tooltipText = `方向判定成功率: ${percentage}% (中)`;
-        badge.setAttribute('aria-label', `注意: 方向判定成功率が中程度 (${percentage}%)`);
+        if (this.translationManager) {
+          const mediumRateText = this.translationManager.translate('timetable.detection_rate_medium');
+          tooltipText = `${mediumRateText}: ${percentage}%`;
+          const cautionText = this.translationManager.translate('timetable.detection_rate_caution');
+          badge.setAttribute('aria-label', `${cautionText}: ${mediumRateText} (${percentage}%)`);
+        } else {
+          tooltipText = `方向判定成功率: ${percentage}% (中)`;
+          badge.setAttribute('aria-label', `注意: 方向判定成功率が中程度 (${percentage}%)`);
+        }
       }
 
       badge.classList.add(badgeClass);
@@ -325,14 +476,37 @@ class TimetableUI {
     );
 
     // ヘッダーを作成
-    const header = this.createModalHeader(`時刻表 - ${this.currentRouteName}`);
+    const timetableTitle = this.translationManager ? 
+      this.translationManager.translate('modal.timetable_title') : '時刻表';
+    // currentRouteNameが設定されている場合は路線名を表示、そうでない場合はバス停名を表示
+    let headerTitle;
+    if (this.currentRouteName) {
+      // 路線名を翻訳
+      const translatedRouteName = this.translationManager ? 
+        this.translationManager.translateRouteName(this.currentRouteName) : this.currentRouteName;
+      headerTitle = `${timetableTitle} - ${translatedRouteName}`;
+    } else if (this.currentStopName) {
+      // バス停名を翻訳
+      const translatedStopName = this.translationManager ? 
+        this.translationManager.translateBusStop(this.currentStopName) : this.currentStopName;
+      headerTitle = `${timetableTitle} - ${translatedStopName}`;
+    } else {
+      headerTitle = timetableTitle;
+    }
+    const header = this.createModalHeader(headerTitle);
 
     // 戻るボタンを追加
     const backButton = document.createElement('button');
     backButton.type = 'button';
     backButton.className = 'timetable-back-button';
-    backButton.textContent = '← 路線選択に戻る';
-    backButton.setAttribute('aria-label', '路線選択画面に戻る');
+    backButton.setAttribute('data-i18n', 'modal.back_to_routes');
+    if (this.translationManager) {
+      backButton.textContent = this.translationManager.translate('modal.back_to_routes');
+      backButton.setAttribute('aria-label', this.translationManager.translate('modal.back_to_routes_aria'));
+    } else {
+      backButton.textContent = '← 路線選択に戻る';
+      backButton.setAttribute('aria-label', '路線選択画面に戻る');
+    }
     backButton.addEventListener('click', () => {
       const routes = this.timetableController.getRoutesAtStop(this.currentStopId);
       this.displayRouteSelection(routes);
@@ -409,7 +583,12 @@ class TimetableUI {
     const weekdayTab = document.createElement('button');
     weekdayTab.type = 'button';
     weekdayTab.className = 'timetable-tab';
-    weekdayTab.textContent = '平日';
+    weekdayTab.setAttribute('data-i18n', 'timetable.weekday');
+    if (this.translationManager) {
+      weekdayTab.textContent = this.translationManager.translate('timetable.weekday');
+    } else {
+      weekdayTab.textContent = '平日';
+    }
     weekdayTab.setAttribute('role', 'tab');
     weekdayTab.setAttribute('aria-selected', this.currentTab === 'weekday' ? 'true' : 'false');
     weekdayTab.setAttribute('aria-controls', 'timetable-weekday');
@@ -423,7 +602,12 @@ class TimetableUI {
     const weekendTab = document.createElement('button');
     weekendTab.type = 'button';
     weekendTab.className = 'timetable-tab';
-    weekendTab.textContent = '土日祝';
+    weekendTab.setAttribute('data-i18n', 'timetable.weekend');
+    if (this.translationManager) {
+      weekendTab.textContent = this.translationManager.translate('timetable.weekend');
+    } else {
+      weekendTab.textContent = '土日祝';
+    }
     weekendTab.setAttribute('role', 'tab');
     weekendTab.setAttribute('aria-selected', this.currentTab === 'weekend' ? 'true' : 'false');
     weekendTab.setAttribute('aria-controls', 'timetable-weekend');
@@ -448,15 +632,25 @@ class TimetableUI {
     const container = document.createElement('div');
     container.className = 'direction-filter';
     container.setAttribute('role', 'group');
-    container.setAttribute('aria-label', '方向フィルタ');
+    const directionFilterLabel = this.translationManager ? 
+      this.translationManager.translate('timetable.direction_filter') : '方向フィルタ';
+    container.setAttribute('aria-label', directionFilterLabel);
 
     // すべてボタン
     const allButton = document.createElement('button');
     allButton.type = 'button';
     allButton.className = 'direction-filter-button';
-    allButton.textContent = 'すべて';
+    allButton.setAttribute('data-i18n', 'timetable.all');
+    if (this.translationManager) {
+      const allText = this.translationManager.translate('timetable.all');
+      allButton.textContent = allText;
+      const allAriaLabel = this.translationManager.translate('timetable.show_all_directions');
+      allButton.setAttribute('aria-label', allAriaLabel);
+    } else {
+      allButton.textContent = 'すべて';
+      allButton.setAttribute('aria-label', 'すべての方向を表示');
+    }
     allButton.setAttribute('aria-pressed', currentFilter === 'all' ? 'true' : 'false');
-    allButton.setAttribute('aria-label', 'すべての方向を表示');
     if (currentFilter === 'all') {
       allButton.classList.add('active');
     }
@@ -466,9 +660,17 @@ class TimetableUI {
     const outboundButton = document.createElement('button');
     outboundButton.type = 'button';
     outboundButton.className = 'direction-filter-button';
-    outboundButton.textContent = '往路のみ';
+    outboundButton.setAttribute('data-i18n', 'timetable.outbound');
+    if (this.translationManager) {
+      const outboundText = this.translationManager.translate('timetable.outbound');
+      outboundButton.textContent = outboundText;
+      const outboundAriaLabel = this.translationManager.translate('timetable.show_outbound_only');
+      outboundButton.setAttribute('aria-label', outboundAriaLabel);
+    } else {
+      outboundButton.textContent = '往路のみ';
+      outboundButton.setAttribute('aria-label', '往路のみを表示');
+    }
     outboundButton.setAttribute('aria-pressed', currentFilter === '0' ? 'true' : 'false');
-    outboundButton.setAttribute('aria-label', '往路のみを表示');
     if (currentFilter === '0') {
       outboundButton.classList.add('active');
     }
@@ -478,9 +680,17 @@ class TimetableUI {
     const inboundButton = document.createElement('button');
     inboundButton.type = 'button';
     inboundButton.className = 'direction-filter-button';
-    inboundButton.textContent = '復路のみ';
+    inboundButton.setAttribute('data-i18n', 'timetable.inbound');
+    if (this.translationManager) {
+      const inboundText = this.translationManager.translate('timetable.inbound');
+      inboundButton.textContent = inboundText;
+      const inboundAriaLabel = this.translationManager.translate('timetable.show_inbound_only');
+      inboundButton.setAttribute('aria-label', inboundAriaLabel);
+    } else {
+      inboundButton.textContent = '復路のみ';
+      inboundButton.setAttribute('aria-label', '復路のみを表示');
+    }
     inboundButton.setAttribute('aria-pressed', currentFilter === '1' ? 'true' : 'false');
-    inboundButton.setAttribute('aria-label', '復路のみを表示');
     if (currentFilter === '1') {
       inboundButton.classList.add('active');
     }
@@ -529,8 +739,14 @@ class TimetableUI {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'timetable-map-button';
-    button.textContent = '地図で表示する';
-    button.setAttribute('aria-label', '路線を地図で表示');
+    button.setAttribute('data-i18n', 'results.map_display');
+    if (this.translationManager) {
+      button.textContent = this.translationManager.translate('results.map_display');
+      button.setAttribute('aria-label', this.translationManager.translate('results.map_display'));
+    } else {
+      button.textContent = '地図で表示する';
+      button.setAttribute('aria-label', '路線を地図で表示');
+    }
     button.addEventListener('click', () => this.handleMapDisplayClick());
 
     return button;
@@ -580,7 +796,12 @@ class TimetableUI {
       console.warn('TimetableUI: フィルタ後の時刻表データが空です');
       const noData = document.createElement('p');
       noData.className = 'timetable-no-data';
-      noData.textContent = '該当する時刻表がありません';
+      noData.setAttribute('data-i18n', 'timetable.no_timetable');
+      if (this.translationManager) {
+        noData.textContent = this.translationManager.translate('timetable.no_timetable');
+      } else {
+        noData.textContent = '該当する時刻表がありません';
+      }
       container.appendChild(noData);
       return container;
     }
@@ -595,15 +816,30 @@ class TimetableUI {
     const headerRow = document.createElement('tr');
     
     const timeHeader = document.createElement('th');
-    timeHeader.textContent = '発車時刻';
+    timeHeader.setAttribute('data-i18n', 'timetable.departure_time');
+    if (this.translationManager) {
+      timeHeader.textContent = this.translationManager.translate('timetable.departure_time');
+    } else {
+      timeHeader.textContent = '発車時刻';
+    }
     timeHeader.setAttribute('scope', 'col');
     
     const directionHeader = document.createElement('th');
-    directionHeader.textContent = '方向';
+    directionHeader.setAttribute('data-i18n', 'timetable.direction');
+    if (this.translationManager) {
+      directionHeader.textContent = this.translationManager.translate('timetable.direction');
+    } else {
+      directionHeader.textContent = '方向';
+    }
     directionHeader.setAttribute('scope', 'col');
     
     const destHeader = document.createElement('th');
-    destHeader.textContent = '行き先';
+    destHeader.setAttribute('data-i18n', 'timetable.destination');
+    if (this.translationManager) {
+      destHeader.textContent = this.translationManager.translate('timetable.destination');
+    } else {
+      destHeader.textContent = '行き先';
+    }
     destHeader.setAttribute('scope', 'col');
 
     headerRow.appendChild(timeHeader);
@@ -640,14 +876,26 @@ class TimetableUI {
       if (direction === '0') {
         const label = document.createElement('span');
         label.className = 'direction-label direction-label-outbound';
-        label.textContent = '往路';
-        label.setAttribute('aria-label', '往路');
+        label.setAttribute('data-i18n', 'map.direction_outbound');
+        if (this.translationManager) {
+          label.textContent = this.translationManager.translate('map.direction_outbound');
+          label.setAttribute('aria-label', this.translationManager.translate('map.direction_outbound'));
+        } else {
+          label.textContent = '往路';
+          label.setAttribute('aria-label', '往路');
+        }
         directionCell.appendChild(label);
       } else if (direction === '1') {
         const label = document.createElement('span');
         label.className = 'direction-label direction-label-inbound';
-        label.textContent = '復路';
-        label.setAttribute('aria-label', '復路');
+        label.setAttribute('data-i18n', 'map.direction_inbound');
+        if (this.translationManager) {
+          label.textContent = this.translationManager.translate('map.direction_inbound');
+          label.setAttribute('aria-label', this.translationManager.translate('map.direction_inbound'));
+        } else {
+          label.textContent = '復路';
+          label.setAttribute('aria-label', '復路');
+        }
         directionCell.appendChild(label);
       } else {
         // direction='unknown'の場合は「－」を表示
@@ -689,7 +937,12 @@ class TimetableUI {
     closeButton.type = 'button';
     closeButton.className = 'timetable-close-button';
     closeButton.textContent = '×';
-    closeButton.setAttribute('aria-label', 'モーダルを閉じる');
+    closeButton.setAttribute('data-i18n-aria-label', 'modal.close_aria');
+    if (this.translationManager) {
+      closeButton.setAttribute('aria-label', this.translationManager.translate('modal.close_aria'));
+    } else {
+      closeButton.setAttribute('aria-label', 'モーダルを閉じる');
+    }
     closeButton.addEventListener('click', () => this.closeModal());
 
     header.appendChild(titleElement);
@@ -772,7 +1025,9 @@ class TimetableUI {
     const routeStops = this.timetableController.getRouteStops(this.currentRouteId);
 
     if (routeStops.length === 0) {
-      this.showError('路線の経路情報が見つかりません');
+      const errorMessage1 = this.translationManager ? 
+        this.translationManager.translate('timetable.route_info_not_found') : '路線の経路情報が見つかりません';
+      this.showError(errorMessage1);
       return;
     }
 
@@ -780,7 +1035,9 @@ class TimetableUI {
     const routeData = this.buildRouteDataFromStops(routeStops);
 
     if (!routeData) {
-      this.showError('経路データの構築に失敗しました');
+      const errorMessage2 = this.translationManager ? 
+        this.translationManager.translate('timetable.route_data_build_failed') : '経路データの構築に失敗しました';
+      this.showError(errorMessage2);
       return;
     }
 
@@ -799,7 +1056,9 @@ class TimetableUI {
       }
     } else {
       console.warn('TimetableUI: MapControllerが利用できません');
-      this.showError('地図表示機能が利用できません');
+      const errorMessage3 = this.translationManager ? 
+        this.translationManager.translate('error.map_unavailable') : '地図表示機能が利用できません';
+      this.showError(errorMessage3);
     }
   }
 

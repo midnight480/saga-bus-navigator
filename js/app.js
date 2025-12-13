@@ -24,6 +24,9 @@ class SearchController {
     
     // tripIdからroute_idへのマッピングを作成
     this.tripToRouteMap = this.createTripToRouteMap(trips);
+    
+    // バス停翻訳システム
+    this.busStopTranslator = null;
   }
   
   /**
@@ -389,6 +392,23 @@ class SearchController {
   formatTime(hour, minute) {
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
   }
+
+  /**
+   * バス停翻訳システムを設定
+   */
+  setBusStopTranslator(busStopTranslator) {
+    this.busStopTranslator = busStopTranslator;
+  }
+
+  /**
+   * バス停名を現在の言語に翻訳
+   */
+  translateBusStopName(stopName) {
+    if (this.busStopTranslator) {
+      return this.busStopTranslator.translate(stopName);
+    }
+    return stopName;
+  }
 }
 
 class UIController {
@@ -432,6 +452,10 @@ class UIController {
     this.directionButtons = null;
     this.selectedDirection = 'both'; // デフォルトは両方向
     this.currentDisplayedRouteId = null; // 現在表示中の路線ID
+    
+    // 多言語対応関連
+    this.translationManager = null;
+    this.languageSwitcher = null;
   }
 
   /**
@@ -484,6 +508,9 @@ class UIController {
     this.setupClearSearchResultsButton();
     this.setupCalendarModal();
     this.setupDirectionSelector();
+    
+    // 多言語対応の初期化
+    this.initializeI18n();
   }
 
   /**
@@ -539,14 +566,18 @@ class UIController {
     // 乗車バス停の候補選択
     this.departureSuggestions.addEventListener('click', (e) => {
       if (e.target.tagName === 'LI') {
-        this.selectBusStop(e.target.textContent, 'departure');
+        // data属性から元の日本語名を取得（翻訳名ではなく）
+        const stopName = e.target.getAttribute('data-stop-name') || e.target.textContent;
+        this.selectBusStop(stopName, 'departure');
       }
     });
 
     // 降車バス停の候補選択
     this.arrivalSuggestions.addEventListener('click', (e) => {
       if (e.target.tagName === 'LI') {
-        this.selectBusStop(e.target.textContent, 'arrival');
+        // data属性から元の日本語名を取得（翻訳名ではなく）
+        const stopName = e.target.getAttribute('data-stop-name') || e.target.textContent;
+        this.selectBusStop(stopName, 'arrival');
       }
     });
 
@@ -592,9 +623,26 @@ class UIController {
    */
   filterBusStops(query) {
     const lowerQuery = query.toLowerCase();
-    return this.busStops.filter(stop => 
+    
+    // 日本語名で直接検索
+    let matches = this.busStops.filter(stop => 
       stop.name.toLowerCase().includes(lowerQuery)
     );
+    
+    // 英語名でも検索（BusStopTranslatorが利用可能な場合）
+    if (this.translationManager && this.translationManager.busStopTranslator) {
+      const englishMatches = this.translationManager.busStopTranslator.searchStopNames(query);
+      
+      // 英語名で一致した日本語名のバス停を追加
+      englishMatches.forEach(japaneseName => {
+        const stop = this.busStops.find(s => s.name === japaneseName);
+        if (stop && !matches.find(m => m.name === japaneseName)) {
+          matches.push(stop);
+        }
+      });
+    }
+    
+    return matches;
   }
 
   /**
@@ -610,7 +658,9 @@ class UIController {
       // 候補がない場合
       const li = document.createElement('li');
       li.className = 'suggestion-item suggestion-item-empty';
-      li.textContent = '該当するバス停が見つかりません';
+      const noResultsText = this.translationManager ? 
+        this.translationManager.translate('search.no_stops_found') : '該当するバス停が見つかりません';
+      li.textContent = noResultsText;
       suggestionsElement.appendChild(li);
       suggestionsElement.style.display = 'block';
       return;
@@ -621,7 +671,12 @@ class UIController {
     displayMatches.forEach((stop, index) => {
       const li = document.createElement('li');
       li.className = 'suggestion-item';
-      li.textContent = stop.name;
+      // バス停名を翻訳
+      const translatedName = this.translationManager ? 
+        this.translationManager.translateBusStop(stop.name) : stop.name;
+      li.textContent = translatedName;
+      // 元の日本語名をdata属性に保存（選択時に使用）
+      li.setAttribute('data-stop-name', stop.name);
       li.setAttribute('role', 'option');
       li.setAttribute('data-index', index);
       suggestionsElement.appendChild(li);
@@ -647,17 +702,21 @@ class UIController {
   selectBusStop(stopName, type) {
     // バス停名の検証（既存リストに存在するかチェック）
     if (!this.validateBusStopName(stopName)) {
-      this.displayError('無効なバス停名です。候補リストから選択してください。');
+      this.displayError('error.invalid_stop_name', true);
       return;
     }
     
+    // バス停名を翻訳して表示
+    const translatedName = this.translationManager ? 
+      this.translationManager.translateBusStop(stopName) : stopName;
+    
     if (type === 'departure') {
-      this.selectedDepartureStop = stopName;
-      this.departureInput.value = stopName;
+      this.selectedDepartureStop = stopName; // 内部では日本語名を保持
+      this.departureInput.value = translatedName; // 表示は翻訳名
       this.hideSuggestions(this.departureSuggestions);
     } else {
-      this.selectedArrivalStop = stopName;
-      this.arrivalInput.value = stopName;
+      this.selectedArrivalStop = stopName; // 内部では日本語名を保持
+      this.arrivalInput.value = translatedName; // 表示は翻訳名
       this.hideSuggestions(this.arrivalSuggestions);
     }
 
@@ -683,7 +742,7 @@ class UIController {
   validateStops() {
     if (this.selectedDepartureStop && this.selectedArrivalStop) {
       if (this.selectedDepartureStop === this.selectedArrivalStop) {
-        this.displayError('乗車バス停と降車バス停は異なる停留所を選択してください');
+        this.displayError('error.same_stops', true);
         return false;
       }
     }
@@ -703,9 +762,19 @@ class UIController {
 
   /**
    * エラーメッセージの表示
+   * @param {string} message - エラーメッセージ（翻訳キーまたは直接メッセージ）
+   * @param {boolean} isTranslationKey - messageが翻訳キーかどうか
    */
-  displayError(message) {
-    this.errorMessage.textContent = message;
+  displayError(message, isTranslationKey = false) {
+    if (isTranslationKey && this.translationManager) {
+      // 翻訳キーの場合は翻訳して表示
+      this.errorMessage.textContent = this.translationManager.translate(message);
+      this.errorMessage.setAttribute('data-i18n-error', message);
+    } else {
+      // 直接メッセージの場合はそのまま表示
+      this.errorMessage.textContent = message;
+      this.errorMessage.removeAttribute('data-i18n-error');
+    }
     this.errorMessage.style.display = 'block';
   }
 
@@ -764,7 +833,9 @@ class UIController {
       case 'Enter':
         e.preventDefault();
         if (currentIndex >= 0) {
-          this.selectBusStop(items[currentIndex].textContent, type);
+          // data属性から元の日本語名を取得（翻訳名ではなく）
+          const stopName = items[currentIndex].getAttribute('data-stop-name') || items[currentIndex].textContent;
+          this.selectBusStop(stopName, type);
         }
         return;
       
@@ -868,7 +939,7 @@ class UIController {
     } catch (error) {
       console.error('時刻取得エラー:', error);
       this.currentTime = new Date();
-      this.displayError('端末の時刻を使用しています（時刻サーバーに接続できませんでした）');
+      this.displayError('error.ntp_unavailable', true);
     }
   }
 
@@ -1005,7 +1076,12 @@ class UIController {
     if (results.length === 0) {
       const noResultsMessage = document.createElement('p');
       noResultsMessage.className = 'no-results-message';
-      noResultsMessage.textContent = '指定された条件に該当する便が見つかりませんでした';
+      noResultsMessage.setAttribute('data-i18n', 'results.no_results');
+      if (this.translationManager) {
+        noResultsMessage.textContent = this.translationManager.translate('results.no_results');
+      } else {
+        noResultsMessage.textContent = '指定された条件に該当する便が見つかりませんでした';
+      }
       resultsContainer.appendChild(noResultsMessage);
       
       // もっと見るボタンを非表示
@@ -1069,7 +1145,12 @@ class UIController {
       // プレースホルダーを表示
       const placeholder = document.createElement('p');
       placeholder.className = 'results-placeholder';
-      placeholder.textContent = '検索条件を入力して検索ボタンを押してください';
+      placeholder.setAttribute('data-i18n', 'results.placeholder');
+      if (this.translationManager) {
+        placeholder.textContent = this.translationManager.translate('results.placeholder');
+      } else {
+        placeholder.textContent = '検索条件を入力して検索ボタンを押してください';
+      }
       resultsContainer.appendChild(placeholder);
     }
     
@@ -1220,7 +1301,7 @@ class UIController {
       
     } catch (error) {
       console.error('[UIController] カレンダーエクスポートエラー:', error);
-      this.displayError('カレンダーへの登録に失敗しました');
+      this.displayError('error.calendar_error', true);
     }
   }
 
@@ -1311,7 +1392,12 @@ class UIController {
     
     const departureLabel = document.createElement('span');
     departureLabel.className = 'result-time-label';
-    departureLabel.textContent = '出発';
+    departureLabel.setAttribute('data-i18n', 'results.departure');
+    if (this.translationManager) {
+      departureLabel.textContent = this.translationManager.translate('results.departure');
+    } else {
+      departureLabel.textContent = '出発';
+    }
     
     const departureValue = document.createElement('span');
     departureValue.className = 'result-time-value';
@@ -1331,7 +1417,12 @@ class UIController {
     
     const arrivalLabel = document.createElement('span');
     arrivalLabel.className = 'result-time-label';
-    arrivalLabel.textContent = '到着';
+    arrivalLabel.setAttribute('data-i18n', 'results.arrival');
+    if (this.translationManager) {
+      arrivalLabel.textContent = this.translationManager.translate('results.arrival');
+    } else {
+      arrivalLabel.textContent = '到着';
+    }
     
     const arrivalValue = document.createElement('span');
     arrivalValue.className = 'result-time-value';
@@ -1354,11 +1445,18 @@ class UIController {
     
     const durationLabel = document.createElement('span');
     durationLabel.className = 'result-detail-label';
-    durationLabel.textContent = '所要時間: ';
+    durationLabel.setAttribute('data-i18n', 'results.duration');
+    if (this.translationManager) {
+      durationLabel.textContent = `${this.translationManager.translate('results.duration')}: `;
+    } else {
+      durationLabel.textContent = '所要時間: ';
+    }
     
     const durationValue = document.createElement('span');
     durationValue.className = 'result-detail-value';
-    durationValue.textContent = `${result.duration}分`;
+    const minutesText = this.translationManager ? 
+      this.translationManager.translate('results.minutes') : '分';
+    durationValue.textContent = `${result.duration}${minutesText}`;
     
     duration.appendChild(durationLabel);
     duration.appendChild(durationValue);
@@ -1369,15 +1467,31 @@ class UIController {
     
     const fareLabel = document.createElement('span');
     fareLabel.className = 'result-detail-label';
-    fareLabel.textContent = '運賃: ';
+    fareLabel.setAttribute('data-i18n', 'results.fare');
+    if (this.translationManager) {
+      fareLabel.textContent = `${this.translationManager.translate('results.fare')}: `;
+    } else {
+      fareLabel.textContent = '運賃: ';
+    }
     
     const fareValue = document.createElement('span');
     fareValue.className = 'result-detail-value';
     
     if (result.adultFare !== null && result.childFare !== null) {
-      fareValue.textContent = `大人 ${result.adultFare}円 / 小人 ${result.childFare}円`;
+      if (this.translationManager) {
+        const adultText = this.translationManager.translate('results.adult');
+        const childText = this.translationManager.translate('results.child');
+        const yenText = this.translationManager.translate('results.yen');
+        fareValue.textContent = `${adultText} ${result.adultFare}${yenText} / ${childText} ${result.childFare}${yenText}`;
+      } else {
+        fareValue.textContent = `大人 ${result.adultFare}円 / 小人 ${result.childFare}円`;
+      }
     } else {
-      fareValue.textContent = '運賃情報なし';
+      if (this.translationManager) {
+        fareValue.textContent = this.translationManager.translate('results.fare_info_none');
+      } else {
+        fareValue.textContent = '運賃情報なし';
+      }
     }
     
     fare.appendChild(fareLabel);
@@ -1389,7 +1503,12 @@ class UIController {
     
     const operatorLabel = document.createElement('span');
     operatorLabel.className = 'result-detail-label';
-    operatorLabel.textContent = '事業者: ';
+    operatorLabel.setAttribute('data-i18n', 'results.operator');
+    if (this.translationManager) {
+      operatorLabel.textContent = `${this.translationManager.translate('results.operator')}: `;
+    } else {
+      operatorLabel.textContent = '事業者: ';
+    }
     
     const operatorValue = document.createElement('span');
     operatorValue.className = 'result-detail-value';
@@ -1404,11 +1523,19 @@ class UIController {
     
     const routeLabel = document.createElement('span');
     routeLabel.className = 'result-detail-label';
-    routeLabel.textContent = '路線: ';
+    routeLabel.setAttribute('data-i18n', 'results.route');
+    if (this.translationManager) {
+      routeLabel.textContent = `${this.translationManager.translate('results.route')}: `;
+    } else {
+      routeLabel.textContent = '路線: ';
+    }
     
     const routeValue = document.createElement('span');
     routeValue.className = 'result-detail-value';
-    routeValue.textContent = result.routeName;
+    // 路線名を翻訳
+    const translatedRouteName = this.translationManager ? 
+      this.translationManager.translateRouteName(result.routeName) : result.routeName;
+    routeValue.textContent = translatedRouteName;
     
     route.appendChild(routeLabel);
     route.appendChild(routeValue);
@@ -1427,11 +1554,18 @@ class UIController {
     
     const headsignLabel = document.createElement('span');
     headsignLabel.className = 'result-detail-label';
-    headsignLabel.textContent = '行き先: ';
+    headsignLabel.setAttribute('data-i18n', 'results.destination');
+    if (this.translationManager) {
+      headsignLabel.textContent = `${this.translationManager.translate('results.destination')}: `;
+    } else {
+      headsignLabel.textContent = '行き先: ';
+    }
     
     const headsignValue = document.createElement('span');
     headsignValue.className = 'result-detail-value';
-    headsignValue.textContent = result.tripHeadsign || '情報なし';
+    const infoNoneText = this.translationManager ? 
+      this.translationManager.translate('results.info_none') : '情報なし';
+    headsignValue.textContent = result.tripHeadsign || infoNoneText;
     
     headsign.appendChild(headsignLabel);
     headsign.appendChild(headsignValue);
@@ -1449,14 +1583,23 @@ class UIController {
       
       const viaLabel = document.createElement('span');
       viaLabel.className = 'result-detail-label';
-      viaLabel.textContent = '経由: ';
+      viaLabel.setAttribute('data-i18n', 'results.via');
+      if (this.translationManager) {
+        viaLabel.textContent = `${this.translationManager.translate('results.via')}: `;
+      } else {
+        viaLabel.textContent = '経由: ';
+      }
       
       const viaValue = document.createElement('span');
       viaValue.className = 'result-detail-value result-via-stops-list';
       
-      // 経由バス停を「バス停名 (時刻)」形式で表示
+      // 経由バス停を「バス停名 (時刻)」形式で表示（バス停名を翻訳）
       const viaStopsText = result.viaStops
-        .map(stop => `${stop.name} (${stop.time})`)
+        .map(stop => {
+          const translatedName = this.translationManager ? 
+            this.translationManager.translateBusStop(stop.name) : stop.name;
+          return `${translatedName} (${stop.time})`;
+        })
         .join(' → ');
       
       viaValue.textContent = viaStopsText;
@@ -1474,9 +1617,27 @@ class UIController {
     // 「地図で表示」ボタンを追加
     const mapButton = document.createElement('button');
     mapButton.className = 'map-display-button';
-    mapButton.textContent = '地図で表示';
+    mapButton.setAttribute('data-i18n', 'results.map_display');
+    if (this.translationManager) {
+      mapButton.textContent = this.translationManager.translate('results.map_display');
+    } else {
+      mapButton.textContent = '地図で表示';
+    }
     mapButton.setAttribute('type', 'button');
-    mapButton.setAttribute('aria-label', `${result.departureStop}から${result.arrivalStop}への経路を地図で表示`);
+    // aria-labelを翻訳対応に
+    const depStop = this.translationManager ? 
+      this.translationManager.translateBusStop(result.departureStop) : result.departureStop;
+    const arrStop = this.translationManager ? 
+      this.translationManager.translateBusStop(result.arrivalStop) : result.arrivalStop;
+    if (this.translationManager) {
+      const mapAriaLabel = this.translationManager.translate('results.map_aria_label')
+        .replace('{departure}', depStop)
+        .replace('{arrival}', arrStop)
+        .replace('{action}', this.translationManager.translate('results.map_display'));
+      mapButton.setAttribute('aria-label', mapAriaLabel);
+    } else {
+      mapButton.setAttribute('aria-label', `${depStop}から${arrStop}への経路を地図で表示`);
+    }
     
     // ボタンクリック時のイベントハンドラー
     mapButton.addEventListener('click', () => {
@@ -1488,9 +1649,23 @@ class UIController {
     // 「カレンダーに登録」ボタンを追加
     const calendarButton = document.createElement('button');
     calendarButton.className = 'add-to-calendar-button';
-    calendarButton.textContent = 'カレンダーに登録';
+    calendarButton.setAttribute('data-i18n', 'results.add_to_calendar');
+    if (this.translationManager) {
+      calendarButton.textContent = this.translationManager.translate('results.add_to_calendar');
+    } else {
+      calendarButton.textContent = 'カレンダーに登録';
+    }
     calendarButton.setAttribute('type', 'button');
-    calendarButton.setAttribute('aria-label', `${result.departureStop}から${result.arrivalStop}のバスをカレンダーに登録`);
+    // aria-labelを翻訳対応に（既に宣言された変数を再利用）
+    if (this.translationManager) {
+      const calendarAriaLabel = this.translationManager.translate('results.calendar_aria_label')
+        .replace('{departure}', depStop)
+        .replace('{arrival}', arrStop)
+        .replace('{action}', this.translationManager.translate('results.add_to_calendar'));
+      calendarButton.setAttribute('aria-label', calendarAriaLabel);
+    } else {
+      calendarButton.setAttribute('aria-label', `${depStop}から${arrStop}のバスをカレンダーに登録`);
+    }
     
     // ボタンクリック時のイベントハンドラー
     calendarButton.addEventListener('click', () => {
@@ -1518,7 +1693,7 @@ class UIController {
     // MapControllerが初期化されているか確認
     if (!window.mapController) {
       console.error('[UIController] MapControllerが初期化されていません');
-      this.displayError('地図機能が利用できません');
+      this.displayError('error.map_unavailable', true);
       return;
     }
     
@@ -1527,7 +1702,7 @@ class UIController {
     
     if (!routeData) {
       console.error('[UIController] 経路データの構築に失敗しました');
-      this.displayError('経路情報が不足しています');
+      this.displayError('error.route_info_missing', true);
       return;
     }
     
@@ -1742,17 +1917,21 @@ class UIController {
     
     // バス停名の検証
     if (!this.validateBusStopName(stopName)) {
-      this.displayError('無効なバス停が選択されました');
+      this.displayError('error.invalid_stop_selected', true);
       return;
     }
     
+    // バス停名を翻訳して表示
+    const translatedName = this.translationManager ? 
+      this.translationManager.translateBusStop(stopName) : stopName;
+    
     // 検索フォームに自動入力
     if (type === 'departure') {
-      this.selectedDepartureStop = stopName;
-      this.departureInput.value = stopName;
+      this.selectedDepartureStop = stopName; // 内部では日本語名を保持
+      this.departureInput.value = translatedName; // 表示は翻訳名
     } else if (type === 'arrival') {
-      this.selectedArrivalStop = stopName;
-      this.arrivalInput.value = stopName;
+      this.selectedArrivalStop = stopName; // 内部では日本語名を保持
+      this.arrivalInput.value = translatedName; // 表示は翻訳名
     }
     
     // 同一バス停チェック
@@ -1851,25 +2030,25 @@ class UIController {
   async executeSearch() {
     // 入力検証: 乗車バス停
     if (!this.selectedDepartureStop) {
-      this.displayError('乗車バス停を選択してください');
+      this.displayError('error.select_departure', true);
       return;
     }
     
     // バス停名の検証（既存リストに存在するかチェック）
     if (!this.validateBusStopName(this.selectedDepartureStop)) {
-      this.displayError('無効な乗車バス停です。候補リストから選択してください。');
+      this.displayError('error.invalid_departure', true);
       return;
     }
     
     // 入力検証: 降車バス停
     if (!this.selectedArrivalStop) {
-      this.displayError('降車バス停を選択してください');
+      this.displayError('error.select_arrival', true);
       return;
     }
     
     // バス停名の検証（既存リストに存在するかチェック）
     if (!this.validateBusStopName(this.selectedArrivalStop)) {
-      this.displayError('無効な降車バス停です。候補リストから選択してください。');
+      this.displayError('error.invalid_arrival', true);
       return;
     }
     
@@ -1890,7 +2069,7 @@ class UIController {
       const timeOption = this.getSelectedTimeOption();
       
       if (!timeOption) {
-        this.displayError('時刻を正しく入力してください');
+        this.displayError('error.invalid_time', true);
         this.displayLoading(false);
         return;
       }
@@ -1905,7 +2084,7 @@ class UIController {
       // 時刻指定の場合は時刻の妥当性を検証
       if ((timeOption.type === 'departure-time' || timeOption.type === 'arrival-time') &&
           !this.validateTime(timeOption.hour, timeOption.minute)) {
-        this.displayError('時刻を正しく入力してください（時: 0-23、分: 0-59）');
+        this.displayError('error.time_format', true);
         this.displayLoading(false);
         return;
       }
@@ -1935,11 +2114,104 @@ class UIController {
       
     } catch (error) {
       console.error('検索エラー:', error);
-      this.displayError('検索中にエラーが発生しました。もう一度お試しください。');
+      this.displayError('error.search_error', true);
     } finally {
       // ローディング非表示
       this.displayLoading(false);
     }
+  }
+
+  /**
+   * 多言語対応の初期化
+   */
+  async initializeI18n() {
+    try {
+      // TranslationManagerの初期化
+      this.translationManager = new TranslationManager();
+      
+      // 保存された言語設定を読み込み
+      const savedLanguage = LocaleStorage.getLanguage();
+      await this.translationManager.setLanguage(savedLanguage);
+      
+      // LanguageSwitcherの初期化
+      const languageSwitcherContainer = document.getElementById('language-switcher');
+      if (languageSwitcherContainer) {
+        this.languageSwitcher = new LanguageSwitcher(
+          languageSwitcherContainer,
+          this.translationManager
+        );
+      }
+      
+      // BusStopTranslatorに現在の言語を設定
+      if (window.busStopTranslator && this.translationManager) {
+        window.busStopTranslator.setCurrentLanguage(this.translationManager.getCurrentLanguage());
+      }
+      
+      // 初期翻訳の適用
+      this.applyTranslations();
+      
+      // 言語変更イベントをリッスンして動的コンテンツを更新
+      window.addEventListener('languageChanged', () => {
+        this.updateDynamicContent();
+      });
+      
+    } catch (error) {
+      console.error('多言語対応の初期化に失敗しました:', error);
+      // エラーが発生してもアプリケーションは継続動作
+    }
+  }
+
+  /**
+   * 動的コンテンツの翻訳を更新
+   */
+  updateDynamicContent() {
+    if (!this.translationManager) return;
+    
+    // 検索フォームの入力フィールドを更新
+    if (this.selectedDepartureStop && this.departureInput) {
+      const translatedName = this.translationManager.translateBusStop(this.selectedDepartureStop);
+      this.departureInput.value = translatedName;
+    }
+    if (this.selectedArrivalStop && this.arrivalInput) {
+      const translatedName = this.translationManager.translateBusStop(this.selectedArrivalStop);
+      this.arrivalInput.value = translatedName;
+    }
+    
+    // 検索結果が表示されている場合は再表示
+    const resultsContainer = document.getElementById('results-container');
+    if (resultsContainer && resultsContainer.querySelector('.result-item')) {
+      // 検索結果を再表示するために、現在の検索条件で再検索
+      // ただし、これは重い処理なので、表示中の結果のラベルのみ更新
+      const resultItems = resultsContainer.querySelectorAll('.result-item');
+      resultItems.forEach(item => {
+        // ラベルを更新
+        const labels = item.querySelectorAll('[data-i18n]');
+        labels.forEach(label => {
+          const key = label.getAttribute('data-i18n');
+          if (key) {
+            label.textContent = this.translationManager.translate(key);
+          }
+        });
+      });
+    }
+    
+    // エラーメッセージが表示されている場合は更新
+    if (this.errorMessage && this.errorMessage.style.display === 'block') {
+      const errorKey = this.errorMessage.getAttribute('data-i18n-error');
+      if (errorKey && this.translationManager) {
+        this.errorMessage.textContent = this.translationManager.translate(errorKey);
+      }
+    }
+  }
+
+  /**
+   * 現在の言語に基づいて翻訳を適用
+   */
+  applyTranslations() {
+    if (!this.translationManager) return;
+
+    // TranslationManagerのupdateDOMTranslationsメソッドを使用
+    this.translationManager.updateDOMTranslations();
   }
 }
 
@@ -2140,8 +2412,9 @@ async function initializeApp() {
       );
       console.log('TimetableControllerの初期化が完了しました');
       
-      // TimetableUIの初期化
-      window.timetableUI = new TimetableUI(window.timetableController);
+      // TimetableUIの初期化（TranslationManagerは後で設定）
+      window.timetableUI = new TimetableUI(window.timetableController, null);
+      
       console.log('TimetableUIの初期化が完了しました');
     } catch (error) {
       console.error('TimetableController初期化エラー:', error);
@@ -2160,9 +2433,67 @@ async function initializeApp() {
     );
     console.log('SearchControllerの初期化が完了しました');
     
-    // UIControllerの初期化
+    // UIControllerの初期化（BusStopTranslatorより先に初期化）
     window.uiController = new UIController();
     window.uiController.initialize(dataLoader.busStops);
+    
+    // BusStopTranslatorの初期化（多言語対応）
+    try {
+      const busStopMapping = dataLoader.getBusStopMapping();
+      window.busStopTranslator = new BusStopTranslator(busStopMapping);
+      
+      // 初期言語を設定（TranslationManagerの現在の言語に合わせる）
+      if (window.uiController.translationManager) {
+        const currentLang = window.uiController.translationManager.getLanguage();
+        window.busStopTranslator.setCurrentLanguage(currentLang);
+      }
+      
+      // SearchControllerにBusStopTranslatorを設定
+      window.searchController.setBusStopTranslator(window.busStopTranslator);
+      
+      // TranslationManagerにBusStopTranslatorを設定
+      if (window.uiController.translationManager) {
+        window.uiController.translationManager.setBusStopTranslator(window.busStopTranslator);
+      }
+      
+      // TimetableUIにTranslationManagerを設定
+      if (window.timetableUI && window.uiController.translationManager) {
+        window.timetableUI.translationManager = window.uiController.translationManager;
+      }
+      
+      console.log('BusStopTranslatorの初期化が完了しました', {
+        mappingCount: busStopMapping.length
+      });
+    } catch (error) {
+      console.error('BusStopTranslator初期化エラー:', error);
+      console.warn('バス停名翻訳機能は利用できません');
+      window.busStopTranslator = null;
+    }
+    
+    // RouteNameTranslatorの初期化（多言語対応）
+    try {
+      const routeNameMapping = dataLoader.getRouteNameMapping();
+      window.routeNameTranslator = new RouteNameTranslator(routeNameMapping);
+      
+      // 初期言語を設定（TranslationManagerの現在の言語に合わせる）
+      if (window.uiController.translationManager) {
+        const currentLang = window.uiController.translationManager.getLanguage();
+        window.routeNameTranslator.setCurrentLanguage(currentLang);
+      }
+      
+      // TranslationManagerにRouteNameTranslatorを設定
+      if (window.uiController.translationManager) {
+        window.uiController.translationManager.setRouteNameTranslator(window.routeNameTranslator);
+      }
+      
+      console.log('RouteNameTranslatorの初期化が完了しました', {
+        mappingCount: routeNameMapping.length
+      });
+    } catch (error) {
+      console.error('RouteNameTranslator初期化エラー:', error);
+      console.warn('路線名翻訳機能は利用できません');
+      window.routeNameTranslator = null;
+    }
     
     console.log('UIの初期化が完了しました');
     
@@ -2170,6 +2501,11 @@ async function initializeApp() {
     const mapStartTime = performance.now();
     window.mapController = new MapController();
     window.mapController.initialize('map-container', dataLoader.busStops);
+    
+    // MapControllerにTranslationManagerを設定
+    if (window.uiController.translationManager) {
+      window.mapController.setTranslationManager(window.uiController.translationManager);
+    }
     
     // バス停マーカーを表示
     window.mapController.displayAllStops();
@@ -2195,7 +2531,7 @@ async function initializeApp() {
     
     // TripTimetableFormatterの初期化
     console.log('TripTimetableFormatterを初期化しています...');
-    window.tripTimetableFormatter = new TripTimetableFormatter(dataLoader);
+    window.tripTimetableFormatter = new TripTimetableFormatter(dataLoader, window.uiController?.translationManager || null);
     console.log('TripTimetableFormatterの初期化が完了しました');
     
     // RealtimeVehicleControllerの初期化（非同期で実行、完了を待たない）
@@ -2225,7 +2561,19 @@ async function initializeApp() {
           
           // UIにエラーメッセージを表示（一時的に表示して自動的に消す）
           const errorMessage = document.getElementById('error-message');
-          if (errorMessage) {
+          if (errorMessage && window.uiController && window.uiController.translationManager) {
+            const errorText = window.uiController.translationManager.translate('error.realtime_unavailable');
+            errorMessage.textContent = errorText;
+            errorMessage.style.display = 'block';
+            
+            // 5秒後に自動的に消す
+            setTimeout(() => {
+              if (errorMessage.textContent === errorText) {
+                errorMessage.textContent = '';
+                errorMessage.style.display = 'none';
+              }
+            }, 5000);
+          } else if (errorMessage) {
             errorMessage.textContent = 'リアルタイム情報が一時的に利用できません';
             errorMessage.style.display = 'block';
             

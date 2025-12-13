@@ -1,0 +1,96 @@
+route_id,Japanese,English,Source
+1ゆめタウン線,ゆめタウン線,Youme Town Line,Mapped
+1中折線,中折線,"Nakaore, Creo Park Nabeshima Line",Mapped
+1二俣線,二俣線,"Hutamata, Kinryu Line",Mapped
+1今宿・道崎線,今宿・道崎線,"Imashuku, Michisaki Line",Mapped
+1伊賀屋線,伊賀屋線,"Igaya, Seiyu Hospital Line",Mapped
+1佐賀城跡線,佐賀城跡線,Saga Castle Ruins Line,Mapped
+1佐賀大学病院線,佐賀大学病院線,Saga University Hospital Line,Mapped
+1佐賀東高校線,佐賀東高校線,"Ryukoku JHS & HS, Saga Higashi High School Line",Mapped
+1佐賀空港線,佐賀空港線,Saga Airport Line,Mapped
+1兵庫線,兵庫線,"Hyogo, Kuboizumi Kogyo Danchi Line",Mapped
+1卸センター線,卸センター線,"Oroshi Center, Saga University Hospital Line",Mapped
+1嘉瀬新町線,嘉瀬新町線,"Kaseshinmachi, Kubota Line",Mapped
+1女子短大線,女子短大線,"Saga Women's Junior College, High School Line",Mapped
+1佐大・女子短大線,佐大・女子短大線,"Saga Women's Junior College, High School Line (via Saga University)",Mapped
+1平松循環線,平松循環線,Hiramatsu Loop Line,Mapped
+1広江線,広江線,"Hiroe, Wazaki Line",Mapped
+1徳万・久保田線,徳万・久保田線,"Tokuman, Kubota Line",Mapped
+1早津江線,早津江線,"Morodomi, Hayatsue Line",Mapped
+1東与賀線,東与賀線,"Saga University, Higashiyoka Line",Mapped
+1犬井道線,犬井道線,"Inuido, Odakuma Line",Mapped
+1若楠線,若楠線,"Wakakusu, Saga Memorial Hospital Line",Mapped
+1蓮池線,蓮池線,"Hasuike, Hashizu Line",Mapped
+1西与賀線,西与賀線,"Saga University, Nishiyoka Line",Mapped
+1諸富・橋津線,諸富・橋津線,"Morodomi, Hashizu Line",Mapped
+1金立線,金立線,"Niiji, Kinryu Line",Mapped
+1鍋島駅北線,鍋島駅北線,"Nabeshima Station North, Creo Park Nabeshima Line",Mapped
+3いと・しま号,いと・しま号,Ito-Shima Go,Auto-translated
+3いまり号,いまり号,Imari Go,Auto-translated
+3からつ号,からつ号,Karatsu Go,Auto-translated
+3直行,直行,Direct,Auto-translated
+3からワンライン,からワンライン,Kara One Line,Auto-translated
+3ウエストコーストライナー,ウエストコーストライナー,West Coast Liner,Auto-translated
+3七山線,七山線,Nanayama Line,Auto-translated
+3中極線,中極線,Chugoku Line,Mapped
+3久里・北波多線,久里・北波多線,"Kuri, Kitahata Line",Auto-translated
+3九州大学線,九州大学線,Kyushu University Line,Auto-translated
+3九州大学線（糸島）,九州大学線（糸島）,Kyushu University Line (Itoshima),Auto-translated
+3井原山線,井原山線,Ihara Yamasen,Auto-translated
+3入野乗換線,入野乗換線,Irino Sen Transfer,Auto-translated
+3切木線,切木線,Kirigo Line,Auto-translated
+3前原北原線,前原北原線,Maebaru - Kitabaru Line,Auto-translated
+3古湯線,古湯線,Furuyu Line,Mapped
+3呼子線,呼子線,Yobuko Line,Auto-translated
+3呼子～加部島線,呼子～加部島線,Yobuko - Kabe Shima Line,Auto-translated
+3呼子～台場・浜線,呼子～台場・浜線,"Yobuko - Daiba, Hama Line",Auto-translated
+3呼子～青翔線,呼子～青翔線,Yobuko - Seishou Line,Auto-translated
+3唐津-伊万里線,唐津-伊万里線,Karatsu - Imari Line,Auto-translated
+3唐津-佐賀線,唐津-佐賀線,Karatsu - Saga Line,Auto-translated
+3大島・小加倉線,大島・小加倉線,"Ooshima, Kokagura Line",Auto-translated
+3大良線,大良線,Daira Line,Auto-translated
+3川原線,川原線,Kawara Line,Auto-translated
+3曽根線（有田経由）,曽根線（有田経由）,Sone Line (via Arita),Auto-translated
+3曽根線（波多江経由）,曽根線（波多江経由）,Sone Line (via Hatae),Auto-translated
+3有浦線,有浦線,Ariura Line,Auto-translated
+3東唐津線,東唐津線,Higashi Karatsu Line,Auto-translated
+3東山田線,東山田線,Higashiyama Ta Line,Auto-translated
+3武雄-多久線,武雄-多久線,Takeo - Taku Line,Auto-translated
+3深江線,深江線,Fukae Line,Auto-translated
+3湊・波戸岬線,湊・波戸岬線,"Minato, Hado Cape Line",Auto-translated
+3産業団地線,産業団地線,Sangyou Danchi Line,Auto-translated
+3白糸線,白糸線,Shiroito Line,Auto-translated
+3篠原線,篠原線,Shinohara Line,Auto-translated
+3糸島サンセットライン,糸島サンセットライン,Itoshima Sunset Line,Auto-translated
+3船越線,船越線,Funakoshi Line,Auto-translated
+3芥屋線,芥屋線,Keya Line,Auto-translated
+3西の浦線,西の浦線,Nishi No Ura Line,Auto-translated
+3野元・名護屋浜線,野元・名護屋浜線,"Nomoto, Nagoya Hama Line",Auto-translated
+3野北・二見ヶ浦線,野北・二見ヶ浦線,"No Kita, Futamigaura Line",Auto-translated
+3雷山線,雷山線,Raizan Line,Auto-translated
+4モラージュ佐賀線,モラージュ佐賀線,Mallage Saga Line,Auto-translated
+4下吉田線,下吉田線,Shimoyoshi Ta Line,Auto-translated
+4佐賀線,佐賀線,Saga Line,Auto-translated
+4吉田線,吉田線,Yoshida Line,Auto-translated
+4大野線,大野線,Oono Line,Auto-translated
+4大阪線（乗合高速バス）,大阪線（乗合高速バス）,Osaka Line (Highway Bus),Auto-translated
+4太良線,太良線,Tara Line,Auto-translated
+4奥山線,奥山線,Okuyama Line,Auto-translated
+4嬉野・三間坂線,嬉野・三間坂線,"Ureshino, Mimasaka Line",Auto-translated
+4嬉野線,嬉野線,Ureshino Line,Auto-translated
+4広島線（乗合高速バス）,広島線（乗合高速バス）,Hiroshima Line (Highway Bus),Auto-translated
+4武雄・三間坂線,武雄・三間坂線,"Takeo, Mimasaka Line",Auto-translated
+4武雄市内循環線,武雄市内循環線,Takeo City Loop Line,Auto-translated
+4武雄線,武雄線,Takeo Line,Auto-translated
+4武雄観光周遊バス「たけめぐり」,武雄観光周遊バス「たけめぐり」,"Takeo Sightseeing Loop Bus ""Takemeguri""",Auto-translated
+4江北町内循環線,江北町内循環線,Kohoku Town Loop Line,Auto-translated
+4祐徳線,祐徳線,Yutoku Line,Auto-translated
+4能古見線,能古見線,Nogomi Line,Auto-translated
+4鹿島市内循環線,鹿島市内循環線,Kashima City Loop Line,Auto-translated
+81村外/みつせやまびこ号,村外/みつせやまびこ号,Outside Village / Mitsuse Yamabiko Go,Auto-translated
+81村内西/はつせ号,村内西/はつせ号,Within Village West / Hatsuse Go,Auto-translated
+81村内東/なるせたかせ号,村内東/なるせたかせ号,Within Village East / Naruse Takase Go,Auto-translated
+81三瀬神埼線,三瀬神埼線,Mitsuse Kanzaki Line,Mapped
+89乗合タクシー上久間線,乗合タクシー上久間線,Shared Taxi Kamikuma Line,Auto-translated
+89乗合タクシー春日線,乗合タクシー春日線,Shared Taxi Kasuga Line,Auto-translated
+89乗合タクシー大野原線,乗合タクシー大野原線,Shared Taxi Oonohara Line,Auto-translated

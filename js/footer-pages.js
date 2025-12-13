@@ -8,7 +8,61 @@ class FooterPagesController {
     this.contactModal = null;
     this.activeTab = 'usage';
     this.previousFocus = null;
+    this.translationManager = null;
     this.init();
+    this.setupTranslationManager();
+  }
+  
+  /**
+   * TranslationManagerの参照を取得
+   */
+  setupTranslationManager() {
+    // グローバルスコープからTranslationManagerを取得
+    const tryGetTranslationManager = () => {
+      if (typeof window !== 'undefined' && window.uiController && window.uiController.translationManager) {
+        this.translationManager = window.uiController.translationManager;
+        return true;
+      } else if (typeof window !== 'undefined' && window.translationManager) {
+        this.translationManager = window.translationManager;
+        return true;
+      }
+      return false;
+    };
+    
+    // 即座に試行
+    if (!tryGetTranslationManager()) {
+      // uiControllerがまだ初期化されていない場合、少し待ってから再試行
+      let retryCount = 0;
+      const maxRetries = 50; // 最大5秒待機（100ms × 50回）
+      const checkInterval = setInterval(() => {
+        if (tryGetTranslationManager() || retryCount >= maxRetries) {
+          clearInterval(checkInterval);
+        }
+        retryCount++;
+      }, 100);
+    }
+    
+    // 言語変更イベントをリッスン
+    if (typeof window !== 'undefined') {
+      window.addEventListener('languageChanged', () => {
+        this.updateModalTranslations();
+      });
+    }
+  }
+  
+  /**
+   * モーダル内の翻訳を更新
+   */
+  updateModalTranslations() {
+    if (!this.translationManager) return;
+    
+    // 開いているモーダル内の翻訳を更新
+    if (this.usageModal && !this.usageModal.hasAttribute('hidden')) {
+      this.translationManager.updateDOMTranslations();
+    }
+    if (this.contactModal && !this.contactModal.hasAttribute('hidden')) {
+      this.translationManager.updateDOMTranslations();
+    }
   }
 
   /**
@@ -62,6 +116,14 @@ class FooterPagesController {
     
     // モーダル表示
     modal.removeAttribute('hidden');
+    
+    // 翻訳を更新（モーダルが表示された後に実行）
+    if (this.translationManager) {
+      // 少し遅延させて、DOMが完全に表示された後に翻訳を適用
+      setTimeout(() => {
+        this.translationManager.updateDOMTranslations();
+      }, 0);
+    }
     
     // bodyのスクロール無効化
     document.body.style.overflow = 'hidden';

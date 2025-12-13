@@ -78,15 +78,15 @@
     <!-- Error Display (hidden by default) -->
     <div class="loading-error" role="alert" aria-live="assertive" hidden>
       <p class="error-message"></p>
-      <button type="button" class="retry-button" aria-label="データ読み込みを再試行">再試行</button>
+      <button type="button" class="retry-button" aria-label="データ読み込みを再試行" data-i18n="error.retry">再試行</button>
     </div>
   </div>
 
   <div class="container">
     <!-- Header -->
     <header class="header">
-      <h1 class="header-title">佐賀バスナビ</h1>
-      <p class="header-subtitle">時刻表検索</p>
+      <h1 class="header-title" data-i18n="app.title">佐賀バスナビ</h1>
+      <p class="header-subtitle" data-i18n="app.subtitle">時刻表検索</p>
     </header>
 
     <!-- Map Section -->
@@ -95,21 +95,21 @@
       
       <!-- 方向選択UI（要件4.3） -->
       <div id="direction-selector" class="direction-selector" hidden>
-        <label class="direction-selector-label">表示方向:</label>
+        <label class="direction-selector-label" data-i18n="map.direction_label">表示方向:</label>
         <div class="direction-options">
-          <button type="button" id="direction-both" class="direction-button active" data-direction="both">
+          <button type="button" id="direction-both" class="direction-button active" data-direction="both" data-i18n="map.direction_both">
             両方向
           </button>
-          <button type="button" id="direction-outbound" class="direction-button" data-direction="0">
+          <button type="button" id="direction-outbound" class="direction-button" data-direction="0" data-i18n="map.direction_outbound">
             往路
           </button>
-          <button type="button" id="direction-inbound" class="direction-button" data-direction="1">
+          <button type="button" id="direction-inbound" class="direction-button" data-direction="1" data-i18n="map.direction_inbound">
             復路
           </button>
         </div>
       </div>
       
-      <button type="button" id="clear-route-button" class="btn-clear-route" hidden>
+      <button type="button" id="clear-route-button" class="btn-clear-route" hidden data-i18n="map.clear_route">
         経路をクリア
       </button>
     </section>
@@ -117,7 +117,7 @@
     <!-- Search Form -->
     <main class="main">
       <section class="search-section">
-        <h2 class="section-title">検索条件</h2>
+        <h2 class="section-title" data-i18n="search.conditions">検索条件</h2>
         
         <!-- Error Message Area -->
         <div id="error-message" class="error-message" role="alert" aria-live="polite" hidden></div>
@@ -125,65 +125,67 @@
         <form id="search-form" class="search-form">
           <!-- Departure Stop -->
           <div class="form-group">
-            <label for="departure-stop" class="form-label">乗車バス停</label>
+            <label for="departure-stop" class="form-label" data-i18n="search.departure_stop">乗車バス停</label>
             <div class="autocomplete-wrapper">
               <input 
                 type="text" 
                 id="departure-stop" 
                 class="form-input" 
                 placeholder="バス停名を入力"
+                data-i18n-placeholder="search.placeholder_stop"
                 autocomplete="off"
                 aria-describedby="departure-stop-help"
                 disabled
               >
               <ul id="departure-suggestions" class="suggestions-list" role="listbox"></ul>
             </div>
-            <button type="button" id="map-select-departure" class="btn-map-select" disabled>
+            <button type="button" id="map-select-departure" class="btn-map-select" disabled data-i18n="map.select_from_map">
               地図から選択
             </button>
-            <small id="departure-stop-help" class="form-help">1文字以上入力すると候補が表示されます</small>
+            <small id="departure-stop-help" class="form-help" data-i18n="search.input_help">1文字以上入力すると候補が表示されます</small>
           </div>
 
           <!-- Arrival Stop -->
           <div class="form-group">
-            <label for="arrival-stop" class="form-label">降車バス停</label>
+            <label for="arrival-stop" class="form-label" data-i18n="search.arrival_stop">降車バス停</label>
             <div class="autocomplete-wrapper">
               <input 
                 type="text" 
                 id="arrival-stop" 
                 class="form-input" 
                 placeholder="バス停名を入力"
+                data-i18n-placeholder="search.placeholder_stop"
                 autocomplete="off"
                 aria-describedby="arrival-stop-help"
                 disabled
               >
               <ul id="arrival-suggestions" class="suggestions-list" role="listbox"></ul>
             </div>
-            <button type="button" id="map-select-arrival" class="btn-map-select" disabled>
+            <button type="button" id="map-select-arrival" class="btn-map-select" disabled data-i18n="map.select_from_map">
               地図から選択
             </button>
-            <small id="arrival-stop-help" class="form-help">1文字以上入力すると候補が表示されます</small>
+            <small id="arrival-stop-help" class="form-help" data-i18n="search.input_help">1文字以上入力すると候補が表示されます</small>
           </div>
 
           <!-- Weekday Type Selection -->
           <div class="form-group">
             <fieldset class="weekday-options">
-              <legend class="form-label">曜日区分</legend>
+              <legend class="form-label" data-i18n="time.weekday_type">曜日区分</legend>
               
               <div class="radio-group">
                 <label class="radio-label">
                   <input type="radio" name="weekday-option" value="auto" class="radio-input" checked disabled>
-                  <span class="radio-text">自動判定</span>
+                  <span class="radio-text" data-i18n="time.auto_detect">自動判定</span>
                 </label>
                 
                 <label class="radio-label">
                   <input type="radio" name="weekday-option" value="平日" class="radio-input" disabled>
-                  <span class="radio-text">平日</span>
+                  <span class="radio-text" data-i18n="time.weekday">平日</span>
                 </label>
                 
                 <label class="radio-label">
                   <input type="radio" name="weekday-option" value="土日祝" class="radio-input" disabled>
-                  <span class="radio-text">土日祝</span>
+                  <span class="radio-text" data-i18n="time.weekend">土日祝</span>
                 </label>
               </div>
             </fieldset>
@@ -192,38 +194,38 @@
           <!-- Time Selection -->
           <div class="form-group">
             <fieldset class="time-options">
-              <legend class="form-label">検索条件</legend>
+              <legend class="form-label" data-i18n="time.search_conditions">検索条件</legend>
               
               <div class="radio-group">
                 <label class="radio-label">
                   <input type="radio" name="time-option" value="departure-time" class="radio-input" disabled>
-                  <span class="radio-text">出発時刻指定</span>
+                  <span class="radio-text" data-i18n="time.departure_time">出発時刻指定</span>
                 </label>
                 
                 <label class="radio-label">
                   <input type="radio" name="time-option" value="arrival-time" class="radio-input" disabled>
-                  <span class="radio-text">到着時刻指定</span>
+                  <span class="radio-text" data-i18n="time.arrival_time">到着時刻指定</span>
                 </label>
                 
                 <label class="radio-label">
                   <input type="radio" name="time-option" value="now" class="radio-input" checked disabled>
-                  <span class="radio-text">今すぐ</span>
+                  <span class="radio-text" data-i18n="time.now">今すぐ</span>
                 </label>
                 
                 <label class="radio-label">
                   <input type="radio" name="time-option" value="first-bus" class="radio-input" disabled>
-                  <span class="radio-text">始発</span>
+                  <span class="radio-text" data-i18n="time.first_bus">始発</span>
                 </label>
                 
                 <label class="radio-label">
                   <input type="radio" name="time-option" value="last-bus" class="radio-input" disabled>
-                  <span class="radio-text">終電</span>
+                  <span class="radio-text" data-i18n="time.last_bus">終電</span>
                 </label>
               </div>
 
               <!-- Time Picker (shown when departure-time or arrival-time is selected) -->
               <div id="time-picker" class="time-picker">
-                <label for="time-hour" class="time-label">時刻</label>
+                <label for="time-hour" class="time-label" data-i18n="time.time_label">時刻</label>
                 <div class="time-inputs">
                   <input 
                     type="number" 
@@ -232,6 +234,7 @@
                     min="0" 
                     max="23" 
                     placeholder="時"
+                    data-i18n-placeholder="time.hour_placeholder"
                     aria-label="時"
                     disabled
                   >
@@ -243,6 +246,7 @@
                     min="0" 
                     max="59" 
                     placeholder="分"
+                    data-i18n-placeholder="time.minute_placeholder"
                     aria-label="分"
                     disabled
                   >
@@ -252,14 +256,14 @@
           </div>
 
           <!-- Search Button -->
-          <button type="submit" id="search-button" class="btn btn-primary" disabled>
+          <button type="submit" id="search-button" class="btn btn-primary" disabled data-i18n="search.search_button">
             検索
           </button>
         </form>
         
         <!-- Clear Search Results Button -->
         <div class="button-container">
-          <button type="button" id="clear-search-results-button" class="btn btn-secondary" hidden>
+          <button type="button" id="clear-search-results-button" class="btn btn-secondary" hidden data-i18n="search.clear_results">
             検索結果をクリア
           </button>
         </div>
@@ -267,21 +271,21 @@
 
       <!-- Results Section -->
       <section class="results-section">
-        <h2 class="section-title">検索結果</h2>
+        <h2 class="section-title" data-i18n="results.title">検索結果</h2>
         
         <!-- Loading Indicator -->
         <div id="loading" class="loading">
           <div class="loading-spinner"></div>
-          <p class="loading-text">データを読み込んでいます...</p>
+          <p class="loading-text" data-i18n="results.loading">データを読み込んでいます...</p>
         </div>
         
         <!-- Results List -->
         <div id="results-container" class="results-container">
-          <p class="results-placeholder" hidden>検索条件を入力して検索ボタンを押してください</p>
+          <p class="results-placeholder" hidden data-i18n="results.placeholder">検索条件を入力して検索ボタンを押してください</p>
         </div>
         
         <!-- Load More Button -->
-        <button type="button" id="load-more" class="btn btn-secondary" hidden>
+        <button type="button" id="load-more" class="btn btn-secondary" hidden data-i18n="results.load_more">
           もっと見る
         </button>
       </section>
@@ -290,12 +294,13 @@
     <!-- Footer -->
     <footer class="footer">
       <p class="footer-text">
-        &copy; 2025 佐賀バスナビ | 
-        <a href="#usage" class="footer-link">使い方</a> | 
-        <a href="#contact" class="footer-link">お問い合わせ</a>
+        <div id="language-switcher" class="language-switcher-dropdown"></div>
+        &copy; 2025 <span data-i18n="footer.copyright">佐賀バスナビ</span> | 
+        <a href="#usage" class="footer-link" data-i18n="footer.usage">使い方</a> | 
+        <a href="#contact" class="footer-link" data-i18n="footer.contact">お問い合わせ</a>
       </p>
       <p class="footer-text">
-        リアルタイムデータ提供: <a href="http://opendata.sagabus.info/" class="footer-link" target="_blank" rel="noopener noreferrer">佐賀バスオープンデータ</a>
+        <span data-i18n="footer.data_provider_text">リアルタイムデータ提供</span>: <a href="http://opendata.sagabus.info/" class="footer-link" target="_blank" rel="noopener noreferrer" data-i18n="footer.data_provider_link">佐賀バスオープンデータ</a>
       </p>
     </footer>
   </div>
@@ -305,8 +310,8 @@
     <div class="footer-modal-overlay"></div>
     <div class="footer-modal-content">
       <div class="footer-modal-header">
-        <h2 id="contact-modal-title" class="footer-modal-title">お問い合わせ</h2>
-        <button type="button" class="footer-modal-close" aria-label="閉じる">×</button>
+        <h2 id="contact-modal-title" class="footer-modal-title" data-i18n="footer.contact">お問い合わせ</h2>
+        <button type="button" class="footer-modal-close" data-i18n-aria-label="modal.close_aria" data-i18n="modal.close">×</button>
       </div>
       
       <div class="footer-modal-body">
@@ -317,6 +322,7 @@
           frameborder="0"
           marginheight="0"
           marginwidth="0"
+          data-i18n-title="footer.contact"
           title="お問い合わせフォーム"
           loading="lazy">
           読み込んでいます…
@@ -330,21 +336,21 @@
     <div class="footer-modal-overlay"></div>
     <div class="footer-modal-content">
       <div class="footer-modal-header">
-        <h2 id="usage-modal-title" class="footer-modal-title">佐賀バスナビ</h2>
-        <button type="button" class="footer-modal-close" aria-label="閉じる">×</button>
+        <h2 id="usage-modal-title" class="footer-modal-title" data-i18n="app.title">佐賀バスナビ</h2>
+        <button type="button" class="footer-modal-close" data-i18n-aria-label="modal.close_aria" data-i18n="modal.close">×</button>
       </div>
       
       <div class="footer-modal-tabs" role="tablist">
-        <button type="button" class="footer-tab-button active" data-tab="usage" role="tab" aria-selected="true" aria-controls="usage-tab">
+        <button type="button" class="footer-tab-button active" data-tab="usage" role="tab" aria-selected="true" aria-controls="usage-tab" data-i18n="footer.usage">
           使い方
         </button>
-        <button type="button" class="footer-tab-button" data-tab="requirements" role="tab" aria-selected="false" aria-controls="requirements-tab">
+        <button type="button" class="footer-tab-button" data-tab="requirements" role="tab" aria-selected="false" aria-controls="requirements-tab" data-i18n="modal.requirements">
           動作環境
         </button>
-        <button type="button" class="footer-tab-button" data-tab="terms" role="tab" aria-selected="false" aria-controls="terms-tab">
+        <button type="button" class="footer-tab-button" data-tab="terms" role="tab" aria-selected="false" aria-controls="terms-tab" data-i18n="modal.terms">
           利用規約
         </button>
-        <button type="button" class="footer-tab-button" data-tab="acknowledgments" role="tab" aria-selected="false" aria-controls="acknowledgments-tab">
+        <button type="button" class="footer-tab-button" data-tab="acknowledgments" role="tab" aria-selected="false" aria-controls="acknowledgments-tab" data-i18n="modal.acknowledgments">
           謝辞
         </button>
       </div>
@@ -353,161 +359,161 @@
         <!-- 使い方タブ -->
         <div id="usage-tab" class="footer-tab-content active" role="tabpanel" aria-labelledby="usage-tab-button">
           <section class="usage-section">
-            <h3 class="usage-heading">バス停の検索</h3>
+            <h3 class="usage-heading" data-i18n="modal.usage_bus_stop_search">バス停の検索</h3>
             
             <div class="usage-item">
-              <h4 class="usage-subheading">テキスト入力で検索</h4>
-              <p class="usage-text">バス停名を入力すると、候補が表示されます。1文字以上入力すると自動的に候補が絞り込まれます。</p>
+              <h4 class="usage-subheading" data-i18n="modal.usage_text_search">テキスト入力で検索</h4>
+              <p class="usage-text" data-i18n="modal.usage_text_search_desc">バス停名を入力すると、候補が表示されます。1文字以上入力すると自動的に候補が絞り込まれます。</p>
             </div>
             
             <div class="usage-item">
-              <h4 class="usage-subheading">地図から選択</h4>
-              <p class="usage-text">「地図から選択」ボタンをクリックすると、地図上でバス停を選択できます。地図上のマーカーをクリックしてバス停を選んでください。</p>
-            </div>
-          </section>
-          
-          <section class="usage-section">
-            <h3 class="usage-heading">時刻表の検索</h3>
-            
-            <div class="usage-item">
-              <h4 class="usage-subheading">出発時刻指定</h4>
-              <p class="usage-text">指定した時刻以降に出発するバスを検索します。時刻を入力して検索ボタンを押してください。</p>
-            </div>
-            
-            <div class="usage-item">
-              <h4 class="usage-subheading">到着時刻指定</h4>
-              <p class="usage-text">指定した時刻までに到着するバスを検索します。時刻を入力して検索ボタンを押してください。</p>
-            </div>
-            
-            <div class="usage-item">
-              <h4 class="usage-subheading">今すぐ</h4>
-              <p class="usage-text">現在時刻から最も近いバスを検索します。すぐに乗れるバスを探したいときに便利です。</p>
-            </div>
-            
-            <div class="usage-item">
-              <h4 class="usage-subheading">始発</h4>
-              <p class="usage-text">その日の最初のバスを検索します。早朝の移動計画に役立ちます。</p>
-            </div>
-            
-            <div class="usage-item">
-              <h4 class="usage-subheading">終電</h4>
-              <p class="usage-text">その日の最後のバスを検索します。夜間の移動計画に役立ちます。</p>
+              <h4 class="usage-subheading" data-i18n="modal.usage_map_search">地図から選択</h4>
+              <p class="usage-text" data-i18n="modal.usage_map_search_desc">「地図から選択」ボタンをクリックすると、地図上でバス停を選択できます。地図上のマーカーをクリックしてバス停を選んでください。</p>
             </div>
           </section>
           
           <section class="usage-section">
-            <h3 class="usage-heading">検索結果の見方</h3>
+            <h3 class="usage-heading" data-i18n="modal.usage_timetable_search">時刻表の検索</h3>
             
             <div class="usage-item">
-              <h4 class="usage-subheading">路線情報</h4>
-              <p class="usage-text">検索結果には路線名、行き先、出発時刻、到着時刻が表示されます。複数の路線が見つかった場合は、時刻順に表示されます。</p>
+              <h4 class="usage-subheading" data-i18n="modal.usage_departure_time">出発時刻指定</h4>
+              <p class="usage-text" data-i18n="modal.usage_departure_time_desc">指定した時刻以降に出発するバスを検索します。時刻を入力して検索ボタンを押してください。</p>
             </div>
             
             <div class="usage-item">
-              <h4 class="usage-subheading">運賃</h4>
-              <p class="usage-text">各路線の運賃が表示されます。運賃は大人料金です。</p>
+              <h4 class="usage-subheading" data-i18n="modal.usage_arrival_time">到着時刻指定</h4>
+              <p class="usage-text" data-i18n="modal.usage_arrival_time_desc">指定した時刻までに到着するバスを検索します。時刻を入力して検索ボタンを押してください。</p>
             </div>
             
             <div class="usage-item">
-              <h4 class="usage-subheading">所要時間</h4>
-              <p class="usage-text">乗車バス停から降車バス停までの所要時間が表示されます。</p>
+              <h4 class="usage-subheading" data-i18n="modal.usage_now">今すぐ</h4>
+              <p class="usage-text" data-i18n="modal.usage_now_desc">現在時刻から最も近いバスを検索します。すぐに乗れるバスを探したいときに便利です。</p>
+            </div>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading" data-i18n="modal.usage_first_bus">始発</h4>
+              <p class="usage-text" data-i18n="modal.usage_first_bus_desc">その日の最初のバスを検索します。早朝の移動計画に役立ちます。</p>
+            </div>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading" data-i18n="modal.usage_last_bus">終電</h4>
+              <p class="usage-text" data-i18n="modal.usage_last_bus_desc">その日の最後のバスを検索します。夜間の移動計画に役立ちます。</p>
             </div>
           </section>
           
           <section class="usage-section">
-            <h3 class="usage-heading">時刻表詳細の表示</h3>
-            <p class="usage-text">検索結果の各項目をクリックすると、その路線の詳細な時刻表が表示されます。時刻表では、全てのバス停と通過時刻を確認できます。</p>
+            <h3 class="usage-heading" data-i18n="modal.usage_results_view">検索結果の見方</h3>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading" data-i18n="modal.usage_route_info">路線情報</h4>
+              <p class="usage-text" data-i18n="modal.usage_route_info_desc">検索結果には路線名、行き先、出発時刻、到着時刻が表示されます。複数の路線が見つかった場合は、時刻順に表示されます。</p>
+            </div>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading" data-i18n="modal.usage_fare">運賃</h4>
+              <p class="usage-text" data-i18n="modal.usage_fare_desc">各路線の運賃が表示されます。運賃は大人料金です。</p>
+            </div>
+            
+            <div class="usage-item">
+              <h4 class="usage-subheading" data-i18n="modal.usage_duration">所要時間</h4>
+              <p class="usage-text" data-i18n="modal.usage_duration_desc">乗車バス停から降車バス停までの所要時間が表示されます。</p>
+            </div>
           </section>
           
           <section class="usage-section">
-            <h3 class="usage-heading">カレンダー登録機能</h3>
-            <p class="usage-text">時刻表詳細画面から「カレンダーに登録」ボタンをクリックすると、バスの出発時刻をカレンダーアプリに登録できます。iCal形式でのダウンロードまたはGoogle Calendarへの直接登録が選択できます。</p>
+            <h3 class="usage-heading" data-i18n="modal.usage_timetable_detail">時刻表詳細の表示</h3>
+            <p class="usage-text" data-i18n="modal.usage_timetable_detail_desc">検索結果の各項目をクリックすると、その路線の詳細な時刻表が表示されます。時刻表では、全てのバス停と通過時刻を確認できます。</p>
+          </section>
+          
+          <section class="usage-section">
+            <h3 class="usage-heading" data-i18n="modal.usage_calendar">カレンダー登録機能</h3>
+            <p class="usage-text" data-i18n="modal.usage_calendar_desc">時刻表詳細画面から「カレンダーに登録」ボタンをクリックすると、バスの出発時刻をカレンダーアプリに登録できます。iCal形式でのダウンロードまたはGoogle Calendarへの直接登録が選択できます。</p>
           </section>
         </div>
         
         <!-- 動作環境タブ -->
         <div id="requirements-tab" class="footer-tab-content" role="tabpanel" aria-labelledby="requirements-tab-button" hidden>
           <section class="terms-section">
-            <h3 class="terms-heading">対応ブラウザ</h3>
-            <p class="terms-text">本サービスは以下のブラウザで動作確認を行っています。</p>
+            <h3 class="terms-heading" data-i18n="modal.requirements_browsers">対応ブラウザ</h3>
+            <p class="terms-text" data-i18n="modal.requirements_browsers_desc">本サービスは以下のブラウザで動作確認を行っています。</p>
             <ul class="terms-list">
-              <li>Google Chrome（最新版）</li>
-              <li>Microsoft Edge（最新版）</li>
-              <li>Mozilla Firefox（最新版）</li>
+              <li data-i18n="modal.requirements_browser_chrome">Google Chrome（最新版）</li>
+              <li data-i18n="modal.requirements_browser_edge">Microsoft Edge（最新版）</li>
+              <li data-i18n="modal.requirements_browser_firefox">Mozilla Firefox（最新版）</li>
             </ul>
           </section>
           
           <section class="terms-section">
-            <h3 class="terms-heading">モバイルデバイス</h3>
-            <p class="terms-text">モバイルデバイスでは、Android版Chrome、iOS版Chromeでの動作を確認しています。その他のブラウザや古いバージョンでは、一部機能が正常に動作しない場合があります。</p>
+            <h3 class="terms-heading" data-i18n="modal.requirements_mobile">モバイルデバイス</h3>
+            <p class="terms-text" data-i18n="modal.requirements_mobile_desc">モバイルデバイスでは、Android版Chrome、iOS版Chromeでの動作を確認しています。その他のブラウザや古いバージョンでは、一部機能が正常に動作しない場合があります。</p>
           </section>
           
           <section class="terms-section">
-            <h3 class="terms-heading">Safariについて</h3>
-            <p class="terms-text">Safari（iOS版・macOS版）では、位置情報取得や地図表示が正常に動作しない場合があります。Safariをご利用の場合は、Chromeなどの他のブラウザをご利用ください。</p>
-            <p class="terms-text">iPhone版Safariでアクセスした場合、初回アクセス時に地図表示の不安定性についての警告ダイアログが表示されます。この警告は「今後この警告を表示しない」を選択することで、次回以降表示されなくなります。</p>
+            <h3 class="terms-heading" data-i18n="modal.requirements_safari">Safariについて</h3>
+            <p class="terms-text" data-i18n="modal.requirements_safari_desc1">Safari（iOS版・macOS版）では、位置情報取得や地図表示が正常に動作しない場合があります。Safariをご利用の場合は、Chromeなどの他のブラウザをご利用ください。</p>
+            <p class="terms-text" data-i18n="modal.requirements_safari_desc2">iPhone版Safariでアクセスした場合、初回アクセス時に地図表示の不安定性についての警告ダイアログが表示されます。この警告は「今後この警告を表示しない」を選択することで、次回以降表示されなくなります。</p>
           </section>
         </div>
         
         <!-- 利用規約タブ -->
         <div id="terms-tab" class="footer-tab-content" role="tabpanel" aria-labelledby="terms-tab-button" hidden>
           <section class="terms-section">
-            <h3 class="terms-heading">サービスの提供範囲</h3>
-            <p class="terms-text">本サービスは佐賀県内の路線バス情報を提供します。提供する情報は、佐賀県が公開するオープンデータに基づいています。情報は予告なく変更される場合があります。</p>
+            <h3 class="terms-heading" data-i18n="modal.terms_service_scope">サービスの提供範囲</h3>
+            <p class="terms-text" data-i18n="modal.terms_service_scope_desc">本サービスは佐賀県内の路線バス情報を提供します。提供する情報は、佐賀県が公開するオープンデータに基づいています。情報は予告なく変更される場合があります。</p>
           </section>
           
           <section class="terms-section">
-            <h3 class="terms-heading">データの正確性に関する免責事項</h3>
-            <p class="terms-text">本サービスで提供する情報は、オープンデータを基にしていますが、その正確性、完全性、有用性について保証するものではありません。実際のバス運行状況は、天候、交通状況、その他の要因により変更される場合があります。重要な移動の際は、必ず各バス事業者の公式情報もご確認ください。</p>
+            <h3 class="terms-heading" data-i18n="modal.terms_data_accuracy">データの正確性に関する免責事項</h3>
+            <p class="terms-text" data-i18n="modal.terms_data_accuracy_desc">本サービスで提供する情報は、オープンデータを基にしていますが、その正確性、完全性、有用性について保証するものではありません。実際のバス運行状況は、天候、交通状況、その他の要因により変更される場合があります。重要な移動の際は、必ず各バス事業者の公式情報もご確認ください。</p>
           </section>
           
           <section class="terms-section">
-            <h3 class="terms-heading">オープンデータの利用条件</h3>
-            <p class="terms-text">本サービスは、佐賀県が提供するオープンデータを利用しています。オープンデータの利用条件については、データ提供元の利用規約に従います。</p>
+            <h3 class="terms-heading" data-i18n="modal.terms_open_data">オープンデータの利用条件</h3>
+            <p class="terms-text" data-i18n="modal.terms_open_data_desc">本サービスは、佐賀県が提供するオープンデータを利用しています。オープンデータの利用条件については、データ提供元の利用規約に従います。</p>
           </section>
           
           <section class="terms-section">
-            <h3 class="terms-heading">位置情報の取り扱い</h3>
-            <p class="terms-text">本サービスは、現在地機能を使用する際に、お使いのデバイスから位置情報を取得します。取得した位置情報は、地図上での現在地表示および最寄りのバス停検索のためにのみ使用され、サーバーへの送信や保存は一切行いません。位置情報の利用は、ブラウザ内での処理に限定されます。</p>
+            <h3 class="terms-heading" data-i18n="modal.terms_location">位置情報の取り扱い</h3>
+            <p class="terms-text" data-i18n="modal.terms_location_desc">本サービスは、現在地機能を使用する際に、お使いのデバイスから位置情報を取得します。取得した位置情報は、地図上での現在地表示および最寄りのバス停検索のためにのみ使用され、サーバーへの送信や保存は一切行いません。位置情報の利用は、ブラウザ内での処理に限定されます。</p>
           </section>
           
           <section class="terms-section">
-            <h3 class="terms-heading">個人情報の取り扱い</h3>
-            <p class="terms-text">本サービスは、個人を特定する情報を取得・保存しません。お問い合わせフォームから送信された情報は、お問い合わせ対応のためにのみ使用され、第三者に提供されることはありません。</p>
+            <h3 class="terms-heading" data-i18n="modal.terms_privacy">個人情報の取り扱い</h3>
+            <p class="terms-text" data-i18n="modal.terms_privacy_desc">本サービスは、個人を特定する情報を取得・保存しません。お問い合わせフォームから送信された情報は、お問い合わせ対応のためにのみ使用され、第三者に提供されることはありません。</p>
           </section>
           
           <section class="terms-section">
-            <h3 class="terms-heading">サービスの変更・中断</h3>
-            <p class="terms-text">本サービスは、予告なく内容の変更、一時的な中断、または終了する場合があります。これらによって生じたいかなる損害についても、当方は責任を負いかねます。</p>
+            <h3 class="terms-heading" data-i18n="modal.terms_service_changes">サービスの変更・中断</h3>
+            <p class="terms-text" data-i18n="modal.terms_service_changes_desc">本サービスは、予告なく内容の変更、一時的な中断、または終了する場合があります。これらによって生じたいかなる損害についても、当方は責任を負いかねます。</p>
           </section>
           
           <section class="terms-section">
-            <h3 class="terms-heading">免責事項</h3>
-            <p class="terms-text">本サービスの利用により生じたいかなる損害についても、当方は一切の責任を負いません。本サービスは「現状のまま」提供されるものであり、特定の目的への適合性について保証するものではありません。</p>
+            <h3 class="terms-heading" data-i18n="modal.terms_disclaimer">免責事項</h3>
+            <p class="terms-text" data-i18n="modal.terms_disclaimer_desc">本サービスの利用により生じたいかなる損害についても、当方は一切の責任を負いません。本サービスは「現状のまま」提供されるものであり、特定の目的への適合性について保証するものではありません。</p>
           </section>
         </div>
         
         <!-- 謝辞タブ -->
         <div id="acknowledgments-tab" class="footer-tab-content" role="tabpanel" aria-labelledby="acknowledgments-tab-button" hidden>
           <section class="acknowledgments-section">
-            <h3 class="acknowledgments-heading">データ提供元への謝辞</h3>
-            <p class="acknowledgments-text">このアプリケーションは、佐賀県が提供するオープンデータを利用しています。正確で最新のバス情報を公開していただいている佐賀県および関係事業者の皆様に深く感謝いたします。</p>
+            <h3 class="acknowledgments-heading" data-i18n="modal.ack_data_provider">データ提供元への謝辞</h3>
+            <p class="acknowledgments-text" data-i18n="modal.ack_data_provider_desc">このアプリケーションは、佐賀県が提供するオープンデータを利用しています。正確で最新のバス情報を公開していただいている佐賀県および関係事業者の皆様に深く感謝いたします。</p>
           </section>
           
           <section class="acknowledgments-section">
-            <h3 class="acknowledgments-heading">データ提供元</h3>
+            <h3 class="acknowledgments-heading" data-i18n="modal.ack_providers">データ提供元</h3>
             
             <div class="acknowledgments-item">
-              <h4 class="acknowledgments-subheading">佐賀県バス情報</h4>
-              <p class="acknowledgments-text">佐賀県内のバス情報を提供しています。</p>
+              <h4 class="acknowledgments-subheading" data-i18n="modal.ack_saga_bus">佐賀県バス情報</h4>
+              <p class="acknowledgments-text" data-i18n="modal.ack_saga_bus_desc">佐賀県内のバス情報を提供しています。</p>
               <p class="acknowledgments-link-wrapper">
                 <a href="https://www.sagabus.info/home" class="acknowledgments-link" target="_blank" rel="noopener noreferrer">https://www.sagabus.info/home</a>
               </p>
             </div>
             
             <div class="acknowledgments-item">
-              <h4 class="acknowledgments-subheading">オープンデータポータル</h4>
-              <p class="acknowledgments-text">GTFS形式のバスデータを公開しています。</p>
+              <h4 class="acknowledgments-subheading" data-i18n="modal.ack_open_data">オープンデータポータル</h4>
+              <p class="acknowledgments-text" data-i18n="modal.ack_open_data_desc">GTFS形式のバスデータを公開しています。</p>
               <p class="acknowledgments-link-wrapper">
                 <a href="http://opendata.sagabus.info/" class="acknowledgments-link" target="_blank" rel="noopener noreferrer">http://opendata.sagabus.info/</a>
               </p>
@@ -515,25 +521,25 @@
           </section>
           
           <section class="acknowledgments-section">
-            <h3 class="acknowledgments-heading">GTFS形式について</h3>
-            <p class="acknowledgments-text">GTFS（General Transit Feed Specification）は、公共交通機関の時刻表と地理情報を記述するための標準形式です。本アプリケーションは、このGTFS形式のデータを利用して、リアルタイムで正確なバス情報を提供しています。</p>
+            <h3 class="acknowledgments-heading" data-i18n="modal.ack_gtfs">GTFS形式について</h3>
+            <p class="acknowledgments-text" data-i18n="modal.ack_gtfs_desc">GTFS（General Transit Feed Specification）は、公共交通機関の時刻表と地理情報を記述するための標準形式です。本アプリケーションは、このGTFS形式のデータを利用して、リアルタイムで正確なバス情報を提供しています。</p>
           </section>
           
           <section class="acknowledgments-section">
-            <h3 class="acknowledgments-heading">地図ライブラリへの謝辞</h3>
-            <p class="acknowledgments-text">本アプリケーションでは、地図表示機能に以下のオープンソースライブラリとサービスを利用させていただいています。</p>
+            <h3 class="acknowledgments-heading" data-i18n="modal.ack_map_libraries">地図ライブラリへの謝辞</h3>
+            <p class="acknowledgments-text" data-i18n="modal.ack_map_libraries_desc">本アプリケーションでは、地図表示機能に以下のオープンソースライブラリとサービスを利用させていただいています。</p>
             
             <div class="acknowledgments-item">
-              <h4 class="acknowledgments-subheading">Leaflet</h4>
-              <p class="acknowledgments-text">モバイル対応のインタラクティブな地図を実現するためのJavaScriptライブラリです。</p>
+              <h4 class="acknowledgments-subheading" data-i18n="modal.ack_leaflet">Leaflet</h4>
+              <p class="acknowledgments-text" data-i18n="modal.ack_leaflet_desc">モバイル対応のインタラクティブな地図を実現するためのJavaScriptライブラリです。</p>
               <p class="acknowledgments-link-wrapper">
                 <a href="https://leafletjs.com/" class="acknowledgments-link" target="_blank" rel="noopener noreferrer">https://leafletjs.com/</a>
               </p>
             </div>
             
             <div class="acknowledgments-item">
-              <h4 class="acknowledgments-subheading">OpenStreetMap</h4>
-              <p class="acknowledgments-text">オープンソースの地図データを提供するプロジェクトです。本アプリケーションでは、OpenStreetMapの地図タイルを使用しています。</p>
+              <h4 class="acknowledgments-subheading" data-i18n="modal.ack_openstreetmap">OpenStreetMap</h4>
+              <p class="acknowledgments-text" data-i18n="modal.ack_openstreetmap_desc">オープンソースの地図データを提供するプロジェクトです。本アプリケーションでは、OpenStreetMapの地図タイルを使用しています。</p>
               <p class="acknowledgments-link-wrapper">
                 <a href="https://www.openstreetmap.org/" class="acknowledgments-link" target="_blank" rel="noopener noreferrer">https://www.openstreetmap.org/</a>
               </p>
@@ -557,19 +563,19 @@
   <div id="calendar-modal" class="calendar-modal" role="dialog" aria-labelledby="calendar-modal-title" aria-modal="true" tabindex="-1" hidden>
     <div class="calendar-modal-content">
       <div class="calendar-modal-header">
-        <h3 id="calendar-modal-title" class="calendar-modal-title">カレンダーに登録</h3>
-        <button type="button" class="calendar-close-button" aria-label="閉じる">×</button>
+        <h3 id="calendar-modal-title" class="calendar-modal-title" data-i18n="modal.calendar_register">カレンダーに登録</h3>
+        <button type="button" class="calendar-close-button" data-i18n-aria-label="modal.close_aria" data-i18n="modal.close">×</button>
       </div>
       <div class="calendar-modal-body">
-        <p class="calendar-modal-description">カレンダーに登録する方法を選択してください</p>
+        <p class="calendar-modal-description" data-i18n="modal.calendar_description">カレンダーに登録する方法を選択してください</p>
         <div class="calendar-options">
           <button type="button" class="calendar-option-button" data-format="ical">
             <span class="calendar-option-icon">📅</span>
-            <span class="calendar-option-text">iCal形式でダウンロード</span>
+            <span class="calendar-option-text" data-i18n="modal.ical_download">iCal形式でダウンロード</span>
           </button>
           <button type="button" class="calendar-option-button" data-format="google">
             <span class="calendar-option-icon">🗓️</span>
-            <span class="calendar-option-text">Google Calendarで開く</span>
+            <span class="calendar-option-text" data-i18n="modal.google_calendar">Google Calendarで開く</span>
           </button>
         </div>
       </div>
@@ -600,6 +606,11 @@
   <script src="/js/realtime-data-loader.js"></script>
   <script src="/js/realtime-vehicle-controller.js"></script>
   <script src="/js/loading-screen-controller.js"></script>
+  <script src="/js/i18n/locale-storage.js"></script>
+  <script src="/js/i18n/bus-stop-translator.js"></script>
+  <script src="/js/i18n/route-name-translator.js"></script>
+  <script src="/js/i18n/translation-manager.js"></script>
+  <script src="/js/i18n/language-switcher.js"></script>
   <script src="/js/app.js"></script>
   <script src="/js/footer-pages.js"></script>
 </body>

@@ -118,6 +118,12 @@ class DataLoader {
     
     // 進捗コールバック
     this.onProgress = null;
+    
+    // バス停マッピングデータ
+    this.busStopMapping = null;
+    
+    // 路線名マッピングデータ
+    this.routeNameMapping = null;
   }
 
   /**
@@ -229,6 +235,19 @@ class DataLoader {
       this.generateIndexes();
       const indexEndTime = Date.now();
       
+      // 進捗コールバック: バス停マッピング読み込み
+      if (this.onProgress) {
+        this.onProgress('バス停マッピングを読み込んでいます...');
+      }
+      
+      // バス停マッピングファイルを読み込み（多言語対応）
+      const mappingStartTime = Date.now();
+      await this.loadBusStopMapping();
+      
+      // 路線名マッピングファイルを読み込み（多言語対応）
+      await this.loadRouteNameMapping();
+      const mappingEndTime = Date.now();
+      
       const overallEndTime = Date.now();
       
       this.logDebug('全データの読み込み完了', {
@@ -236,6 +255,7 @@ class DataLoader {
         transformDuration: `${transformEndTime - transformStartTime}ms`,
         directionDuration: `${directionEndTime - directionStartTime}ms`,
         indexDuration: `${indexEndTime - indexStartTime}ms`,
+        mappingDuration: `${mappingEndTime - mappingStartTime}ms`,
         busStopsCount: this.busStops.length,
         timetableCount: this.timetable.length,
         faresCount: this.fares.length,
@@ -244,7 +264,8 @@ class DataLoader {
         tripsCount: this.trips.length,
         routesCount: this.routes.length,
         calendarCount: this.calendar.length,
-        gtfsStopsCount: this.gtfsStops.length
+        gtfsStopsCount: this.gtfsStops.length,
+        busStopMappingCount: this.busStopMapping ? this.busStopMapping.length : 0
       });
       
       // 進捗コールバック: データロード完了
@@ -1594,6 +1615,113 @@ class DataLoader {
     this.stopToTrips = null; // 要件5.1: stopToTripsインデックスもクリア
     this.routeToTrips = null; // 要件5.3: routeToTripsインデックスもクリア
     this.stopsGrouped = null; // 要件6.1: 停留所グループ化もクリア
+    
+    // バス停マッピングもクリア
+    this.busStopMapping = null;
+  }
+
+  /**
+   * バス停マッピングファイルを読み込み
+   * @returns {Promise<void>}
+   */
+  async loadBusStopMapping() {
+    try {
+      // キャッシュバスターを追加して最新のCSVファイルを読み込む
+      const cacheBuster = `?t=${Date.now()}`;
+      const response = await fetch(`./data/bus_stops_mapping.csv${cacheBuster}`);
+      if (!response.ok) {
+        this.logDebug('バス停マッピングファイルが見つかりません。多言語対応は無効になります。');
+        this.busStopMapping = [];
+        return;
+      }
+      
+      const text = await response.text();
+      const parsedData = GTFSParser.parse(text);
+      
+      // CSVの列名（Japanese, English, Source）を小文字に変換して統一
+      // BusStopTranslatorが期待する形式に変換
+      this.busStopMapping = parsedData.map(row => {
+        // 列名の大文字小文字を考慮
+        const japanese = row.Japanese || row.japanese || row['Japanese'] || '';
+        const english = row.English || row.english || row['English'] || '';
+        const source = row.Source || row.source || row['Source'] || 'Auto-translated';
+        
+        return {
+          japanese: japanese.trim(),
+          english: english.trim(),
+          source: source.trim()
+        };
+      }).filter(mapping => mapping.japanese && mapping.english);
+      
+      this.logDebug('バス停マッピング読み込み完了', {
+        mappingCount: this.busStopMapping.length
+      });
+      
+    } catch (error) {
+      console.warn('バス停マッピングファイルの読み込みに失敗しました:', error);
+      this.busStopMapping = [];
+    }
+  }
+
+  /**
+   * バス停マッピングデータを取得
+   * @returns {Array} バス停マッピングデータ
+   */
+  getBusStopMapping() {
+    return this.busStopMapping || [];
+  }
+
+  /**
+   * 路線名マッピングファイルを読み込み
+   * @returns {Promise<void>}
+   */
+  async loadRouteNameMapping() {
+    try {
+      // キャッシュバスターを追加して最新のCSVファイルを読み込む
+      const cacheBuster = `?t=${Date.now()}`;
+      const response = await fetch(`./data/route_names_mapping.csv${cacheBuster}`);
+      if (!response.ok) {
+        this.logDebug('路線名マッピングファイルが見つかりません。多言語対応は無効になります。');
+        this.routeNameMapping = [];
+        return;
+      }
+      
+      const text = await response.text();
+      const parsedData = GTFSParser.parse(text);
+      
+      // CSVの列名（route_id, Japanese, English, Source）を処理
+      // RouteNameTranslatorが期待する形式に変換
+      this.routeNameMapping = parsedData.map(row => {
+        // 列名の大文字小文字を考慮
+        const routeId = row.route_id || row['route_id'] || '';
+        const japanese = row.Japanese || row.japanese || row['Japanese'] || '';
+        const english = row.English || row.english || row['English'] || '';
+        const source = row.Source || row.source || row['Source'] || 'Auto-translated';
+        
+        return {
+          routeId: routeId.trim(),
+          japanese: japanese.trim(),
+          english: english.trim(),
+          source: source.trim()
+        };
+      }).filter(mapping => mapping.japanese && mapping.english);
+      
+      this.logDebug('路線名マッピング読み込み完了', {
+        mappingCount: this.routeNameMapping.length
+      });
+      
+    } catch (error) {
+      console.warn('路線名マッピングファイルの読み込みに失敗しました:', error);
+      this.routeNameMapping = [];
+    }
+  }
+
+  /**
+   * 路線名マッピングデータを取得
+   * @returns {Array} 路線名マッピングデータ
+   */
+  getRouteNameMapping() {
+    return this.routeNameMapping || [];
   }
 }
 
