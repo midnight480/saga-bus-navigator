@@ -32,12 +32,13 @@ test.describe('現在地表示機能', () => {
       return departureInput && !departureInput.disabled;
     }, { timeout: 5000 });
 
-    // 現在地ボタンのアイコンを確認
+    // 現在地ボタンのアイコンを確認（SVGアイコン）
     const locationIcon = page.locator('.current-location-button .location-icon');
     await expect(locationIcon).toBeVisible();
 
-    const iconText = await locationIcon.textContent();
-    expect(iconText).toBe('◎');
+    // SVG要素が存在することを確認
+    const svgElement = locationIcon.locator('svg');
+    await expect(svgElement).toBeVisible();
 
     console.log('現在地ボタンのアイコンが正しく表示されました');
   });

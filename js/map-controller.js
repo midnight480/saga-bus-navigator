@@ -1364,7 +1364,7 @@ class MapController {
       const button = L.DomUtil.create('button', 'current-location-button');
       button.type = 'button';
       button.setAttribute('aria-label', '現在地を表示');
-      button.innerHTML = '<span class="location-icon">◎</span>';
+      button.innerHTML = '<span class="location-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="2" fill="currentColor"/><line x1="12" y1="4" x2="12" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="16" x2="12" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="4" y1="12" x2="8" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="16" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>';
       
       // クリックイベントを設定
       L.DomEvent.on(button, 'click', (e) => {
@@ -1514,12 +1514,12 @@ class MapController {
       this.map.removeLayer(this.currentLocationMarker);
     }
     
-    // 現在地アイコンを作成
+    // 現在地アイコンを作成（位置ピンアイコン - 赤オレンジ色）
     const icon = L.divIcon({
-      html: '<div class="current-location-marker">◎</div>',
+      html: '<div class="current-location-marker"><svg width="30" height="41" viewBox="0 0 30 41" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="pinGradient" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#FF6B35;stop-opacity:1" /><stop offset="100%" style="stop-color:#FFB74D;stop-opacity:1" /></linearGradient></defs><path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 26 15 26s15-15.5 15-26C30 6.716 23.284 0 15 0z" fill="url(#pinGradient)"/><circle cx="15" cy="15" r="6" fill="white"/></svg></div>',
       className: 'current-location-icon',
-      iconSize: [20, 20],
-      iconAnchor: [10, 10]
+      iconSize: [30, 41],
+      iconAnchor: [15, 41]
     });
     
     // マーカーを作成
