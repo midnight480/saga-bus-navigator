@@ -78,15 +78,15 @@
     <!-- Error Display (hidden by default) -->
     <div class="loading-error" role="alert" aria-live="assertive" hidden>
       <p class="error-message"></p>
-      <button type="button" class="retry-button" aria-label="データ読み込みを再試行">再試行</button>
+      <button type="button" class="retry-button" aria-label="データ読み込みを再試行" data-i18n="error.retry">再試行</button>
     </div>
   </div>
 
   <div class="container">
     <!-- Header -->
     <header class="header">
-      <h1 class="header-title">佐賀バスナビ</h1>
-      <p class="header-subtitle">時刻表検索</p>
+      <h1 class="header-title" data-i18n="app.title">佐賀バスナビ</h1>
+      <p class="header-subtitle" data-i18n="app.subtitle">時刻表検索</p>
     </header>
 
     <!-- Map Section -->
@@ -95,21 +95,21 @@
       
       <!-- 方向選択UI（要件4.3） -->
       <div id="direction-selector" class="direction-selector" hidden>
-        <label class="direction-selector-label">表示方向:</label>
+        <label class="direction-selector-label" data-i18n="map.direction_label">表示方向:</label>
         <div class="direction-options">
-          <button type="button" id="direction-both" class="direction-button active" data-direction="both">
+          <button type="button" id="direction-both" class="direction-button active" data-direction="both" data-i18n="map.direction_both">
             両方向
           </button>
-          <button type="button" id="direction-outbound" class="direction-button" data-direction="0">
+          <button type="button" id="direction-outbound" class="direction-button" data-direction="0" data-i18n="map.direction_outbound">
             往路
           </button>
-          <button type="button" id="direction-inbound" class="direction-button" data-direction="1">
+          <button type="button" id="direction-inbound" class="direction-button" data-direction="1" data-i18n="map.direction_inbound">
             復路
           </button>
         </div>
       </div>
       
-      <button type="button" id="clear-route-button" class="btn-clear-route" hidden>
+      <button type="button" id="clear-route-button" class="btn-clear-route" hidden data-i18n="map.clear_route">
         経路をクリア
       </button>
     </section>
@@ -117,7 +117,7 @@
     <!-- Search Form -->
     <main class="main">
       <section class="search-section">
-        <h2 class="section-title">検索条件</h2>
+        <h2 class="section-title" data-i18n="search.conditions">検索条件</h2>
         
         <!-- Error Message Area -->
         <div id="error-message" class="error-message" role="alert" aria-live="polite" hidden></div>
@@ -125,65 +125,67 @@
         <form id="search-form" class="search-form">
           <!-- Departure Stop -->
           <div class="form-group">
-            <label for="departure-stop" class="form-label">乗車バス停</label>
+            <label for="departure-stop" class="form-label" data-i18n="search.departure_stop">乗車バス停</label>
             <div class="autocomplete-wrapper">
               <input 
                 type="text" 
                 id="departure-stop" 
                 class="form-input" 
                 placeholder="バス停名を入力"
+                data-i18n-placeholder="search.placeholder_stop"
                 autocomplete="off"
                 aria-describedby="departure-stop-help"
                 disabled
               >
               <ul id="departure-suggestions" class="suggestions-list" role="listbox"></ul>
             </div>
-            <button type="button" id="map-select-departure" class="btn-map-select" disabled>
+            <button type="button" id="map-select-departure" class="btn-map-select" disabled data-i18n="map.select_from_map">
               地図から選択
             </button>
-            <small id="departure-stop-help" class="form-help">1文字以上入力すると候補が表示されます</small>
+            <small id="departure-stop-help" class="form-help" data-i18n="search.input_help">1文字以上入力すると候補が表示されます</small>
           </div>
 
           <!-- Arrival Stop -->
           <div class="form-group">
-            <label for="arrival-stop" class="form-label">降車バス停</label>
+            <label for="arrival-stop" class="form-label" data-i18n="search.arrival_stop">降車バス停</label>
             <div class="autocomplete-wrapper">
               <input 
                 type="text" 
                 id="arrival-stop" 
                 class="form-input" 
                 placeholder="バス停名を入力"
+                data-i18n-placeholder="search.placeholder_stop"
                 autocomplete="off"
                 aria-describedby="arrival-stop-help"
                 disabled
               >
               <ul id="arrival-suggestions" class="suggestions-list" role="listbox"></ul>
             </div>
-            <button type="button" id="map-select-arrival" class="btn-map-select" disabled>
+            <button type="button" id="map-select-arrival" class="btn-map-select" disabled data-i18n="map.select_from_map">
               地図から選択
             </button>
-            <small id="arrival-stop-help" class="form-help">1文字以上入力すると候補が表示されます</small>
+            <small id="arrival-stop-help" class="form-help" data-i18n="search.input_help">1文字以上入力すると候補が表示されます</small>
           </div>
 
           <!-- Weekday Type Selection -->
           <div class="form-group">
             <fieldset class="weekday-options">
-              <legend class="form-label">曜日区分</legend>
+              <legend class="form-label" data-i18n="time.weekday_type">曜日区分</legend>
               
               <div class="radio-group">
                 <label class="radio-label">
                   <input type="radio" name="weekday-option" value="auto" class="radio-input" checked disabled>
-                  <span class="radio-text">自動判定</span>
+                  <span class="radio-text" data-i18n="time.auto_detect">自動判定</span>
                 </label>
                 
                 <label class="radio-label">
                   <input type="radio" name="weekday-option" value="平日" class="radio-input" disabled>
-                  <span class="radio-text">平日</span>
+                  <span class="radio-text" data-i18n="time.weekday">平日</span>
                 </label>
                 
                 <label class="radio-label">
                   <input type="radio" name="weekday-option" value="土日祝" class="radio-input" disabled>
-                  <span class="radio-text">土日祝</span>
+                  <span class="radio-text" data-i18n="time.weekend">土日祝</span>
                 </label>
               </div>
             </fieldset>
@@ -192,38 +194,38 @@
           <!-- Time Selection -->
           <div class="form-group">
             <fieldset class="time-options">
-              <legend class="form-label">検索条件</legend>
+              <legend class="form-label" data-i18n="time.search_conditions">検索条件</legend>
               
               <div class="radio-group">
                 <label class="radio-label">
                   <input type="radio" name="time-option" value="departure-time" class="radio-input" disabled>
-                  <span class="radio-text">出発時刻指定</span>
+                  <span class="radio-text" data-i18n="time.departure_time">出発時刻指定</span>
                 </label>
                 
                 <label class="radio-label">
                   <input type="radio" name="time-option" value="arrival-time" class="radio-input" disabled>
-                  <span class="radio-text">到着時刻指定</span>
+                  <span class="radio-text" data-i18n="time.arrival_time">到着時刻指定</span>
                 </label>
                 
                 <label class="radio-label">
                   <input type="radio" name="time-option" value="now" class="radio-input" checked disabled>
-                  <span class="radio-text">今すぐ</span>
+                  <span class="radio-text" data-i18n="time.now">今すぐ</span>
                 </label>
                 
                 <label class="radio-label">
                   <input type="radio" name="time-option" value="first-bus" class="radio-input" disabled>
-                  <span class="radio-text">始発</span>
+                  <span class="radio-text" data-i18n="time.first_bus">始発</span>
                 </label>
                 
                 <label class="radio-label">
                   <input type="radio" name="time-option" value="last-bus" class="radio-input" disabled>
-                  <span class="radio-text">終電</span>
+                  <span class="radio-text" data-i18n="time.last_bus">終電</span>
                 </label>
               </div>
 
               <!-- Time Picker (shown when departure-time or arrival-time is selected) -->
               <div id="time-picker" class="time-picker">
-                <label for="time-hour" class="time-label">時刻</label>
+                <label for="time-hour" class="time-label" data-i18n="time.time_label">時刻</label>
                 <div class="time-inputs">
                   <input 
                     type="number" 
@@ -232,6 +234,7 @@
                     min="0" 
                     max="23" 
                     placeholder="時"
+                    data-i18n-placeholder="time.hour_placeholder"
                     aria-label="時"
                     disabled
                   >
@@ -243,6 +246,7 @@
                     min="0" 
                     max="59" 
                     placeholder="分"
+                    data-i18n-placeholder="time.minute_placeholder"
                     aria-label="分"
                     disabled
                   >
@@ -252,14 +256,14 @@
           </div>
 
           <!-- Search Button -->
-          <button type="submit" id="search-button" class="btn btn-primary" disabled>
+          <button type="submit" id="search-button" class="btn btn-primary" disabled data-i18n="search.search_button">
             検索
           </button>
         </form>
         
         <!-- Clear Search Results Button -->
         <div class="button-container">
-          <button type="button" id="clear-search-results-button" class="btn btn-secondary" hidden>
+          <button type="button" id="clear-search-results-button" class="btn btn-secondary" hidden data-i18n="search.clear_results">
             検索結果をクリア
           </button>
         </div>
@@ -267,21 +271,21 @@
 
       <!-- Results Section -->
       <section class="results-section">
-        <h2 class="section-title">検索結果</h2>
+        <h2 class="section-title" data-i18n="results.title">検索結果</h2>
         
         <!-- Loading Indicator -->
         <div id="loading" class="loading">
           <div class="loading-spinner"></div>
-          <p class="loading-text">データを読み込んでいます...</p>
+          <p class="loading-text" data-i18n="results.loading">データを読み込んでいます...</p>
         </div>
         
         <!-- Results List -->
         <div id="results-container" class="results-container">
-          <p class="results-placeholder" hidden>検索条件を入力して検索ボタンを押してください</p>
+          <p class="results-placeholder" hidden data-i18n="results.placeholder">検索条件を入力して検索ボタンを押してください</p>
         </div>
         
         <!-- Load More Button -->
-        <button type="button" id="load-more" class="btn btn-secondary" hidden>
+        <button type="button" id="load-more" class="btn btn-secondary" hidden data-i18n="results.load_more">
           もっと見る
         </button>
       </section>
@@ -290,12 +294,13 @@
     <!-- Footer -->
     <footer class="footer">
       <p class="footer-text">
-        &copy; 2025 佐賀バスナビ | 
-        <a href="#usage" class="footer-link">使い方</a> | 
-        <a href="#contact" class="footer-link">お問い合わせ</a>
+        <div id="language-switcher" class="language-switcher-dropdown"></div>
+        &copy; 2025 <span data-i18n="footer.copyright">佐賀バスナビ</span> | 
+        <a href="#usage" class="footer-link" data-i18n="footer.usage">使い方</a> | 
+        <a href="#contact" class="footer-link" data-i18n="footer.contact">お問い合わせ</a>
       </p>
       <p class="footer-text">
-        リアルタイムデータ提供: <a href="http://opendata.sagabus.info/" class="footer-link" target="_blank" rel="noopener noreferrer">佐賀バスオープンデータ</a>
+        <span data-i18n="footer.data_provider_text">リアルタイムデータ提供</span>: <a href="http://opendata.sagabus.info/" class="footer-link" target="_blank" rel="noopener noreferrer" data-i18n="footer.data_provider_link">佐賀バスオープンデータ</a>
       </p>
     </footer>
   </div>
@@ -305,8 +310,8 @@
     <div class="footer-modal-overlay"></div>
     <div class="footer-modal-content">
       <div class="footer-modal-header">
-        <h2 id="contact-modal-title" class="footer-modal-title">お問い合わせ</h2>
-        <button type="button" class="footer-modal-close" aria-label="閉じる">×</button>
+        <h2 id="contact-modal-title" class="footer-modal-title" data-i18n="footer.contact">お問い合わせ</h2>
+        <button type="button" class="footer-modal-close" data-i18n-aria-label="modal.close_aria" data-i18n="modal.close">×</button>
       </div>
       
       <div class="footer-modal-body">
@@ -317,6 +322,7 @@
           frameborder="0"
           marginheight="0"
           marginwidth="0"
+          data-i18n-title="footer.contact"
           title="お問い合わせフォーム"
           loading="lazy">
           読み込んでいます…
@@ -330,21 +336,21 @@
     <div class="footer-modal-overlay"></div>
     <div class="footer-modal-content">
       <div class="footer-modal-header">
-        <h2 id="usage-modal-title" class="footer-modal-title">佐賀バスナビ</h2>
-        <button type="button" class="footer-modal-close" aria-label="閉じる">×</button>
+        <h2 id="usage-modal-title" class="footer-modal-title" data-i18n="app.title">佐賀バスナビ</h2>
+        <button type="button" class="footer-modal-close" data-i18n-aria-label="modal.close_aria" data-i18n="modal.close">×</button>
       </div>
       
       <div class="footer-modal-tabs" role="tablist">
-        <button type="button" class="footer-tab-button active" data-tab="usage" role="tab" aria-selected="true" aria-controls="usage-tab">
+        <button type="button" class="footer-tab-button active" data-tab="usage" role="tab" aria-selected="true" aria-controls="usage-tab" data-i18n="footer.usage">
           使い方
         </button>
-        <button type="button" class="footer-tab-button" data-tab="requirements" role="tab" aria-selected="false" aria-controls="requirements-tab">
+        <button type="button" class="footer-tab-button" data-tab="requirements" role="tab" aria-selected="false" aria-controls="requirements-tab" data-i18n="modal.requirements">
           動作環境
         </button>
-        <button type="button" class="footer-tab-button" data-tab="terms" role="tab" aria-selected="false" aria-controls="terms-tab">
+        <button type="button" class="footer-tab-button" data-tab="terms" role="tab" aria-selected="false" aria-controls="terms-tab" data-i18n="modal.terms">
           利用規約
         </button>
-        <button type="button" class="footer-tab-button" data-tab="acknowledgments" role="tab" aria-selected="false" aria-controls="acknowledgments-tab">
+        <button type="button" class="footer-tab-button" data-tab="acknowledgments" role="tab" aria-selected="false" aria-controls="acknowledgments-tab" data-i18n="modal.acknowledgments">
           謝辞
         </button>
       </div>
@@ -557,19 +563,19 @@
   <div id="calendar-modal" class="calendar-modal" role="dialog" aria-labelledby="calendar-modal-title" aria-modal="true" tabindex="-1" hidden>
     <div class="calendar-modal-content">
       <div class="calendar-modal-header">
-        <h3 id="calendar-modal-title" class="calendar-modal-title">カレンダーに登録</h3>
-        <button type="button" class="calendar-close-button" aria-label="閉じる">×</button>
+        <h3 id="calendar-modal-title" class="calendar-modal-title" data-i18n="modal.calendar_register">カレンダーに登録</h3>
+        <button type="button" class="calendar-close-button" data-i18n-aria-label="modal.close_aria" data-i18n="modal.close">×</button>
       </div>
       <div class="calendar-modal-body">
-        <p class="calendar-modal-description">カレンダーに登録する方法を選択してください</p>
+        <p class="calendar-modal-description" data-i18n="modal.calendar_description">カレンダーに登録する方法を選択してください</p>
         <div class="calendar-options">
           <button type="button" class="calendar-option-button" data-format="ical">
             <span class="calendar-option-icon">📅</span>
-            <span class="calendar-option-text">iCal形式でダウンロード</span>
+            <span class="calendar-option-text" data-i18n="modal.ical_download">iCal形式でダウンロード</span>
           </button>
           <button type="button" class="calendar-option-button" data-format="google">
             <span class="calendar-option-icon">🗓️</span>
-            <span class="calendar-option-text">Google Calendarで開く</span>
+            <span class="calendar-option-text" data-i18n="modal.google_calendar">Google Calendarで開く</span>
           </button>
         </div>
       </div>
@@ -600,6 +606,11 @@
   <script src="/js/realtime-data-loader.js"></script>
   <script src="/js/realtime-vehicle-controller.js"></script>
   <script src="/js/loading-screen-controller.js"></script>
+  <script src="/js/i18n/locale-storage.js"></script>
+  <script src="/js/i18n/bus-stop-translator.js"></script>
+  <script src="/js/i18n/route-name-translator.js"></script>
+  <script src="/js/i18n/translation-manager.js"></script>
+  <script src="/js/i18n/language-switcher.js"></script>
   <script src="/js/app.js"></script>
   <script src="/js/footer-pages.js"></script>
 </body>

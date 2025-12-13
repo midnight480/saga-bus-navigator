@@ -40,6 +40,9 @@ class MapController {
     
     // 車両マーカー管理用のMap (tripId -> marker)
     this.vehicleMarkers = new Map();
+    
+    // TranslationManager（多言語対応用）
+    this.translationManager = null;
   }
 
   /**
@@ -465,6 +468,51 @@ class MapController {
           
           // ポップアップが開かれたときにイベントリスナーを設定
           marker.on('popupopen', () => {
+            // ポップアップの内容を最新の翻訳で更新
+            const popup = marker.getPopup();
+            if (popup) {
+              // 最新の翻訳でポップアップの内容を再生成
+              const updatedContent = this.createPopupContent(stop);
+              popup.setContent(updatedContent);
+              
+              // ポップアップの内容が更新された後、イベントリスナーを設定
+              setTimeout(() => {
+                const popupElement = popup.getElement();
+                if (popupElement) {
+                  // 時刻表を見るボタン
+                  const timetableButton = popupElement.querySelector('.popup-button[data-action="timetable"]');
+                  if (timetableButton) {
+                    const stopId = timetableButton.getAttribute('data-stop-id');
+                    timetableButton.addEventListener('click', () => {
+                      this.showTimetable(stopId);
+                    });
+                  }
+                  
+                  // 乗車バス停に設定するボタン
+                  const setDepartureButton = popupElement.querySelector('.popup-button[data-action="set-departure"]');
+                  if (setDepartureButton) {
+                    const stopName = setDepartureButton.getAttribute('data-stop-name');
+                    setDepartureButton.addEventListener('click', () => {
+                      this.setBusStopToInput(stopName, 'departure');
+                      // ポップアップを閉じる
+                      marker.closePopup();
+                    });
+                  }
+                  
+                  // 降車バス停に設定するボタン
+                  const setArrivalButton = popupElement.querySelector('.popup-button[data-action="set-arrival"]');
+                  if (setArrivalButton) {
+                    const stopName = setArrivalButton.getAttribute('data-stop-name');
+                    setArrivalButton.addEventListener('click', () => {
+                      this.setBusStopToInput(stopName, 'arrival');
+                      // ポップアップを閉じる
+                      marker.closePopup();
+                    });
+                  }
+                }
+              }, 0);
+            }
+            
             // モバイルでは、ポップアップが地図の境界内に収まるように調整
             if (isMobile) {
               const popup = marker.getPopup();
@@ -503,51 +551,6 @@ class MapController {
                       this.map.panTo(newCenter, { duration: 0.3 });
                     }
                   }, 50); // ポップアップのレンダリングを待つ
-                }
-              }
-            }
-            
-            // 既存のイベントリスナー設定処理
-            const popup = marker.getPopup();
-            if (popup) {
-              const popupElement = popup.getElement();
-              if (popupElement) {
-                // 時刻表を見るボタン
-                const timetableButton = popupElement.querySelector('.popup-button[data-action="timetable"]');
-                if (timetableButton) {
-                  const stopId = timetableButton.getAttribute('data-stop-id');
-                  // 既存のイベントリスナーを削除してから追加（重複防止）
-                  const newTimetableButton = timetableButton.cloneNode(true);
-                  timetableButton.parentNode.replaceChild(newTimetableButton, timetableButton);
-                  newTimetableButton.addEventListener('click', () => {
-                    this.showTimetable(stopId);
-                  });
-                }
-                
-                // 乗車バス停に設定するボタン
-                const setDepartureButton = popupElement.querySelector('.popup-button[data-action="set-departure"]');
-                if (setDepartureButton) {
-                  const stopName = setDepartureButton.getAttribute('data-stop-name');
-                  const newSetDepartureButton = setDepartureButton.cloneNode(true);
-                  setDepartureButton.parentNode.replaceChild(newSetDepartureButton, setDepartureButton);
-                  newSetDepartureButton.addEventListener('click', () => {
-                    this.setBusStopToInput(stopName, 'departure');
-                    // ポップアップを閉じる
-                    marker.closePopup();
-                  });
-                }
-                
-                // 降車バス停に設定するボタン
-                const setArrivalButton = popupElement.querySelector('.popup-button[data-action="set-arrival"]');
-                if (setArrivalButton) {
-                  const stopName = setArrivalButton.getAttribute('data-stop-name');
-                  const newSetArrivalButton = setArrivalButton.cloneNode(true);
-                  setArrivalButton.parentNode.replaceChild(newSetArrivalButton, setArrivalButton);
-                  newSetArrivalButton.addEventListener('click', () => {
-                    this.setBusStopToInput(stopName, 'arrival');
-                    // ポップアップを閉じる
-                    marker.closePopup();
-                  });
                 }
               }
             }
@@ -635,17 +638,33 @@ class MapController {
    * @returns {string} ポップアップのHTMLコンテンツ
    */
   createPopupContent(stop) {
+    // バス停名を翻訳
+    const translatedStopName = this.translationManager ? 
+      this.translationManager.translateBusStop(stop.name) : stop.name;
+    
+    // 翻訳キーを取得
+    const stopIdLabel = this.translationManager ? 
+      this.translationManager.translate('map.stop_id') : 'バス停ID';
+    const passingRoutesLabel = this.translationManager ? 
+      this.translationManager.translate('map.passing_routes') : '通過路線';
+    const viewTimetableText = this.translationManager ? 
+      this.translationManager.translate('map.view_timetable') : '時刻表を見る';
+    const setDepartureText = this.translationManager ? 
+      this.translationManager.translate('map.set_departure') : '乗車バス停に設定する';
+    const setArrivalText = this.translationManager ? 
+      this.translationManager.translate('map.set_arrival') : '降車バス停に設定する';
+    
     let content = `
       <div class="bus-stop-popup">
-        <h3 class="popup-title">${this.escapeHtml(stop.name)}</h3>
+        <h3 class="popup-title">${this.escapeHtml(translatedStopName)}</h3>
         <div class="popup-info">
-          <p><strong>バス停ID:</strong> ${this.escapeHtml(stop.id)}</p>
+          <p><strong>${this.escapeHtml(stopIdLabel)}:</strong> ${this.escapeHtml(stop.id)}</p>
     `;
     
     // 路線情報が存在する場合は表示
     if (stop.routes && stop.routes.length > 0) {
       content += `
-          <p><strong>通過路線:</strong></p>
+          <p><strong>${this.escapeHtml(passingRoutesLabel)}:</strong></p>
           <ul class="route-list">
       `;
       stop.routes.forEach(route => {
@@ -660,19 +679,27 @@ class MapController {
         </div>
         <div class="popup-buttons">
           <button class="popup-button popup-button-primary" data-stop-id="${this.escapeHtml(stop.id)}" data-action="timetable">
-            時刻表を見る
+            ${this.escapeHtml(viewTimetableText)}
           </button>
           <button class="popup-button popup-button-secondary" data-stop-name="${this.escapeHtml(stop.name)}" data-action="set-departure">
-            乗車バス停に設定する
+            ${this.escapeHtml(setDepartureText)}
           </button>
           <button class="popup-button popup-button-secondary" data-stop-name="${this.escapeHtml(stop.name)}" data-action="set-arrival">
-            降車バス停に設定する
+            ${this.escapeHtml(setArrivalText)}
           </button>
         </div>
       </div>
     `;
     
     return content;
+  }
+  
+  /**
+   * TranslationManagerを設定
+   * @param {TranslationManager} translationManager - TranslationManagerインスタンス
+   */
+  setTranslationManager(translationManager) {
+    this.translationManager = translationManager;
   }
   
   /**
@@ -890,17 +917,35 @@ class MapController {
       // 既存の経路をクリア
       this.clearRoute();
       
+      // 翻訳キーを取得
+      const departureStopLabel = this.translationManager ? 
+        this.translationManager.translate('map.departure_stop') : '乗車バス停';
+      const arrivalStopLabel = this.translationManager ? 
+        this.translationManager.translate('map.arrival_stop') : '降車バス停';
+      const viaStopLabel = this.translationManager ? 
+        this.translationManager.translate('map.via_stop') : '経由バス停';
+      const departureTimeLabel = this.translationManager ? 
+        this.translationManager.translate('results.departure') : '出発';
+      const arrivalTimeLabel = this.translationManager ? 
+        this.translationManager.translate('results.arrival') : '到着';
+      const passingTimeLabel = this.translationManager ? 
+        this.translationManager.translate('map.passing_time') : '通過';
+      
       // 乗車バス停マーカー（緑色）
       const departureMarker = L.marker(
         [routeData.departureStop.lat, routeData.departureStop.lng],
         { icon: this.createBusStopIcon('green') }
       );
       
+      // バス停名を翻訳
+      const translatedDepartureName = this.translationManager ? 
+        this.translationManager.translateBusStop(routeData.departureStop.name) : routeData.departureStop.name;
+      
       const departurePopupContent = `
         <div class="route-popup">
-          <h4 class="route-popup-title">乗車バス停</h4>
-          <p class="route-popup-name">${this.escapeHtml(routeData.departureStop.name)}</p>
-          <p class="route-popup-time">出発: ${this.escapeHtml(routeData.departureStop.time)}</p>
+          <h4 class="route-popup-title">${this.escapeHtml(departureStopLabel)}</h4>
+          <p class="route-popup-name">${this.escapeHtml(translatedDepartureName)}</p>
+          <p class="route-popup-time">${this.escapeHtml(departureTimeLabel)}: ${this.escapeHtml(routeData.departureStop.time)}</p>
         </div>
       `;
       departureMarker.bindPopup(departurePopupContent);
@@ -912,11 +957,15 @@ class MapController {
         { icon: this.createBusStopIcon('red') }
       );
       
+      // バス停名を翻訳
+      const translatedArrivalName = this.translationManager ? 
+        this.translationManager.translateBusStop(routeData.arrivalStop.name) : routeData.arrivalStop.name;
+      
       const arrivalPopupContent = `
         <div class="route-popup">
-          <h4 class="route-popup-title">降車バス停</h4>
-          <p class="route-popup-name">${this.escapeHtml(routeData.arrivalStop.name)}</p>
-          <p class="route-popup-time">到着: ${this.escapeHtml(routeData.arrivalStop.time)}</p>
+          <h4 class="route-popup-title">${this.escapeHtml(arrivalStopLabel)}</h4>
+          <p class="route-popup-name">${this.escapeHtml(translatedArrivalName)}</p>
+          <p class="route-popup-time">${this.escapeHtml(arrivalTimeLabel)}: ${this.escapeHtml(routeData.arrivalStop.time)}</p>
         </div>
       `;
       arrivalMarker.bindPopup(arrivalPopupContent);
@@ -930,11 +979,15 @@ class MapController {
             { icon: this.createBusStopIcon('yellow') }
           );
           
+          // バス停名を翻訳
+          const translatedViaName = this.translationManager ? 
+            this.translationManager.translateBusStop(stop.name) : stop.name;
+          
           const viaPopupContent = `
             <div class="route-popup">
-              <h4 class="route-popup-title">経由バス停</h4>
-              <p class="route-popup-name">${this.escapeHtml(stop.name)}</p>
-              <p class="route-popup-time">通過: ${this.escapeHtml(stop.time)}</p>
+              <h4 class="route-popup-title">${this.escapeHtml(viaStopLabel)}</h4>
+              <p class="route-popup-name">${this.escapeHtml(translatedViaName)}</p>
+              <p class="route-popup-time">${this.escapeHtml(passingTimeLabel)}: ${this.escapeHtml(stop.time)}</p>
             </div>
           `;
           viaMarker.bindPopup(viaPopupContent);

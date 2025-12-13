@@ -7,8 +7,9 @@ class TripTimetableFormatter {
    * コンストラクタ
    * @param {DataLoader} dataLoader - DataLoaderインスタンス
    */
-  constructor(dataLoader) {
+  constructor(dataLoader, translationManager = null) {
     this.dataLoader = dataLoader;
+    this.translationManager = translationManager;
     
     // LRU方式のキャッシュ（最大100件）
     this.cache = new Map();
@@ -140,14 +141,19 @@ class TripTimetableFormatter {
     try {
       const timetableData = this.getTimetableData(tripId);
       if (!timetableData) {
-        return '時刻表情報が取得できません';
+        const errorText = this.translationManager ? 
+          this.translationManager.translate('timetable.data_unavailable') : '時刻表情報が取得できません';
+        return errorText;
       }
 
       const { currentStopSequence = null, highlightCurrent = true } = options;
 
       // 各停車バス停を「バス停名（到着HH:MM）」形式で生成
       const stopTexts = timetableData.stops.map(stop => {
-        const text = `${stop.stopName}（${stop.formattedTime}）`;
+        // バス停名を翻訳
+        const translatedStopName = this.translationManager ? 
+          this.translationManager.translateBusStop(stop.stopName) : stop.stopName;
+        const text = `${translatedStopName}（${stop.formattedTime}）`;
         
         // 現在位置の強調表示
         if (highlightCurrent && currentStopSequence !== null && 
@@ -162,7 +168,9 @@ class TripTimetableFormatter {
       return stopTexts.join(' → ');
     } catch (error) {
       console.error(`[TripTimetableFormatter] 時刻表テキストフォーマットエラー: trip_id=${tripId}`, error.message);
-      return '時刻表情報の取得に失敗しました';
+      const errorText = this.translationManager ? 
+        this.translationManager.translate('timetable.data_load_failed') : '時刻表情報の取得に失敗しました';
+      return errorText;
     }
   }
 
@@ -267,14 +275,22 @@ class TripTimetableFormatter {
   _generateStopsHTML(stops, currentStopSequence, highlightCurrent, showEllipsis) {
     let html = '';
     
+    // 「現在地」の翻訳を取得
+    const currentLocationText = this.translationManager ? 
+      this.translationManager.translate('timetable.current_location') : '現在地';
+    
     stops.forEach((stop, index) => {
       const isCurrent = highlightCurrent && currentStopSequence !== null && 
                        stop.stopSequence === currentStopSequence;
       
       const stopClass = isCurrent ? 'stop-item current-stop' : 'stop-item';
-      const currentMarker = isCurrent ? '<span class="current-marker">← 現在地</span>' : '';
+      const currentMarker = isCurrent ? `<span class="current-marker">← ${this.escapeHtml(currentLocationText)}</span>` : '';
       
-      html += `<span class="${stopClass}">${stop.stopName}（${stop.formattedTime}）${currentMarker}</span>`;
+      // バス停名を翻訳
+      const translatedStopName = this.translationManager ? 
+        this.translationManager.translateBusStop(stop.stopName) : stop.stopName;
+      
+      html += `<span class="${stopClass}">${this.escapeHtml(translatedStopName)}（${this.escapeHtml(stop.formattedTime)}）${currentMarker}</span>`;
       
       // 矢印を追加（最後の要素以外）
       if (index < stops.length - 1) {
@@ -283,6 +299,20 @@ class TripTimetableFormatter {
     });
     
     return html;
+  }
+  
+  /**
+   * HTMLエスケープ処理
+   * @param {string} text - エスケープするテキスト
+   * @returns {string} エスケープされたテキスト
+   */
+  escapeHtml(text) {
+    if (typeof text !== 'string') {
+      return String(text);
+    }
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   /**
@@ -296,15 +326,23 @@ class TripTimetableFormatter {
   _generateCollapsedStopsHTML(firstStops, lastStops, currentStopSequence, highlightCurrent) {
     let html = '';
     
+    // 「現在地」の翻訳を取得
+    const currentLocationText = this.translationManager ? 
+      this.translationManager.translate('timetable.current_location') : '現在地';
+    
     // 最初の3停車を生成
     firstStops.forEach((stop, index) => {
       const isCurrent = highlightCurrent && currentStopSequence !== null && 
                        stop.stopSequence === currentStopSequence;
       
       const stopClass = isCurrent ? 'stop-item current-stop' : 'stop-item';
-      const currentMarker = isCurrent ? '<span class="current-marker">← 現在地</span>' : '';
+      const currentMarker = isCurrent ? `<span class="current-marker">← ${this.escapeHtml(currentLocationText)}</span>` : '';
       
-      html += `<span class="${stopClass}">${stop.stopName}（${stop.formattedTime}）${currentMarker}</span>`;
+      // バス停名を翻訳
+      const translatedStopName = this.translationManager ? 
+        this.translationManager.translateBusStop(stop.stopName) : stop.stopName;
+      
+      html += `<span class="${stopClass}">${this.escapeHtml(translatedStopName)}（${this.escapeHtml(stop.formattedTime)}）${currentMarker}</span>`;
       html += '<span class="stop-arrow">→</span>';
     });
     
@@ -318,9 +356,13 @@ class TripTimetableFormatter {
                        stop.stopSequence === currentStopSequence;
       
       const stopClass = isCurrent ? 'stop-item current-stop' : 'stop-item';
-      const currentMarker = isCurrent ? '<span class="current-marker">← 現在地</span>' : '';
+      const currentMarker = isCurrent ? `<span class="current-marker">← ${this.escapeHtml(currentLocationText)}</span>` : '';
       
-      html += `<span class="${stopClass}">${stop.stopName}（${stop.formattedTime}）${currentMarker}</span>`;
+      // バス停名を翻訳
+      const translatedStopName = this.translationManager ? 
+        this.translationManager.translateBusStop(stop.stopName) : stop.stopName;
+      
+      html += `<span class="${stopClass}">${this.escapeHtml(translatedStopName)}（${this.escapeHtml(stop.formattedTime)}）${currentMarker}</span>`;
       
       // 最後の要素以外は矢印を追加
       if (index < lastStops.length - 1) {
