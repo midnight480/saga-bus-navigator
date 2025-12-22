@@ -197,28 +197,18 @@ class DataLoader {
         }
       }
       
-      // キャッシュがない場合は、JSONファイルまたはZIPファイルから読み込む
-      // 事前処理済みJSONファイルの存在確認
-      const processedDataAvailable = await this.checkProcessedDataAvailable();
+      // キャッシュがない場合は、ZIPファイルから読み込む
+      // Cloudflare Pagesの25MB制限を回避するため、ZIPファイルを使用
+      this.logDebug('ZIPファイルから読み込みます');
       
-      if (processedDataAvailable) {
-        // 事前処理済みJSONファイルから読み込む（高速）
-        this.logDebug('事前処理済みJSONファイルから読み込みます');
-        
-        gtfsData = await this.loadProcessedJSONFiles();
-      } else {
-        // ZIPファイルから読み込む（従来の方法、後方互換性）
-        this.logDebug('ZIPファイルから読み込みます');
-        
-        // GTFS ZIPファイルを検索
-        const zipPath = await this.findGTFSZipFile();
-        
-        // ZIPファイルを読み込んで解凍（1回のみ）
-        const zip = await this.loadGTFSZip(zipPath);
-        
-        // GTFSファイルをパース（1回のみ）
-        gtfsData = await this.parseGTFSFiles(zip);
-      }
+      // GTFS ZIPファイルを検索
+      const zipPath = await this.findGTFSZipFile();
+      
+      // ZIPファイルを読み込んで解凍（1回のみ）
+      const zip = await this.loadGTFSZip(zipPath);
+      
+      // GTFSファイルをパース（1回のみ）
+      gtfsData = await this.parseGTFSFiles(zip);
       
       // 変換済みデータを生成
       const transformStartTime = Date.now();
@@ -932,8 +922,71 @@ class DataLoader {
   }
 
   /**
+   * 分割されたファイルを読み込んで結合
+   * @param {string} baseName - ベースファイル名（例: 'stop_times'）
+   * @param {Array<string>} partFiles - 分割されたファイル名のリスト
+   * @param {Object} fileTimings - タイミング情報を記録するオブジェクト
+   * @returns {Promise<Array>} 結合されたデータ
+   */
+  async loadSplitFiles(baseName, partFiles, fileTimings) {
+    const loadWithTiming = async (filename) => {
+      const startTime = Date.now();
+      try {
+        const response = await fetch(`data/processed/${filename}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        fileTimings[filename] = duration;
+        
+        this.logDebug(`${filename} 読み込み完了: ${duration}ms (${data.length}件)`);
+        return data;
+      } catch (error) {
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        fileTimings[filename] = duration;
+        throw error;
+      }
+    };
+
+    // 分割されたファイルを並列で読み込む
+    const parts = await Promise.all(partFiles.map(file => loadWithTiming(file)));
+    
+    // すべてのパーツを結合
+    const combined = parts.flat();
+    this.logDebug(`${baseName} 結合完了: ${combined.length}件 (${partFiles.length}ファイルから)`);
+    
+    return combined;
+  }
+
+  /**
+   * ファイルが分割されているかチェック（メタデータから）
+   * @param {string} baseName - ベースファイル名
+   * @returns {Promise<Array<string>|null>} 分割されたファイル名のリスト、分割されていない場合はnull
+   */
+  async checkSplitFiles(baseName) {
+    try {
+      const response = await fetch('data/processed/metadata.json');
+      if (!response.ok) {
+        return null;
+      }
+      const metadata = await response.json();
+      
+      if (metadata.splitFiles && metadata.splitFiles[baseName]) {
+        return metadata.splitFiles[baseName];
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
    * 事前処理済みJSONファイルをプログレッシブに読み込む
    * 小さいファイルを先に読み込んでUIを早く表示し、その後大きなファイルを読み込む
+   * Cloudflare Pagesの25MB制限に対応するため、分割されたファイルもサポート
    * @returns {Promise<Object>} パースされたGTFSデータ
    * @throws {Error} JSONファイルの読み込みに失敗した場合
    */
@@ -989,14 +1042,26 @@ class DataLoader {
         loadWithTiming('fare_attributes.json').catch(() => []) // オプショナル
       ]);
       
-      // フェーズ3: 大きなファイルを並列で読み込む（時間がかかるが、UIは既に表示されている）
-      const [
-        stopTimes,
-        fareRules
-      ] = await Promise.all([
-        loadWithTiming('stop_times.json'),
-        loadWithTiming('fare_rules.json').catch(() => []) // オプショナル
-      ]);
+      // フェーズ3: 大きなファイルを読み込む（分割されている可能性がある）
+      let stopTimes, fareRules;
+      
+      // stop_times.jsonが分割されているかチェック
+      const stopTimesParts = await this.checkSplitFiles('stop_times');
+      if (stopTimesParts) {
+        this.logDebug('stop_times.jsonは分割されています。分割ファイルを読み込みます...');
+        stopTimes = await this.loadSplitFiles('stop_times', stopTimesParts, fileTimings);
+      } else {
+        stopTimes = await loadWithTiming('stop_times.json');
+      }
+      
+      // fare_rules.jsonが分割されているかチェック
+      const fareRulesParts = await this.checkSplitFiles('fare_rules');
+      if (fareRulesParts) {
+        this.logDebug('fare_rules.jsonは分割されています。分割ファイルを読み込みます...');
+        fareRules = await this.loadSplitFiles('fare_rules', fareRulesParts, fileTimings).catch(() => []);
+      } else {
+        fareRules = await loadWithTiming('fare_rules.json').catch(() => []);
+      }
       
       // feed_info.jsonからバージョン情報を読み取り（オプショナル）
       let feedInfo = null;
