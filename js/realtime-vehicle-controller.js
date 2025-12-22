@@ -36,6 +36,9 @@ class RealtimeVehicleController {
     // 運行情報表示エリア
     this.alertsContainer = null;
     
+    // 翻訳マネージャー（後で設定される）
+    this.translationManager = null;
+    
     console.log('[RealtimeVehicleController] コンストラクタが呼び出されました');
   }
   
@@ -275,12 +278,24 @@ class RealtimeVehicleController {
     const popupDiv = document.createElement('div');
     popupDiv.className = 'vehicle-popup';
     
+    // 翻訳キーを取得
+    const tripIdLabel = this.translationManager ? 
+      this.translationManager.translate('vehicle.trip_id') : '便ID';
+    const routeLabel = this.translationManager ? 
+      this.translationManager.translate('vehicle.route') : '路線';
+    const statusLabel = this.translationManager ? 
+      this.translationManager.translate('vehicle.status') : '状態';
+    
+    // 路線名を翻訳
+    const translatedRouteName = this.translationManager ? 
+      this.translationManager.translateRouteName(tripInfo.routeName) : tripInfo.routeName;
+    
     // 運行状態情報
     const statusHTML = `
       <div class="vehicle-status">
-        <h3>便ID: ${tripInfo.tripId}</h3>
-        <p><strong>路線:</strong> ${tripInfo.routeName}</p>
-        <p><strong>状態:</strong> <span style="color: ${vehicleStatus.color}">${vehicleStatus.message}</span></p>
+        <h3>${tripIdLabel}: ${tripInfo.tripId}</h3>
+        <p><strong>${routeLabel}:</strong> ${translatedRouteName}</p>
+        <p><strong>${statusLabel}:</strong> <span style="color: ${vehicleStatus.color}">${vehicleStatus.message}</span></p>
       </div>
     `;
     popupDiv.innerHTML = statusHTML;
@@ -434,9 +449,11 @@ class RealtimeVehicleController {
     
     if (stopTimes.length === 0) {
       console.warn('[RealtimeVehicleController] stop_timesが見つかりません:', tripId);
+      const message = this.translationManager ? 
+        this.translationManager.translate('vehicle.status_unknown') : '運行状態不明';
       return {
         state: 'unknown',
-        message: '運行状態不明',
+        message: message,
         color: 'gray'
       };
     }
@@ -461,18 +478,22 @@ class RealtimeVehicleController {
     
     // 運行開始前
     if (currentMinutes < startMinutes) {
+      const message = this.translationManager ? 
+        this.translationManager.translate('vehicle.status_before_start') : '運行開始前です';
       return {
         state: 'before_start',
-        message: '運行開始前です',
+        message: message,
         color: 'yellow'
       };
     }
     
     // 運行終了
     if (currentMinutes > endMinutes) {
+      const message = this.translationManager ? 
+        this.translationManager.translate('vehicle.status_after_end') : '運行終了しました';
       return {
         state: 'after_end',
-        message: '運行終了しました',
+        message: message,
         color: 'black'
       };
     }
@@ -482,37 +503,98 @@ class RealtimeVehicleController {
     
     if (delay === null) {
       // 遅延情報が取得できない場合
+      const message = this.translationManager ? 
+        this.translationManager.translate('vehicle.status_in_transit') : '運行中';
       return {
         state: 'in_transit',
-        message: '運行中',
+        message: message,
         color: 'blue'
       };
     }
     
     // 定刻通り (±2分以内)
     if (Math.abs(delay) <= 2) {
+      const message = this.translationManager ? 
+        this.translationManager.translate('vehicle.status_on_time') : '定刻通りです';
       return {
         state: 'on_time',
-        message: '定刻通りです',
+        message: message,
         color: 'green'
       };
     }
     
     // 遅延 (3分以上)
     if (delay >= 3) {
+      const message = this.translationManager ? 
+        this.translationManager.translate('vehicle.status_delayed', { delay }) : `予定より${delay}分遅れ`;
       return {
         state: 'delayed',
-        message: `予定より${delay}分遅れ`,
+        message: message,
         color: 'red'
       };
     }
     
     // 早着（マイナスの遅延）
+    const message = this.translationManager ? 
+      this.translationManager.translate('vehicle.status_early', { delay: Math.abs(delay) }) : `予定より${Math.abs(delay)}分早い`;
     return {
       state: 'early',
-      message: `予定より${Math.abs(delay)}分早い`,
+      message: message,
       color: 'green'
     };
+  }
+  
+  /**
+   * 言語切り替え時に車両マーカーを更新
+   */
+  updateVehicleMarkersForLanguageChange() {
+    if (!this.mapController || !this.mapController.vehicleMarkers) {
+      return;
+    }
+    
+    // 全ての車両マーカーを更新
+    this.mapController.vehicleMarkers.forEach((marker, tripId) => {
+      try {
+        // tripIdからtrip情報を取得
+        const trip = this.trips.find(t => t.trip_id === tripId);
+        if (!trip) {
+          return;
+        }
+        
+        // 現在の車両データを取得（簡易版 - 実際の実装では保存されたデータを使用）
+        // ここでは、マーカーのpopupから情報を取得するか、別途保存されたデータを使用
+        const popup = marker.getPopup();
+        if (popup && popup.isOpen()) {
+          // ポップアップが開いている場合は、内容を更新
+          const vehicleData = {
+            tripId: tripId,
+            currentStopSequence: null // 実際の実装では保存されたデータを使用
+          };
+          
+          const vehicleStatus = this.determineVehicleStatus(vehicleData, trip);
+          
+          // route_idからroute_nameを取得
+          let routeName = '路線名不明';
+          if (trip.route_id && this.routes) {
+            const route = this.routes.find(r => r.route_id === trip.route_id);
+            if (route && route.route_long_name) {
+              routeName = route.route_long_name;
+            }
+          }
+          
+          const tripInfo = {
+            tripId: tripId,
+            routeId: trip.route_id,
+            routeName: routeName
+          };
+          
+          const popupContent = this.createVehiclePopupContent(vehicleData, trip, tripInfo, vehicleStatus);
+          marker.setPopupContent(popupContent);
+        }
+      } catch (error) {
+        console.error(`[RealtimeVehicleController] 車両マーカー更新エラー: tripId=${tripId}`, error);
+      }
+    });
   }
   
   /**
@@ -828,7 +910,10 @@ class RealtimeVehicleController {
       const timetableLabel = document.createElement('div');
       timetableLabel.style.fontWeight = 'bold';
       timetableLabel.style.marginBottom = '6px';
-      timetableLabel.textContent = '時刻表:';
+      // 翻訳キーを使用（「時刻表:」の形式で表示）
+      const timetableTitle = this.translationManager ? 
+        this.translationManager.translate('modal.timetable_title') : '時刻表';
+      timetableLabel.textContent = `${timetableTitle}:`;
       timetableContainer.appendChild(timetableLabel);
       
       const timetableContent = document.createElement('div');

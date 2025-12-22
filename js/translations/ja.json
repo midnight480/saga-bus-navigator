@@ -193,6 +193,18 @@
   "alert": {
     "delay_title": "お知らせ"
   },
+  "vehicle": {
+    "trip_id": "便ID",
+    "route": "路線",
+    "status": "状態",
+    "status_before_start": "運行開始前です",
+    "status_after_end": "運行終了しました",
+    "status_in_transit": "運行中",
+    "status_on_time": "定刻通りです",
+    "status_delayed": "予定より{delay}分遅れ",
+    "status_early": "予定より{delay}分早い",
+    "status_unknown": "運行状態不明"
+  },
   "error": {
     "data_load_failed": "データの読み込みに失敗しました",
     "retry": "再試行",

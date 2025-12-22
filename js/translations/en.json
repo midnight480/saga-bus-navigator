@@ -193,6 +193,18 @@
   "alert": {
     "delay_title": "Information"
   },
+  "vehicle": {
+    "trip_id": "Trip ID",
+    "route": "Route",
+    "status": "Status",
+    "status_before_start": "Before service start",
+    "status_after_end": "Service ended",
+    "status_in_transit": "In transit",
+    "status_on_time": "On time",
+    "status_delayed": "{delay} min late",
+    "status_early": "{delay} min early",
+    "status_unknown": "Status unknown"
+  },
   "error": {
     "data_load_failed": "Failed to load data",
     "retry": "Retry",

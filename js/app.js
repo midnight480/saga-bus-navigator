@@ -2153,6 +2153,10 @@ class UIController {
       // 言語変更イベントをリッスンして動的コンテンツを更新
       window.addEventListener('languageChanged', () => {
         this.updateDynamicContent();
+        // RealtimeVehicleControllerの車両マーカーを更新
+        if (window.realtimeVehicleController) {
+          window.realtimeVehicleController.updateVehicleMarkersForLanguageChange();
+        }
       });
       
     } catch (error) {
@@ -2550,6 +2554,11 @@ async function initializeApp() {
           window.realtimeDataLoader,
           window.tripTimetableFormatter
         );
+        
+        // TranslationManagerを設定
+        if (window.uiController && window.uiController.translationManager) {
+          window.realtimeVehicleController.translationManager = window.uiController.translationManager;
+        }
         
         // 初期化とポーリング開始
         await window.realtimeVehicleController.initialize();
