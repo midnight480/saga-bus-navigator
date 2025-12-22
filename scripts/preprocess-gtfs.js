@@ -115,6 +115,59 @@ function parseCSVLine(line) {
 }
 
 /**
+ * 大きな配列を複数のファイルに分割（Cloudflare Pagesの25MB制限対応）
+ * @param {Array} data - 分割するデータ配列
+ * @param {string} baseFilename - ベースファイル名（拡張子なし）
+ * @param {string} outputDir - 出力ディレクトリ
+ * @param {number} maxSizeMB - 1ファイルあたりの最大サイズ（MB、デフォルト: 20MB）
+ * @returns {Array<string>} 生成されたファイル名のリスト
+ */
+async function splitLargeFile(data, baseFilename, outputDir, maxSizeMB = 20) {
+  const maxSizeBytes = maxSizeMB * 1024 * 1024;
+  const files = [];
+  let currentChunk = [];
+  let currentSize = 0;
+  let chunkIndex = 0;
+
+  for (let i = 0; i < data.length; i++) {
+    const item = data[i];
+    const itemJson = JSON.stringify(item);
+    const itemSize = Buffer.byteLength(itemJson, 'utf8');
+
+    // 現在のチャンクに追加すると制限を超える場合
+    if (currentSize + itemSize > maxSizeBytes && currentChunk.length > 0) {
+      // 現在のチャンクをファイルに出力
+      const chunkFilename = `${baseFilename}.part${chunkIndex}.json`;
+      const chunkPath = path.join(outputDir, chunkFilename);
+      await writeFile(chunkPath, JSON.stringify(currentChunk, null, 0), 'utf8');
+      files.push(chunkFilename);
+      console.log(`  ✓ ${chunkFilename} に出力 (${currentChunk.length}件, ${(currentSize / 1024 / 1024).toFixed(2)}MB)`);
+      
+      // 新しいチャンクを開始
+      currentChunk = [];
+      currentSize = 0;
+      chunkIndex++;
+    }
+
+    currentChunk.push(item);
+    currentSize += itemSize;
+  }
+
+  // 最後のチャンクを出力
+  if (currentChunk.length > 0) {
+    const chunkFilename = chunkIndex === 0 
+      ? `${baseFilename}.json`  // 1ファイルに収まる場合は通常のファイル名
+      : `${baseFilename}.part${chunkIndex}.json`;
+    const chunkPath = path.join(outputDir, chunkFilename);
+    await writeFile(chunkPath, JSON.stringify(currentChunk, null, 0), 'utf8');
+    files.push(chunkFilename);
+    console.log(`  ✓ ${chunkFilename} に出力 (${currentChunk.length}件, ${(currentSize / 1024 / 1024).toFixed(2)}MB)`);
+  }
+
+  return files;
+}
+
+/**
  * GTFS ZIPファイルを処理
  * @param {string} zipPath - ZIPファイルのパス
  * @param {string} outputDir - 出力ディレクトリ
@@ -136,6 +189,7 @@ async function processGTFSZip(zipPath, outputDir) {
   // 各GTFSファイルを処理
   const processedFiles = [];
   const skippedFiles = [];
+  const splitFiles = {}; // 分割されたファイルの情報
 
   for (const filename of GTFS_FILES) {
     try {
@@ -150,13 +204,29 @@ async function processGTFSZip(zipPath, outputDir) {
       const text = await file.async('text');
       const data = parseCSV(text);
       
-      // JSONファイルに出力
+      // JSONファイル名を決定
       const jsonFilename = filename.replace('.txt', '.json');
+      const baseFilename = filename.replace('.txt', '');
       const outputPath = path.join(outputDir, jsonFilename);
-      await writeFile(outputPath, JSON.stringify(data, null, 0), 'utf8');
       
-      processedFiles.push(filename);
-      console.log(`  ✓ ${jsonFilename} に出力 (${data.length}件)`);
+      // ファイルサイズをチェック（25MB制限を考慮して20MBで分割）
+      const jsonString = JSON.stringify(data, null, 0);
+      const fileSize = Buffer.byteLength(jsonString, 'utf8');
+      const fileSizeMB = fileSize / 1024 / 1024;
+      
+      if (fileSizeMB > 20) {
+        // 大きなファイルは分割
+        console.log(`  ファイルサイズが大きいため分割します (${fileSizeMB.toFixed(2)}MB)`);
+        const splitFileList = await splitLargeFile(data, baseFilename, outputDir, 20);
+        splitFiles[baseFilename] = splitFileList;
+        processedFiles.push(filename);
+        console.log(`  ✓ ${splitFileList.length}個のファイルに分割`);
+      } else {
+        // 通常のファイルとして出力
+        await writeFile(outputPath, jsonString, 'utf8');
+        processedFiles.push(filename);
+        console.log(`  ✓ ${jsonFilename} に出力 (${data.length}件, ${fileSizeMB.toFixed(2)}MB)`);
+      }
     } catch (error) {
       console.error(`  ✗ ${filename} の処理中にエラー:`, error.message);
       skippedFiles.push(filename);
@@ -169,12 +239,16 @@ async function processGTFSZip(zipPath, outputDir) {
     processedAt: new Date().toISOString(),
     processedFiles: processedFiles,
     skippedFiles: skippedFiles,
+    splitFiles: splitFiles, // 分割されたファイルの情報
     version: '1.0.0'
   };
   
   const metadataPath = path.join(outputDir, 'metadata.json');
   await writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
   console.log(`\n✓ メタデータファイルを生成: metadata.json`);
+  if (Object.keys(splitFiles).length > 0) {
+    console.log(`  分割されたファイル: ${Object.keys(splitFiles).join(', ')}`);
+  }
 
   // 統計情報を表示
   console.log(`\n=== 処理完了 ===`);
