@@ -32,6 +32,11 @@
   <!-- Loading Screen (Skeleton) -->
   <div id="loading-screen" class="loading-screen" role="status" aria-live="polite" aria-label="データ読み込み状態">
     <div class="skeleton-container">
+      <!-- Progress Message -->
+      <div class="loading-message-container">
+        <p class="loading-message">データを読み込んでいます...</p>
+      </div>
+      
       <!-- Skeleton Header -->
       <header class="skeleton-header">
         <div class="skeleton-line skeleton-title"></div>
@@ -41,6 +46,15 @@
       <!-- Skeleton Map -->
       <section class="skeleton-map-section">
         <div class="skeleton-map"></div>
+        <!-- Direction Selector Skeleton -->
+        <div class="skeleton-direction-selector">
+          <div class="skeleton-line skeleton-direction-label"></div>
+          <div class="skeleton-direction-buttons">
+            <div class="skeleton-line skeleton-direction-button"></div>
+            <div class="skeleton-line skeleton-direction-button"></div>
+            <div class="skeleton-line skeleton-direction-button"></div>
+          </div>
+        </div>
       </section>
       
       <!-- Skeleton Search Form -->
@@ -49,18 +63,23 @@
           <div class="skeleton-line skeleton-section-title"></div>
           
           <!-- Skeleton Form Groups -->
+          <!-- Departure Stop -->
           <div class="skeleton-form-group">
             <div class="skeleton-line skeleton-label"></div>
             <div class="skeleton-line skeleton-input"></div>
             <div class="skeleton-line skeleton-button"></div>
+            <div class="skeleton-line skeleton-help"></div>
           </div>
           
+          <!-- Arrival Stop -->
           <div class="skeleton-form-group">
             <div class="skeleton-line skeleton-label"></div>
             <div class="skeleton-line skeleton-input"></div>
             <div class="skeleton-line skeleton-button"></div>
+            <div class="skeleton-line skeleton-help"></div>
           </div>
           
+          <!-- Weekday Type -->
           <div class="skeleton-form-group">
             <div class="skeleton-line skeleton-label"></div>
             <div class="skeleton-radio-group">
@@ -70,6 +89,28 @@
             </div>
           </div>
           
+          <!-- Time Selection -->
+          <div class="skeleton-form-group">
+            <div class="skeleton-line skeleton-label"></div>
+            <div class="skeleton-radio-group skeleton-radio-group-large">
+              <div class="skeleton-line skeleton-radio"></div>
+              <div class="skeleton-line skeleton-radio"></div>
+              <div class="skeleton-line skeleton-radio"></div>
+              <div class="skeleton-line skeleton-radio"></div>
+              <div class="skeleton-line skeleton-radio"></div>
+            </div>
+            <!-- Time Picker Skeleton -->
+            <div class="skeleton-time-picker">
+              <div class="skeleton-line skeleton-time-label"></div>
+              <div class="skeleton-time-inputs">
+                <div class="skeleton-line skeleton-time-input"></div>
+                <div class="skeleton-line skeleton-time-separator"></div>
+                <div class="skeleton-line skeleton-time-input"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Search Button -->
           <div class="skeleton-line skeleton-submit-button"></div>
         </section>
       </main>
@@ -596,6 +637,7 @@
   <script src="/js/utils.js"></script>
   <script src="/js/safari-warning-dialog.js"></script>
   <script src="/js/direction-detector.js"></script>
+  <script src="/js/indexeddb-cache.js"></script>
   <script src="/js/data-loader.js"></script>
   <script src="/js/fare-calculator.js"></script>
   <script src="/js/calendar-exporter.js"></script>

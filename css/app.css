@@ -535,6 +535,9 @@ body {
   background-size: 200% 100%;
   border-radius: 8px;
   animation: shimmer 1.5s infinite;
+  animation-timing-function: linear;
+  will-change: background-position;
+  margin-bottom: 1rem;
 }
 
 /* スケルトンメイン */
@@ -553,6 +556,8 @@ body {
   background-size: 200% 100%;
   border-radius: 4px;
   animation: shimmer 1.5s infinite;
+  animation-timing-function: linear;
+  will-change: background-position;
   margin-bottom: 0.75rem;
 }
 
@@ -625,6 +630,96 @@ body {
 /* スケルトンフォームグループ */
 .skeleton-form-group {
   margin-bottom: 1.5rem;
+}
+
+/* 進捗メッセージコンテナ */
+.loading-message-container {
+  text-align: center;
+  padding: 1rem 0;
+  margin-bottom: 1rem;
+}
+
+.loading-message {
+  color: #666;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* 方向選択スケルトン */
+.skeleton-direction-selector {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.skeleton-direction-label {
+  height: 18px;
+  width: 80px;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-direction-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.skeleton-direction-button {
+  height: 32px;
+  width: 70px;
+  margin-bottom: 0;
+}
+
+/* ヘルプテキストスケルトン */
+.skeleton-help {
+  height: 14px;
+  width: 200px;
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+}
+
+/* 大きなラジオグループ（検索条件用） */
+.skeleton-radio-group-large {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.skeleton-radio-group-large .skeleton-radio {
+  width: 100px;
+}
+
+/* 時刻入力スケルトン */
+.skeleton-time-picker {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.skeleton-time-label {
+  height: 18px;
+  width: 60px;
+  margin-bottom: 0.75rem;
+}
+
+.skeleton-time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.skeleton-time-input {
+  height: 44px;
+  width: 60px;
+  margin-bottom: 0;
+}
+
+.skeleton-time-separator {
+  height: 20px;
+  width: 10px;
+  margin-bottom: 0;
 }
 
 /* エラー表示（スケルトン表示時は中央に配置） */

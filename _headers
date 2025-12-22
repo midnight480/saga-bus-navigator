@@ -26,3 +26,8 @@
   
   # Permissions-Policy: 不要な機能を無効化（位置情報は同一オリジンでのみ許可）
   Permissions-Policy: geolocation=(self), microphone=(), camera=()
+
+# JSONファイルのキャッシングを有効化（パフォーマンス向上）
+# Cloudflare Pagesは自動的にgzip圧縮を適用します
+/data/processed/*.json
+  Cache-Control: public, max-age=31536000, immutable
