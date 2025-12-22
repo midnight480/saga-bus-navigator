@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>言語切り替え一貫性プロパティテスト</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f5f5f5;
+    }
+    .test-container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .test-result {
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    pre {
+      background-color: #f8f9fa;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>言語切り替え一貫性プロパティテスト</h1>
+    <p>プロパティ1: 言語切り替えの一貫性（要件 1.2）</p>
+    
+    <button onclick="runTest()">テスト実行</button>
+    <button onclick="clearResults()">結果クリア</button>
+    
+    <div id="test-results"></div>
+  </div>
+
+  <script src="language-switching-consistency.property.test.js"></script>
+  
+  <script>
+    function runTest() {
+      const resultsDiv = document.getElementById('test-results');
+      resultsDiv.innerHTML = '<div class="info">テスト実行中...</div>';
+      
+      try {
+        const result = testLanguageSwitchingConsistency();
+        
+        let resultHtml = `
+          <div class="test-result ${result.failed === 0 ? 'success' : 'error'}">
+            <h3>テスト結果</h3>
+            <p><strong>総実行回数:</strong> ${result.total}</p>
+            <p><strong>成功:</strong> ${result.passed}</p>
+            <p><strong>失敗:</strong> ${result.failed}</p>
+            <p><strong>成功率:</strong> ${result.successRate.toFixed(2)}%</p>
+          </div>
+        `;
+        
+        if (result.failures.length > 0) {
+          resultHtml += `
+            <div class="test-result error">
+              <h4>失敗の詳細 (最初の5件)</h4>
+              <pre>${result.failures.slice(0, 5).map(f => `${f.iteration}: ${f.error}`).join('\n')}</pre>
+            </div>
+          `;
+        }
+        
+        if (result.failed === 0) {
+          resultHtml += `
+            <div class="test-result success">
+              <h4>✅ 全てのプロパティテストが成功しました</h4>
+              <p>言語切り替えの一貫性が正しく動作しています。</p>
+            </div>
+          `;
+        } else {
+          resultHtml += `
+            <div class="test-result error">
+              <h4>❌ プロパティテストで失敗が発生しました</h4>
+              <p>言語切り替えの実装に問題がある可能性があります。</p>
+            </div>
+          `;
+        }
+        
+        resultsDiv.innerHTML = resultHtml;
+        
+      } catch (error) {
+        resultsDiv.innerHTML = `
+          <div class="test-result error">
+            <h3>テスト実行エラー</h3>
+            <p>${error.message}</p>
+            <pre>${error.stack}</pre>
+          </div>
+        `;
+      }
+    }
+    
+    function clearResults() {
+      document.getElementById('test-results').innerHTML = '';
+    }
+  </script>
+</body>
+</html>

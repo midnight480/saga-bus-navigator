@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML多言語対応テスト</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      line-height: 1.6;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .language-switcher-dropdown {
+      margin: 10px 0;
+    }
+    .language-dropdown-button {
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .form-group {
+      margin: 10px 0;
+    }
+    .form-label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .form-input {
+      width: 200px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .btn {
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    .btn:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1 data-i18n="app.title">佐賀バスナビ</h1>
+  <p data-i18n="app.subtitle">時刻表検索</p>
+
+  <div class="test-section">
+    <h2>言語切り替え</h2>
+    <div id="language-switcher" class="language-switcher-dropdown"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>検索フォーム</h2>
+    <div class="form-group">
+      <label class="form-label" data-i18n="search.departure_stop">乗車バス停</label>
+      <input type="text" class="form-input" placeholder="バス停名を入力" data-i18n-placeholder="search.placeholder_stop">
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="search.arrival_stop">降車バス停</label>
+      <input type="text" class="form-input" placeholder="バス停名を入力" data-i18n-placeholder="search.placeholder_stop">
+    </div>
+    <button class="btn" data-i18n="search.search_button">検索</button>
+  </div>
+
+  <div class="test-section">
+    <h2>時刻選択</h2>
+    <label class="form-label" data-i18n="time.weekday_type">曜日区分</label>
+    <div>
+      <label><input type="radio" name="weekday" value="auto" checked> <span data-i18n="time.auto_detect">自動判定</span></label><br>
+      <label><input type="radio" name="weekday" value="weekday"> <span data-i18n="time.weekday">平日</span></label><br>
+      <label><input type="radio" name="weekday" value="weekend"> <span data-i18n="time.weekend">土日祝</span></label>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>地図操作</h2>
+    <button class="btn" data-i18n="map.select_from_map">地図から選択</button>
+    <button class="btn" data-i18n="map.clear_route">経路をクリア</button>
+  </div>
+
+  <div class="test-section">
+    <h2>結果表示</h2>
+    <p data-i18n="results.loading">データを読み込んでいます...</p>
+    <p data-i18n="results.no_results">該当する便が見つかりませんでした</p>
+    <button class="btn" data-i18n="results.load_more">もっと見る</button>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/i18n/locale-storage.js"></script>
+  <script src="/js/i18n/translation-manager.js"></script>
+  <script src="/js/i18n/language-switcher.js"></script>
+
+  <script>
+    // テスト用の初期化
+    document.addEventListener('DOMContentLoaded', async function() {
+      try {
+        // TranslationManagerの初期化
+        const translationManager = new TranslationManager();
+        
+        // 保存された言語設定を読み込み
+        const savedLanguage = LocaleStorage.getLanguage();
+        await translationManager.setLanguage(savedLanguage);
+        
+        // LanguageSwitcherの初期化
+        const languageSwitcherContainer = document.getElementById('language-switcher');
+        if (languageSwitcherContainer) {
+          const languageSwitcher = new LanguageSwitcher(
+            languageSwitcherContainer,
+            translationManager
+          );
+        }
+        
+        console.log('HTML多言語対応テストが初期化されました');
+        
+      } catch (error) {
+        console.error('初期化エラー:', error);
+      }
+    });
+  </script>
+</body>
+</html>

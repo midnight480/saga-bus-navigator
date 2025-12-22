@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Language Switcher Test</title>
+  <link rel="stylesheet" href="../css/app.css">
+  <style>
+    body {
+      padding: 2rem;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    .test-section {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .test-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+    .footer {
+      background-color: #333;
+      color: white;
+      padding: 1rem;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Language Switcher Test</h1>
+  
+  <div class="test-section">
+    <div class="test-title">翻訳対象テキスト</div>
+    <h2 data-i18n="app.title">佐賀バスナビ</h2>
+    <p data-i18n="app.subtitle">時刻表検索</p>
+    <p data-i18n="search.departure_stop">乗車バス停</p>
+    <p data-i18n="search.arrival_stop">降車バス停</p>
+    <button data-i18n="search.search_button">検索</button>
+  </div>
+  
+  <div class="test-section">
+    <div class="test-title">言語切り替えテスト</div>
+    <div class="footer">
+      <p class="footer-text">
+        <div id="language-switcher" class="language-switcher-dropdown"></div>
+        &copy; 2025 佐賀バスナビ | 
+        <a href="#usage" class="footer-link" data-i18n="footer.usage">使い方</a> | 
+        <a href="#contact" class="footer-link" data-i18n="footer.contact">お問い合わせ</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="../js/i18n/locale-storage.js"></script>
+  <script src="../js/i18n/bus-stop-translator.js"></script>
+  <script src="../js/i18n/translation-manager.js"></script>
+  <script src="../js/i18n/language-switcher.js"></script>
+  
+  <script>
+    // テスト用の初期化
+    async function initializeTest() {
+      try {
+        // TranslationManagerの初期化
+        const translationManager = new TranslationManager();
+        
+        // 保存された言語設定を読み込み
+        const savedLanguage = LocaleStorage.getLanguage();
+        await translationManager.setLanguage(savedLanguage);
+        
+        // LanguageSwitcherの初期化
+        const languageSwitcherContainer = document.getElementById('language-switcher');
+        if (languageSwitcherContainer) {
+          const languageSwitcher = new LanguageSwitcher(
+            languageSwitcherContainer,
+            translationManager
+          );
+          
+          // 翻訳の適用
+          applyTranslations(translationManager);
+          
+          // 言語切り替え時の翻訳更新
+          const originalSetLanguage = translationManager.setLanguage.bind(translationManager);
+          translationManager.setLanguage = async function(locale) {
+            await originalSetLanguage(locale);
+            applyTranslations(translationManager);
+          };
+        }
+        
+        console.log('Language switcher initialized successfully');
+        
+      } catch (error) {
+        console.error('Initialization failed:', error);
+      }
+    }
+    
+    function applyTranslations(translationManager) {
+      const elementsToTranslate = document.querySelectorAll('[data-i18n]');
+      elementsToTranslate.forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        const translatedText = translationManager.translate(key);
+        
+        if (element.hasAttribute('placeholder')) {
+          element.setAttribute('placeholder', translatedText);
+        } else {
+          element.textContent = translatedText;
+        }
+      });
+    }
+    
+    // DOMContentLoaded時に初期化
+    document.addEventListener('DOMContentLoaded', initializeTest);
+  </script>
+</body>
+</html>

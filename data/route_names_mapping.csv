@@ -1,7 +1,7 @@
 route_id,Japanese,English,Source
-1ゆめタウン線,ゆめタウン線,Youme Town Line,Mapped
+1ゆめタウン線,ゆめタウン線,Yume Town Line,Mapped
 1中折線,中折線,"Nakaore, Creo Park Nabeshima Line",Mapped
-1二俣線,二俣線,"Hutamata, Kinryu Line",Mapped
+1二俣線,二俣線,"Futamata, Kinryu Line",Mapped
 1今宿・道崎線,今宿・道崎線,"Imashuku, Michisaki Line",Mapped
 1伊賀屋線,伊賀屋線,"Igaya, Seiyu Hospital Line",Mapped
 1佐賀城跡線,佐賀城跡線,Saga Castle Ruins Line,Mapped
@@ -25,9 +25,9 @@ route_id,Japanese,English,Source
 1諸富・橋津線,諸富・橋津線,"Morodomi, Hashizu Line",Mapped
 1金立線,金立線,"Niiji, Kinryu Line",Mapped
 1鍋島駅北線,鍋島駅北線,"Nabeshima Station North, Creo Park Nabeshima Line",Mapped
-3いと・しま号,いと・しま号,Ito-Shima Go,Auto-translated
-3いまり号,いまり号,Imari Go,Auto-translated
-3からつ号,からつ号,Karatsu Go,Auto-translated
+3いと・しま号,いと・しま号,Ito-Shima-go,Auto-translated
+3いまり号,いまり号,Imari-go,Auto-translated
+3からつ号,からつ号,Karatsu-go,Auto-translated
 3直行,直行,Direct,Auto-translated
 3からワンライン,からワンライン,Kara One Line,Auto-translated
 3ウエストコーストライナー,ウエストコーストライナー,West Coast Liner,Auto-translated
@@ -36,8 +36,8 @@ route_id,Japanese,English,Source
 3久里・北波多線,久里・北波多線,"Kuri, Kitahata Line",Auto-translated
 3九州大学線,九州大学線,Kyushu University Line,Auto-translated
 3九州大学線（糸島）,九州大学線（糸島）,Kyushu University Line (Itoshima),Auto-translated
-3井原山線,井原山線,Ihara Yamasen,Auto-translated
-3入野乗換線,入野乗換線,Irino Sen Transfer,Auto-translated
+3井原山線,井原山線,Iharayama Line,Auto-translated
+3入野乗換線,入野乗換線,Irino Transfer Line,Auto-translated
 3切木線,切木線,Kirigo Line,Auto-translated
 3前原北原線,前原北原線,Maebaru - Kitabaru Line,Auto-translated
 3古湯線,古湯線,Furuyu Line,Mapped
@@ -64,12 +64,12 @@ route_id,Japanese,English,Source
 3糸島サンセットライン,糸島サンセットライン,Itoshima Sunset Line,Auto-translated
 3船越線,船越線,Funakoshi Line,Auto-translated
 3芥屋線,芥屋線,Keya Line,Auto-translated
-3西の浦線,西の浦線,Nishi No Ura Line,Auto-translated
-3野元・名護屋浜線,野元・名護屋浜線,"Nomoto, Nagoya Hama Line",Auto-translated
-3野北・二見ヶ浦線,野北・二見ヶ浦線,"No Kita, Futamigaura Line",Auto-translated
+3西の浦線,西の浦線,Nishi-no-Ura Line,Auto-translated
+3野元・名護屋浜線,野元・名護屋浜線,"Nomoto, Nagoyahama Line",Auto-translated
+3野北・二見ヶ浦線,野北・二見ヶ浦線,"Nokita, Futamigaura Line",Auto-translated
 3雷山線,雷山線,Raizan Line,Auto-translated
 4モラージュ佐賀線,モラージュ佐賀線,Mallage Saga Line,Auto-translated
-4下吉田線,下吉田線,Shimoyoshi Ta Line,Auto-translated
+4下吉田線,下吉田線,Shimoyoshida Line,Auto-translated
 4佐賀線,佐賀線,Saga Line,Auto-translated
 4吉田線,吉田線,Yoshida Line,Auto-translated
 4大野線,大野線,Oono Line,Auto-translated
@@ -87,9 +87,9 @@ route_id,Japanese,English,Source
 4祐徳線,祐徳線,Yutoku Line,Auto-translated
 4能古見線,能古見線,Nogomi Line,Auto-translated
 4鹿島市内循環線,鹿島市内循環線,Kashima City Loop Line,Auto-translated
-81村外/みつせやまびこ号,村外/みつせやまびこ号,Outside Village / Mitsuse Yamabiko Go,Auto-translated
-81村内西/はつせ号,村内西/はつせ号,Within Village West / Hatsuse Go,Auto-translated
-81村内東/なるせたかせ号,村内東/なるせたかせ号,Within Village East / Naruse Takase Go,Auto-translated
+81村外/みつせやまびこ号,村外/みつせやまびこ号,Outside Village / Mitsuse Yamabiko-go,Auto-translated
+81村内西/はつせ号,村内西/はつせ号,Within Village West / Hatsuse-go,Auto-translated
+81村内東/なるせたかせ号,村内東/なるせたかせ号,Within Village East / Naruse Takase-go,Auto-translated
 81三瀬神埼線,三瀬神埼線,Mitsuse Kanzaki Line,Mapped
 89乗合タクシー上久間線,乗合タクシー上久間線,Shared Taxi Kamikuma Line,Auto-translated
 89乗合タクシー春日線,乗合タクシー春日線,Shared Taxi Kasuga Line,Auto-translated
