@@ -45,6 +45,6 @@ playwright/.cache/
 # Icons (keep generated icons, ignore scripts)
 # アイコン生成スクリプトは保持、生成されたアイコンファイルはコミット対象
 
-# GTFS processed JSON files (ビルド時に生成されるためコミット対象外)
+# GTFS processed JSON files (開発環境で生成したファイルをコミット)
 # ZIPファイル（data/*.zip）はコミット対象
-data/processed/
+# data/processed/ はコミット対象に含める

@@ -1,0 +1,17 @@
+{
+  "source": "saga-current.zip",
+  "processedAt": "2025-12-22T13:15:19.062Z",
+  "processedFiles": [
+    "stops.txt",
+    "routes.txt",
+    "trips.txt",
+    "stop_times.txt",
+    "calendar.txt",
+    "agency.txt",
+    "fare_attributes.txt",
+    "fare_rules.txt",
+    "feed_info.txt"
+  ],
+  "skippedFiles": [],
+  "version": "1.0.0"
+}
