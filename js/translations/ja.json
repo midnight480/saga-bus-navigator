@@ -50,8 +50,8 @@
     "info_none": "情報なし",
     "map_display": "地図で表示",
     "add_to_calendar": "カレンダーに登録",
-    "map_aria_label": "{departure}から{arrival}への経路を{action}",
-    "calendar_aria_label": "{departure}から{arrival}のバスを{action}"
+    "map_aria_label": "{{departure}}から{{arrival}}への経路を{{action}}",
+    "calendar_aria_label": "{{departure}}から{{arrival}}のバスを{{action}}"
   },
   "map": {
     "select_from_map": "地図から選択",
@@ -201,8 +201,8 @@
     "status_after_end": "運行終了しました",
     "status_in_transit": "運行中",
     "status_on_time": "定刻通りです",
-    "status_delayed": "予定より{delay}分遅れ",
-    "status_early": "予定より{delay}分早い",
+    "status_delayed": "予定より{{delay}}分遅れ",
+    "status_early": "予定より{{delay}}分早い",
     "status_unknown": "運行状態不明"
   },
   "error": {

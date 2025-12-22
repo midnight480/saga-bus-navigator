@@ -89,12 +89,21 @@ class TranslationManager {
     let text = this.getTranslationText(key);
     
     // パラメータの置換
-    if (params && typeof params === 'object') {
+    if (params && typeof params === 'object' && Object.keys(params).length > 0) {
       Object.keys(params).forEach(param => {
         const safeValue = this.escapeHtml(String(params[param]));
         // 正規表現の特殊文字をエスケープ
         const escapedParam = param.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        text = text.replace(new RegExp(`{{${escapedParam}}}`, 'g'), safeValue);
+        // {{param}}形式のパターンを置換（二重波括弧）
+        const pattern = `{{${escapedParam}}}`;
+        const regex = new RegExp(pattern, 'g');
+        const beforeReplace = text;
+        text = text.replace(regex, safeValue);
+        
+        // 開発環境でのみデバッグログを出力
+        if (this.isDevelopment && beforeReplace !== text) {
+          console.log(`TranslationManager: パラメータ置換 - キー: ${key}, パラメータ: ${param}, 値: ${safeValue}, 置換前: ${beforeReplace}, 置換後: ${text}`);
+        }
       });
     }
     
