@@ -197,28 +197,18 @@ class DataLoader {
         }
       }
       
-      // キャッシュがない場合は、JSONファイルまたはZIPファイルから読み込む
-      // 事前処理済みJSONファイルの存在確認
-      const processedDataAvailable = await this.checkProcessedDataAvailable();
+      // キャッシュがない場合は、ZIPファイルから読み込む
+      // Cloudflare Pagesの25MB制限を回避するため、ZIPファイルを使用
+      this.logDebug('ZIPファイルから読み込みます');
       
-      if (processedDataAvailable) {
-        // 事前処理済みJSONファイルから読み込む（高速）
-        this.logDebug('事前処理済みJSONファイルから読み込みます');
-        
-        gtfsData = await this.loadProcessedJSONFiles();
-      } else {
-        // ZIPファイルから読み込む（従来の方法、後方互換性）
-        this.logDebug('ZIPファイルから読み込みます');
-        
-        // GTFS ZIPファイルを検索
-        const zipPath = await this.findGTFSZipFile();
-        
-        // ZIPファイルを読み込んで解凍（1回のみ）
-        const zip = await this.loadGTFSZip(zipPath);
-        
-        // GTFSファイルをパース（1回のみ）
-        gtfsData = await this.parseGTFSFiles(zip);
-      }
+      // GTFS ZIPファイルを検索
+      const zipPath = await this.findGTFSZipFile();
+      
+      // ZIPファイルを読み込んで解凍（1回のみ）
+      const zip = await this.loadGTFSZip(zipPath);
+      
+      // GTFSファイルをパース（1回のみ）
+      gtfsData = await this.parseGTFSFiles(zip);
       
       // 変換済みデータを生成
       const transformStartTime = Date.now();
