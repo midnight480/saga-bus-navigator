@@ -9,6 +9,16 @@ class TranslationManager {
     this.busStopTranslator = busStopTranslator;
     this.routeNameTranslator = routeNameTranslator;
     
+    // 警告を一度だけ表示するためのセット
+    this.warnedKeys = new Set();
+    
+    // 開発環境かどうかを判定（本番環境では警告を抑制）
+    this.isDevelopment = typeof window !== 'undefined' && 
+                         (window.location.hostname === 'localhost' || 
+                          window.location.hostname === '127.0.0.1' ||
+                          window.location.hostname.includes('.dev') ||
+                          window.location.hostname.includes('.local'));
+    
     // LocaleStorageクラスの参照を取得
     const LocaleStorageClass = (typeof LocaleStorage !== 'undefined') ? LocaleStorage : 
                                (typeof global !== 'undefined' && global.LocaleStorage) ? global.LocaleStorage :
@@ -97,20 +107,37 @@ class TranslationManager {
    * @returns {string} 翻訳テキスト
    */
   getTranslationText(key) {
+    // 翻訳データが読み込まれていない場合は、キーをそのまま返す（警告は出さない）
+    if (!this.isTranslationLoaded(this.currentLocale)) {
+      return key;
+    }
+    
     // 現在の言語で翻訳を取得
     let text = this.getNestedValue(this.translations[this.currentLocale], key);
     
     // 翻訳が見つからない場合はフォールバック言語を試行
     if (!text && this.currentLocale !== this.fallbackLocale) {
-      text = this.getNestedValue(this.translations[this.fallbackLocale], key);
-      if (text) {
-        console.warn(`TranslationManager: 翻訳キー "${key}" が ${this.currentLocale} で見つからないため、${this.fallbackLocale} を使用しました`);
+      // フォールバック言語のデータが読み込まれている場合のみ試行
+      if (this.isTranslationLoaded(this.fallbackLocale)) {
+        text = this.getNestedValue(this.translations[this.fallbackLocale], key);
+        if (text) {
+          // 開発環境でのみ警告を表示（一度だけ）
+          if (this.isDevelopment && !this.warnedKeys.has(`fallback:${key}`)) {
+            console.warn(`TranslationManager: 翻訳キー "${key}" が ${this.currentLocale} で見つからないため、${this.fallbackLocale} を使用しました`);
+            this.warnedKeys.add(`fallback:${key}`);
+          }
+        }
       }
     }
     
     // それでも見つからない場合はキー名を返す
     if (!text) {
-      console.warn(`TranslationManager: 翻訳キー "${key}" が見つかりません`);
+      // 開発環境でのみ警告を表示（一度だけ）
+      // ただし、翻訳データが読み込まれている場合のみ警告を出す
+      if (this.isDevelopment && this.isTranslationLoaded(this.currentLocale) && !this.warnedKeys.has(`missing:${key}`)) {
+        console.warn(`TranslationManager: 翻訳キー "${key}" が見つかりません`);
+        this.warnedKeys.add(`missing:${key}`);
+      }
       return key;
     }
     

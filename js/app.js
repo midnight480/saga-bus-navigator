@@ -2144,7 +2144,7 @@ class UIController {
       
       // BusStopTranslatorに現在の言語を設定
       if (window.busStopTranslator && this.translationManager) {
-        window.busStopTranslator.setCurrentLanguage(this.translationManager.getCurrentLanguage());
+        window.busStopTranslator.setCurrentLanguage(this.translationManager.getLanguage());
       }
       
       // 初期翻訳の適用
