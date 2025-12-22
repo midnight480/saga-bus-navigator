@@ -1630,10 +1630,11 @@ class UIController {
     const arrStop = this.translationManager ? 
       this.translationManager.translateBusStop(result.arrivalStop) : result.arrivalStop;
     if (this.translationManager) {
-      const mapAriaLabel = this.translationManager.translate('results.map_aria_label')
-        .replace('{departure}', depStop)
-        .replace('{arrival}', arrStop)
-        .replace('{action}', this.translationManager.translate('results.map_display'));
+      const mapAriaLabel = this.translationManager.translate('results.map_aria_label', {
+        departure: depStop,
+        arrival: arrStop,
+        action: this.translationManager.translate('results.map_display')
+      });
       mapButton.setAttribute('aria-label', mapAriaLabel);
     } else {
       mapButton.setAttribute('aria-label', `${depStop}から${arrStop}への経路を地図で表示`);
@@ -1658,10 +1659,11 @@ class UIController {
     calendarButton.setAttribute('type', 'button');
     // aria-labelを翻訳対応に（既に宣言された変数を再利用）
     if (this.translationManager) {
-      const calendarAriaLabel = this.translationManager.translate('results.calendar_aria_label')
-        .replace('{departure}', depStop)
-        .replace('{arrival}', arrStop)
-        .replace('{action}', this.translationManager.translate('results.add_to_calendar'));
+      const calendarAriaLabel = this.translationManager.translate('results.calendar_aria_label', {
+        departure: depStop,
+        arrival: arrStop,
+        action: this.translationManager.translate('results.add_to_calendar')
+      });
       calendarButton.setAttribute('aria-label', calendarAriaLabel);
     } else {
       calendarButton.setAttribute('aria-label', `${depStop}から${arrStop}のバスをカレンダーに登録`);
@@ -2354,7 +2356,6 @@ async function initializeApp() {
     });
     
     // データローダーの初期化
-    loadingController.updateProgress('GTFSデータを検索しています...');
     const dataLoader = new DataLoader();
     
     // 進捗コールバックを設定

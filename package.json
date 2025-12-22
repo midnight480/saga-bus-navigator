@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "佐賀市内バスナビゲーションアプリ",
   "scripts": {
+    "predev": "node scripts/preprocess-gtfs.js --silent || true",
     "dev": "wrangler pages dev . --port 8788",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -10,7 +11,9 @@
     "test:e2e:ui": "playwright test --ui",
     "lint": "eslint js/**/*.js",
     "format": "prettier --write js/**/*.js",
-    "build": "cd functions && npm install"
+    "build": "cd functions && npm install",
+    "preprocess": "node scripts/preprocess-gtfs.js",
+    "preprocess:force": "node scripts/preprocess-gtfs.js data data/processed"
   },
   "keywords": [
     "bus",
@@ -29,6 +32,7 @@
     "eslint": "^8.0.0",
     "fast-check": "^4.3.0",
     "jsdom": "^23.0.0",
+    "jszip": "^3.10.1",
     "prettier": "^3.0.0",
     "vitest": "^1.0.0",
     "wrangler": "^4.50.0"

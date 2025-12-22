@@ -43,6 +43,11 @@ class LoadingScreenController {
       this.loadingError.setAttribute('hidden', '');
     }
     
+    // 初期メッセージを設定
+    if (this.loadingMessage) {
+      this.loadingMessage.textContent = 'データを読み込んでいます...';
+    }
+    
     this.startTime = Date.now();
     
     // フォーカストラップを有効化

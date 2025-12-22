@@ -124,11 +124,17 @@ class DataLoader {
     
     // 路線名マッピングデータ
     this.routeNameMapping = null;
+    
+    // IndexedDBキャッシュ（利用可能な場合）
+    this.cache = null;
+    if (typeof IndexedDBCache !== 'undefined') {
+      this.cache = new IndexedDBCache();
+    }
   }
 
   /**
    * 全データを1回の読み込みで取得（要件1.1, 1.2）
-   * GTFSファイルを1回だけ読み込み、変換済みデータと生データの両方を生成
+   * 事前処理済みJSONファイルを優先的に使用し、なければZIPから読み込む
    * @returns {Promise<void>}
    * @throws {Error} データ読み込みに失敗した場合
    */
@@ -145,31 +151,73 @@ class DataLoader {
       
       // 進捗コールバック: データロード開始
       if (this.onProgress) {
-        this.onProgress('GTFSデータを検索しています...');
+        this.onProgress('データを読み込んでいます...');
       }
       
-      // GTFS ZIPファイルを検索
-      const zipPath = await this.findGTFSZipFile();
-      
-      // 進捗コールバック: ZIPファイル読み込み
-      if (this.onProgress) {
-        this.onProgress('GTFSデータを読み込んでいます...');
+      // IndexedDBキャッシュから読み込みを試行
+      let gtfsData = null;
+      if (this.cache) {
+        try {
+          gtfsData = await this.cache.get('gtfs-data', 24 * 60 * 60 * 1000); // 24時間有効
+          if (gtfsData) {
+            this.logDebug('IndexedDBキャッシュからデータを読み込みました');
+            // キャッシュから読み込んだデータをメモリに設定
+            this.busStops = gtfsData.busStops;
+            this.timetable = gtfsData.timetable;
+            this.fares = gtfsData.fares;
+            this.fareRules = gtfsData.fareRules;
+            this.stopTimes = gtfsData.stopTimes;
+            this.trips = gtfsData.trips;
+            this.routes = gtfsData.routes;
+            this.calendar = gtfsData.calendar;
+            this.gtfsStops = gtfsData.gtfsStops;
+            
+            // 方向情報を付与
+            this.enrichTripsWithDirection();
+            
+            // インデックスを生成
+            this.generateIndexes();
+            
+            // バス停マッピングと路線名マッピングを並列で読み込み
+            await Promise.all([
+              this.loadBusStopMapping(),
+              this.loadRouteNameMapping()
+            ]);
+            
+            const overallEndTime = Date.now();
+            this.logDebug('IndexedDBキャッシュからの読み込み完了', {
+              totalDuration: `${overallEndTime - overallStartTime}ms`
+            });
+            
+            return; // キャッシュから読み込めたので終了
+          }
+        } catch (error) {
+          console.warn('IndexedDBキャッシュからの読み込みに失敗しました:', error);
+          // エラーが発生しても続行（JSONファイルから読み込む）
+        }
       }
       
-      // ZIPファイルを読み込んで解凍（1回のみ）
-      const zip = await this.loadGTFSZip(zipPath);
+      // キャッシュがない場合は、JSONファイルまたはZIPファイルから読み込む
+      // 事前処理済みJSONファイルの存在確認
+      const processedDataAvailable = await this.checkProcessedDataAvailable();
       
-      // 進捗コールバック: GTFSファイルパース
-      if (this.onProgress) {
-        this.onProgress('GTFSデータを解析しています...');
-      }
-      
-      // GTFSファイルをパース（1回のみ）
-      const gtfsData = await this.parseGTFSFiles(zip);
-      
-      // 進捗コールバック: データ変換
-      if (this.onProgress) {
-        this.onProgress('データを変換しています...');
+      if (processedDataAvailable) {
+        // 事前処理済みJSONファイルから読み込む（高速）
+        this.logDebug('事前処理済みJSONファイルから読み込みます');
+        
+        gtfsData = await this.loadProcessedJSONFiles();
+      } else {
+        // ZIPファイルから読み込む（従来の方法、後方互換性）
+        this.logDebug('ZIPファイルから読み込みます');
+        
+        // GTFS ZIPファイルを検索
+        const zipPath = await this.findGTFSZipFile();
+        
+        // ZIPファイルを読み込んで解凍（1回のみ）
+        const zip = await this.loadGTFSZip(zipPath);
+        
+        // GTFSファイルをパース（1回のみ）
+        gtfsData = await this.parseGTFSFiles(zip);
       }
       
       // 変換済みデータを生成
@@ -215,40 +263,42 @@ class DataLoader {
       this.calendar = gtfsData.calendar;
       this.gtfsStops = gtfsData.stops;
       
-      // 進捗コールバック: 方向情報判定
-      if (this.onProgress) {
-        this.onProgress('方向情報を判定しています...');
-      }
-      
       // 方向情報を付与（データ変換後、インデックス生成前）
       const directionStartTime = Date.now();
       this.enrichTripsWithDirection();
       const directionEndTime = Date.now();
-      
-      // 進捗コールバック: インデックス生成
-      if (this.onProgress) {
-        this.onProgress('インデックスを生成しています...');
-      }
       
       // インデックスを生成（要件2.1, 7.1）
       const indexStartTime = Date.now();
       this.generateIndexes();
       const indexEndTime = Date.now();
       
-      // 進捗コールバック: バス停マッピング読み込み
-      if (this.onProgress) {
-        this.onProgress('バス停マッピングを読み込んでいます...');
-      }
-      
-      // バス停マッピングファイルを読み込み（多言語対応）
+      // バス停マッピングと路線名マッピングを並列で読み込み（多言語対応）
       const mappingStartTime = Date.now();
-      await this.loadBusStopMapping();
-      
-      // 路線名マッピングファイルを読み込み（多言語対応）
-      await this.loadRouteNameMapping();
+      await Promise.all([
+        this.loadBusStopMapping(),
+        this.loadRouteNameMapping()
+      ]);
       const mappingEndTime = Date.now();
       
       const overallEndTime = Date.now();
+      
+      // IndexedDBキャッシュに保存（非同期で実行、エラーが発生しても続行）
+      if (this.cache) {
+        this.cache.set('gtfs-data', {
+          busStops: this.busStops,
+          timetable: this.timetable,
+          fares: this.fares,
+          fareRules: this.fareRules,
+          stopTimes: this.stopTimes,
+          trips: this.trips,
+          routes: this.routes,
+          calendar: this.calendar,
+          gtfsStops: this.gtfsStops
+        }).catch(error => {
+          console.warn('IndexedDBキャッシュへの保存に失敗しました:', error);
+        });
+      }
       
       this.logDebug('全データの読み込み完了', {
         totalDuration: `${overallEndTime - overallStartTime}ms`,
@@ -267,11 +317,6 @@ class DataLoader {
         gtfsStopsCount: this.gtfsStops.length,
         busStopMappingCount: this.busStopMapping ? this.busStopMapping.length : 0
       });
-      
-      // 進捗コールバック: データロード完了
-      if (this.onProgress) {
-        this.onProgress('データの読み込みが完了しました');
-      }
     } catch (error) {
       // エラーコードが設定されている場合はそのまま再スロー
       if (error.code) {
@@ -867,6 +912,142 @@ class DataLoader {
       console.error('GTFS ZIPファイル読み込み/解凍エラー:', error);
       const wrappedError = new Error('GTFSデータの解凍に失敗しました');
       wrappedError.code = 'GTFS_UNZIP_FAILED';
+      wrappedError.details = error.message;
+      throw wrappedError;
+    }
+  }
+
+  /**
+   * 事前処理済みJSONファイルが利用可能かチェック
+   * @returns {Promise<boolean>} JSONファイルが利用可能な場合はtrue
+   */
+  async checkProcessedDataAvailable() {
+    try {
+      // metadata.jsonの存在をチェック
+      const response = await fetch('data/processed/metadata.json', { method: 'HEAD' });
+      return response.ok;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * 事前処理済みJSONファイルをプログレッシブに読み込む
+   * 小さいファイルを先に読み込んでUIを早く表示し、その後大きなファイルを読み込む
+   * @returns {Promise<Object>} パースされたGTFSデータ
+   * @throws {Error} JSONファイルの読み込みに失敗した場合
+   */
+  async loadProcessedJSONFiles() {
+    try {
+      this.logDebug('事前処理済みJSONファイルの読み込み開始');
+      const overallStartTime = Date.now();
+      
+      const fileTimings = {};
+      
+      const loadWithTiming = async (filename) => {
+        const startTime = Date.now();
+        try {
+          const response = await fetch(`data/processed/${filename}`);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          const endTime = Date.now();
+          const duration = endTime - startTime;
+          fileTimings[filename] = duration;
+          
+          this.logDebug(`${filename} 読み込み完了: ${duration}ms (${data.length}件)`);
+          return data;
+        } catch (error) {
+          const endTime = Date.now();
+          const duration = endTime - startTime;
+          fileTimings[filename] = duration;
+          throw error;
+        }
+      };
+      
+      // フェーズ1: 小さい必須ファイルを先に読み込む（UI表示に必要）
+      // これらを先に読み込むことで、UIを早く表示できる
+      const [
+        stops,
+        routes,
+        calendar,
+        agency
+      ] = await Promise.all([
+        loadWithTiming('stops.json'),
+        loadWithTiming('routes.json'),
+        loadWithTiming('calendar.json'),
+        loadWithTiming('agency.json')
+      ]);
+      
+      // フェーズ2: 中サイズのファイルを読み込む
+      const [
+        trips,
+        fareAttributes
+      ] = await Promise.all([
+        loadWithTiming('trips.json'),
+        loadWithTiming('fare_attributes.json').catch(() => []) // オプショナル
+      ]);
+      
+      // フェーズ3: 大きなファイルを並列で読み込む（時間がかかるが、UIは既に表示されている）
+      const [
+        stopTimes,
+        fareRules
+      ] = await Promise.all([
+        loadWithTiming('stop_times.json'),
+        loadWithTiming('fare_rules.json').catch(() => []) // オプショナル
+      ]);
+      
+      // feed_info.jsonからバージョン情報を読み取り（オプショナル）
+      let feedInfo = null;
+      try {
+        feedInfo = await loadWithTiming('feed_info.json');
+      } catch (e) {
+        // feed_info.jsonが存在しない場合は無視
+      }
+      
+      const overallEndTime = Date.now();
+      const overallDuration = overallEndTime - overallStartTime;
+      
+      // バージョン情報を保存
+      if (feedInfo && feedInfo.length > 0) {
+        this.gtfsVersion = {
+          publisher: feedInfo[0].feed_publisher_name || '',
+          version: feedInfo[0].feed_version || '',
+          startDate: feedInfo[0].feed_start_date || '',
+          endDate: feedInfo[0].feed_end_date || ''
+        };
+      }
+      
+      this.logDebug('事前処理済みJSONファイルの読み込み完了', {
+        totalDuration: `${overallDuration}ms`,
+        fileTimings: fileTimings,
+        recordCounts: {
+          stops: stops.length,
+          stopTimes: stopTimes.length,
+          routes: routes.length,
+          trips: trips.length,
+          calendar: calendar.length,
+          agency: agency.length,
+          fareAttributes: fareAttributes.length,
+          fareRules: fareRules.length
+        }
+      });
+      
+      return {
+        stops: stops,
+        stopTimes: stopTimes,
+        routes: routes,
+        trips: trips,
+        calendar: calendar,
+        agency: agency,
+        fareAttributes: fareAttributes,
+        fareRules: fareRules
+      };
+    } catch (error) {
+      console.error('事前処理済みJSONファイル読み込みエラー:', error);
+      const wrappedError = new Error('事前処理済みデータの読み込みに失敗しました');
+      wrappedError.code = 'PROCESSED_DATA_LOAD_FAILED';
       wrappedError.details = error.message;
       throw wrappedError;
     }
