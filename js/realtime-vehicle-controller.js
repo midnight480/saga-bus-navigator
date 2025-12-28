@@ -39,7 +39,21 @@ class RealtimeVehicleController {
     // 翻訳マネージャー（後で設定される）
     this.translationManager = null;
     
+    // AlertEnhancer（お知らせ機能拡張）
+    this.alertEnhancer = null;
+    
+    // 処理済みお知らせのキャッシュ（alertId -> enhancedAlert）
+    this.enhancedAlertsCache = new Map();
+    
     console.log('[RealtimeVehicleController] コンストラクタが呼び出されました');
+  }
+  
+  /**
+   * AlertEnhancerを設定
+   * @param {AlertEnhancer} alertEnhancer - AlertEnhancerインスタンス
+   */
+  setAlertEnhancer(alertEnhancer) {
+    this.alertEnhancer = alertEnhancer;
   }
   
   /**
@@ -764,6 +778,7 @@ class RealtimeVehicleController {
   
   /**
    * 運行情報カードを作成（折りたたみ機能付き）
+   * AlertEnhancerを使用してURLハイパーリンク化と翻訳を適用
    * @param {Object} alert - 運行情報
    * @param {string} color - 文字色 ('red' | 'yellow')
    * @returns {HTMLElement} 運行情報カード
@@ -771,6 +786,10 @@ class RealtimeVehicleController {
   createAlertCard(alert, color) {
     const card = document.createElement('div');
     card.className = `alert-card alert-card-${color}`;
+    
+    // お知らせIDを生成（キャッシュキーとして使用）
+    const alertId = alert.id || this._generateAlertId(alert);
+    card.setAttribute('data-alert-id', alertId);
     
     // タイトル部分（クリック可能）
     const titleContainer = document.createElement('div');
@@ -786,17 +805,25 @@ class RealtimeVehicleController {
     toggleIcon.setAttribute('aria-hidden', 'true');
     
     // タイトルテキスト（headerTextを使用）
+    const header = document.createElement('span');
+    header.className = 'alert-header';
+    
     if (alert.headerText) {
-      const header = document.createElement('span');
-      header.className = 'alert-header';
-      header.textContent = alert.headerText;
+      // AlertEnhancerが設定されている場合はURLハイパーリンク化を適用
+      if (this.alertEnhancer) {
+        header.innerHTML = this._getProcessedText(alert, 'header');
+      } else {
+        header.textContent = alert.headerText;
+      }
       titleContainer.appendChild(toggleIcon);
       titleContainer.appendChild(header);
     } else if (alert.descriptionText) {
       // headerTextがない場合はdescriptionTextをタイトルとして使用
-      const header = document.createElement('span');
-      header.className = 'alert-header';
-      header.textContent = alert.descriptionText;
+      if (this.alertEnhancer) {
+        header.innerHTML = this._getProcessedText(alert, 'description');
+      } else {
+        header.textContent = alert.descriptionText;
+      }
       titleContainer.appendChild(toggleIcon);
       titleContainer.appendChild(header);
     }
@@ -811,10 +838,21 @@ class RealtimeVehicleController {
       
       const description = document.createElement('p');
       description.className = 'alert-description';
-      description.textContent = alert.descriptionText;
+      
+      // AlertEnhancerが設定されている場合はURLハイパーリンク化を適用
+      if (this.alertEnhancer) {
+        description.innerHTML = this._getProcessedText(alert, 'description');
+      } else {
+        description.textContent = alert.descriptionText;
+      }
       descriptionContainer.appendChild(description);
       
       card.appendChild(descriptionContainer);
+    }
+    
+    // AlertEnhancerが設定されている場合、非同期翻訳を開始
+    if (this.alertEnhancer && this.alertEnhancer.shouldTranslate()) {
+      this._startAsyncTranslation(alert, alertId, card);
     }
     
     // クリックイベントで展開/折りたたみ
@@ -831,6 +869,135 @@ class RealtimeVehicleController {
     });
     
     return card;
+  }
+  
+  /**
+   * お知らせIDを生成
+   * @private
+   * @param {Object} alert - お知らせデータ
+   * @returns {string} 生成されたID
+   */
+  _generateAlertId(alert) {
+    const text = (alert.headerText || '') + (alert.descriptionText || '');
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+      const char = text.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return `alert-${Math.abs(hash)}`;
+  }
+  
+  /**
+   * 処理済みテキストを取得（URLハイパーリンク化済み）
+   * @private
+   * @param {Object} alert - お知らせデータ
+   * @param {string} field - フィールド名（'header' | 'description'）
+   * @returns {string} 処理済みテキスト（HTML）
+   */
+  _getProcessedText(alert, field) {
+    const alertId = alert.id || this._generateAlertId(alert);
+    
+    // キャッシュから取得
+    const cachedAlert = this.enhancedAlertsCache.get(alertId);
+    if (cachedAlert) {
+      return this.alertEnhancer.getDisplayText(cachedAlert, field);
+    }
+    
+    // キャッシュにない場合はURLParserで処理
+    const text = field === 'header' ? alert.headerText : alert.descriptionText;
+    if (typeof window !== 'undefined' && window.URLParser) {
+      return window.URLParser.parseURLs(text || '');
+    }
+    return text || '';
+  }
+  
+  /**
+   * 非同期翻訳を開始
+   * @private
+   * @param {Object} alert - お知らせデータ
+   * @param {string} alertId - お知らせID
+   * @param {HTMLElement} card - カード要素
+   */
+  async _startAsyncTranslation(alert, alertId, card) {
+    try {
+      // ローディング状態を表示
+      card.classList.add('alert-card-loading');
+      
+      // AlertEnhancerで処理
+      const enhancedAlert = await this.alertEnhancer.processAlert(alert, {
+        onTranslationComplete: (result) => {
+          // 翻訳完了時にUIを更新
+          this._updateAlertCardWithTranslation(alertId, result, card);
+        }
+      });
+      
+      // キャッシュに保存
+      this.enhancedAlertsCache.set(alertId, enhancedAlert);
+      
+    } catch (error) {
+      console.warn('[RealtimeVehicleController] 翻訳処理でエラーが発生しました:', error);
+      card.classList.remove('alert-card-loading');
+    }
+  }
+  
+  /**
+   * 翻訳完了後にカードを更新
+   * @private
+   * @param {string} alertId - お知らせID
+   * @param {Object} enhancedAlert - 処理済みお知らせ
+   * @param {HTMLElement} card - カード要素
+   */
+  _updateAlertCardWithTranslation(alertId, enhancedAlert, card) {
+    // キャッシュを更新
+    this.enhancedAlertsCache.set(alertId, enhancedAlert);
+    
+    // ローディング状態を解除
+    card.classList.remove('alert-card-loading');
+    
+    // 翻訳がある場合のみUIを更新
+    if (enhancedAlert.hasTranslation) {
+      // ヘッダーを更新
+      const header = card.querySelector('.alert-header');
+      if (header) {
+        const headerText = this.alertEnhancer.getDisplayText(enhancedAlert, 'header');
+        if (headerText) {
+          header.innerHTML = headerText;
+        }
+      }
+      
+      // 説明を更新
+      const description = card.querySelector('.alert-description');
+      if (description) {
+        const descriptionText = this.alertEnhancer.getDisplayText(enhancedAlert, 'description');
+        if (descriptionText) {
+          description.innerHTML = descriptionText;
+        }
+      }
+      
+      // 翻訳済みマーカーを追加
+      card.classList.add('alert-card-translated');
+    }
+  }
+  
+  /**
+   * 言語変更時にお知らせ表示を更新
+   * 要件3.5: 言語設定の変更を検出してお知らせ表示を更新する
+   */
+  onLanguageChange() {
+    // キャッシュをクリア
+    this.enhancedAlertsCache.clear();
+    
+    // AlertEnhancerに言語変更を通知
+    if (this.alertEnhancer) {
+      const currentLanguage = this.alertEnhancer.getCurrentLanguage();
+      this.alertEnhancer.onLanguageChange(currentLanguage);
+    }
+    
+    // 現在表示中のお知らせを再取得して再表示
+    if (this.realtimeDataLoader && this.realtimeDataLoader.alerts) {
+      this.handleAlertsUpdate(this.realtimeDataLoader.alerts);
+    }
   }
   
   /**

@@ -1,0 +1,8 @@
+# Cloudflare Pages Functions ローカル開発用環境変数
+# このファイルをコピーして .dev.vars を作成し、実際の値を設定してください
+# cp .dev.vars.example .dev.vars
+
+# AWS認証情報（Amazon Translate用）
+AWS_ACCESS_KEY_ID=your-access-key-id
+AWS_SECRET_ACCESS_KEY=your-secret-access-key
+AWS_REGION=ap-northeast-1
