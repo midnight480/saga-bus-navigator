@@ -2561,6 +2561,24 @@ async function initializeApp() {
           window.realtimeVehicleController.translationManager = window.uiController.translationManager;
         }
         
+        // AlertEnhancerを設定（お知らせのURLハイパーリンク化と翻訳機能）
+        if (typeof AlertEnhancer !== 'undefined' && typeof TranslationService !== 'undefined') {
+          const translationCache = typeof TranslationCache !== 'undefined' ? new TranslationCache() : null;
+          const translationService = new TranslationService({
+            enabled: true,
+            cache: translationCache
+          });
+          
+          const alertEnhancer = new AlertEnhancer({
+            translationService: translationService,
+            languageManager: window.uiController?.translationManager || { getLanguage: () => 'ja' }
+          });
+          
+          window.realtimeVehicleController.setAlertEnhancer(alertEnhancer);
+          window.alertEnhancer = alertEnhancer;
+          window.translationService = translationService;
+        }
+        
         // 初期化とポーリング開始
         await window.realtimeVehicleController.initialize();
         
