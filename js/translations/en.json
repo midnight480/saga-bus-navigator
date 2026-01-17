@@ -226,7 +226,10 @@
     "realtime_unavailable": "Real-time information is temporarily unavailable",
     "translation_load_failed": "Failed to load translation data",
     "bus_stop_mapping_failed": "Failed to load bus stop mapping",
-    "invalid_translation_key": "Translation key not found"
+    "invalid_translation_key": "Translation key not found",
+    "ors_unavailable": "Failed to fetch route (showing straight line as fallback)",
+    "ors_rate_limited": "Route requests are rate-limited. Please try again later (showing straight line as fallback)",
+    "ors_invalid_coordinates": "Invalid coordinates. Unable to fetch route (showing straight line as fallback)"
   },
   "form": {
     "help_departure": "Candidates will be displayed when you enter one or more characters",

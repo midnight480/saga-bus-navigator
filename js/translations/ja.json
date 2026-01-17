@@ -226,7 +226,10 @@
     "realtime_unavailable": "リアルタイム情報が一時的に利用できません",
     "translation_load_failed": "翻訳データの読み込みに失敗しました",
     "bus_stop_mapping_failed": "バス停マッピングの読み込みに失敗しました",
-    "invalid_translation_key": "翻訳キーが見つかりません"
+    "invalid_translation_key": "翻訳キーが見つかりません",
+    "ors_unavailable": "経路の取得に失敗しました（直線で表示します）",
+    "ors_rate_limited": "経路取得が混雑しています。しばらく待ってから再試行してください（直線で表示します）",
+    "ors_invalid_coordinates": "無効な座標が含まれているため経路を取得できません（直線で表示します）"
   },
   "form": {
     "help_departure": "1文字以上入力すると候補が表示されます",

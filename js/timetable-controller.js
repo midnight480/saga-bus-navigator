@@ -458,15 +458,33 @@ class TimetableController {
   /**
    * 路線の経路情報を取得（地図表示用）
    * @param {string} routeId - 路線ID
-   * @param {string} direction - 方向フィルタ（オプション: '0', '1', null=全方向）
+   * @param {string|null} directionOrTripId - 方向フィルタ（'0','1',null）または tripId
    * @returns {Array<Object>} バス停座標の配列
    */
-  getRouteStops(routeId, direction = null) {
+  getRouteStops(routeId, directionOrTripId = null) {
     // 入力値の検証
     if (!routeId) {
       console.warn('TimetableController: routeIdが指定されていません');
       return [];
     }
+
+    // 第2引数が方向ではなくtripIdとして渡された場合に対応（テスト/呼び出し側互換）
+    const isDirection = directionOrTripId === null || directionOrTripId === '0' || directionOrTripId === '1';
+    if (!isDirection && typeof directionOrTripId === 'string') {
+      const tripId = directionOrTripId;
+      const trip = this.tripsIndex[tripId];
+      if (!trip) {
+        console.warn('TimetableController: 存在しない便が指定されました', { tripId });
+        return [];
+      }
+      if (trip.route_id !== routeId) {
+        console.warn('TimetableController: 指定されたtripがrouteIdと一致しません', { routeId, tripId });
+        return [];
+      }
+      return this.getRouteStopsForTrip(tripId);
+    }
+
+    const direction = directionOrTripId;
 
     // 路線が存在するか確認
     const route = this.routesIndex[routeId];

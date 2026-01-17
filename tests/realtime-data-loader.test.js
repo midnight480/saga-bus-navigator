@@ -656,6 +656,7 @@ describe('RealtimeDataLoader', () => {
       global.fetch = vi.fn(() => Promise.resolve(mockErrorResponse));
 
       const promise = realtimeDataLoader.fetchWithRetry('/api/vehicle', 3);
+      const assertion = expect(promise).rejects.toThrow(); // 先にハンドラを付ける（未処理rejection対策）
 
       // 最初の呼び出し
       await vi.advanceTimersByTimeAsync(0);
@@ -669,7 +670,7 @@ describe('RealtimeDataLoader', () => {
       await vi.advanceTimersByTimeAsync(2000);
       expect(global.fetch).toHaveBeenCalledTimes(3);
 
-      await expect(promise).rejects.toThrow();
+      await assertion;
 
       vi.useRealTimers();
     });

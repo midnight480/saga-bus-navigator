@@ -43,6 +43,12 @@ class MapController {
     
     // TranslationManager（多言語対応用）
     this.translationManager = null;
+
+    // ORS経路描画（ors-route-rendering）
+    this.orsConfig = null;
+    this.orsEnabled = false;
+    this.orsRouteRenderer = null;
+    this.orsRouteController = null;
   }
 
   /**
@@ -119,6 +125,10 @@ class MapController {
       
       // 経路表示用レイヤーを初期化
       this.routeLayer = L.layerGroup().addTo(this.map);
+
+      // ORS経路描画の初期化（設定が無い/無効な場合はフォールバック）
+      this.initializeOrsRouteRendering();
+      this.setupOrsZoomVisibilityHandler();
       
       // 「経路をクリア」ボタンのイベントリスナーを設定
       this.setupClearRouteButton();
@@ -260,6 +270,115 @@ class MapController {
     
     // タイルレイヤーを保存
     this.currentTileLayer = currentTileLayer;
+  }
+
+  /**
+   * ORS経路描画を初期化する（設定が無い/無効な場合はフォールバック）
+   */
+  initializeOrsRouteRendering() {
+    try {
+      this.orsConfig = typeof window !== 'undefined' ? window.ORS_CONFIG : null;
+      if (!this.orsConfig || !this.orsConfig.enabled) {
+        this.orsEnabled = false;
+        return;
+      }
+
+      if (
+        typeof ORSClient === 'undefined' ||
+        typeof CacheManager === 'undefined' ||
+        typeof RouteRenderer === 'undefined' ||
+        typeof RouteController === 'undefined'
+      ) {
+        console.warn('[MapController] ORS関連クラスが読み込まれていないため、ORS経路描画を無効化します');
+        this.orsEnabled = false;
+        return;
+      }
+
+      const cacheManager = new CacheManager({
+        storage: typeof window !== 'undefined' ? window.localStorage : null,
+        ttl: this.orsConfig.cacheTtlMs
+      });
+
+      const orsClient = new ORSClient({
+        apiKey: this.orsConfig.apiKey,
+        baseUrl: this.orsConfig.baseUrl,
+        profile: this.orsConfig.profile,
+        RateLimiter: typeof RateLimiter !== 'undefined' ? RateLimiter : undefined,
+        maxCoordinatesPerRequest: this.orsConfig.maxCoordinatesPerRequest,
+        maxWaitOnMinuteLimitMs: this.orsConfig.maxWaitOnMinuteLimitMs
+      });
+
+      const routeRenderer = new RouteRenderer(this.map, {
+        style: { color: '#2196F3', weight: 4, opacity: 0.7 }
+      });
+
+      const routeController = new RouteController(orsClient, cacheManager, routeRenderer, {
+        debounceDelay: this.orsConfig.debounceMs,
+        maxCoordinatesPerRequest: this.orsConfig.maxCoordinatesPerRequest
+      });
+
+      this.orsRouteRenderer = routeRenderer;
+      this.orsRouteController = routeController;
+      this.orsEnabled = true;
+
+      console.log('[MapController] ORS経路描画を有効化しました');
+    } catch (error) {
+      console.warn('[MapController] ORS経路描画の初期化に失敗したため、フォールバックします', error);
+      this.orsEnabled = false;
+      this.orsRouteRenderer = null;
+      this.orsRouteController = null;
+    }
+  }
+
+  /**
+   * ズームレベルに応じてORS経路描画の表示/非表示を切り替える（要件5.4）
+   */
+  setupOrsZoomVisibilityHandler() {
+    if (!this.map || !this.orsEnabled || !this.orsRouteRenderer || !this.orsConfig) return;
+    const threshold = this.orsConfig.hideRouteBelowZoom;
+    if (typeof threshold !== 'number') return;
+
+    const updateVisibility = () => {
+      const zoom = this.map.getZoom();
+      this.orsRouteRenderer.setVisible(zoom >= threshold);
+    };
+
+    updateVisibility();
+    this.map.on('zoomend', updateVisibility);
+  }
+
+  /**
+   * ORS描画時のUIフィードバック（ローディング/エラー）
+   */
+  async drawOrsRouteWithUi(routeId, stopsLonLatCompatible, options) {
+    if (!this.orsEnabled || !this.orsRouteController) return;
+
+    if (window.uiController && typeof window.uiController.displayLoading === 'function') {
+      window.uiController.displayLoading(true);
+    }
+
+    try {
+      await this.orsRouteController.drawBusRoute(routeId, stopsLonLatCompatible, options);
+    } catch (error) {
+      const code = error && typeof error === 'object' ? error.code : null;
+      if (window.uiController && typeof window.uiController.displayError === 'function') {
+        if (window.uiController.translationManager) {
+          const key =
+            code === 'RATE_LIMIT' || code === 'RATE_LIMIT_MINUTE' || code === 'RATE_LIMIT_DAILY'
+              ? 'error.ors_rate_limited'
+              : code === 'INVALID_COORDINATES'
+                ? 'error.ors_invalid_coordinates'
+                : 'error.ors_unavailable';
+          window.uiController.displayError(key, true);
+        } else {
+          window.uiController.displayError('経路の取得に失敗しました（直線で表示します）');
+        }
+      }
+    } finally {
+      if (window.uiController && typeof window.uiController.displayLoading === 'function') {
+        window.uiController.displayLoading(false);
+      }
+    }
   }
   
   /**
@@ -1021,46 +1140,46 @@ class MapController {
       if (direction === '1') {
         routeColor = '#4CAF50'; // 復路: 緑色
       }
-      
-      // 経路線を描画
-      const polyline = L.polyline(sortedCoordinates, {
-        color: routeColor,
-        weight: 4,
-        opacity: 0.7,
-        smoothFactor: 1
-      });
-      
-      // 矢印を追加（進行方向を示す）
-      // 時刻順にソートされた座標を使用するため、必ず出発→到着の方向になる
-      for (let i = 0; i < sortedCoordinates.length - 1; i++) {
-        const start = sortedCoordinates[i];
-        const end = sortedCoordinates[i + 1];
-        
-        // 中点を計算
-        const midLat = (start[0] + end[0]) / 2;
-        const midLng = (start[1] + end[1]) / 2;
-        
-        // 角度を計算（進行方向を示す）
-        // Leafletの座標は[lat, lng]の順序
-        // Math.atan2(dy, dx)で東を0度とした角度を計算
-        // ▶アイコンは右向きなので、startからendへの方向に向けるため-90度を加算
-        // （90度ではなく-90度にすることで180度反転した正しい方向になる）
-        const angle = Math.atan2(end[1] - start[1], end[0] - start[0]) * 180 / Math.PI - 90;
-        
-        // 矢印アイコンを作成（経路線と同じ色を使用）
-        const arrowIcon = L.divIcon({
-          html: `<div style="transform: rotate(${angle}deg); color: ${routeColor}; font-size: 20px;">▶</div>`,
-          className: 'route-arrow-marker',
-          iconSize: [20, 20],
-          iconAnchor: [10, 10]
+
+      // ORS経路描画（有効時）。失敗してもRouteController側で直線フォールバックされる
+      if (this.orsEnabled && this.orsRouteController) {
+        const stopsForOrs = allStops.map((s) => ({ lat: s.lat, lon: s.lng }));
+        this.drawOrsRouteWithUi('direct-trip', stopsForOrs, {
+          style: { color: routeColor, weight: 4, opacity: 0.7 },
+          fitBounds: false,
+          fallback: true
         });
-        
-        // 矢印マーカーを配置
-        const arrowMarker = L.marker([midLat, midLng], { icon: arrowIcon });
-        this.routeLayer.addLayer(arrowMarker);
+      } else {
+        // フォールバック（従来の直線描画）
+        const polyline = L.polyline(sortedCoordinates, {
+          color: routeColor,
+          weight: 4,
+          opacity: 0.7,
+          smoothFactor: 1
+        });
+
+        // 矢印を追加（進行方向を示す）
+        for (let i = 0; i < sortedCoordinates.length - 1; i++) {
+          const start = sortedCoordinates[i];
+          const end = sortedCoordinates[i + 1];
+
+          const midLat = (start[0] + end[0]) / 2;
+          const midLng = (start[1] + end[1]) / 2;
+          const angle = Math.atan2(end[1] - start[1], end[0] - start[0]) * 180 / Math.PI - 90;
+
+          const arrowIcon = L.divIcon({
+            html: `<div style="transform: rotate(${angle}deg); color: ${routeColor}; font-size: 20px;">▶</div>`,
+            className: 'route-arrow-marker',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+          });
+
+          const arrowMarker = L.marker([midLat, midLng], { icon: arrowIcon });
+          this.routeLayer.addLayer(arrowMarker);
+        }
+
+        this.routeLayer.addLayer(polyline);
       }
-      
-      this.routeLayer.addLayer(polyline);
       
       // 経路全体が見える範囲に自動ズーム
       const bounds = L.latLngBounds(sortedCoordinates);
@@ -1100,14 +1219,9 @@ class MapController {
         return [];
       }
       
-      // DataLoaderからstop_timesとtripsを取得
-      if (!window.dataLoader || !window.dataLoader.stopTimes || !window.dataLoader.trips) {
-        console.error('[MapController] DataLoaderのデータが利用できません');
-        return [];
-      }
-      
-      const stopTimes = window.dataLoader.stopTimes;
-      const trips = window.dataLoader.trips;
+      // TimetableControllerからstop_timesとtripsを取得
+      const stopTimes = window.timetableController.stopTimes || [];
+      const trips = window.timetableController.trips || [];
       
       // 指定された路線のtripsを取得
       const routeTrips = trips.filter(t => t.route_id === routeId);
@@ -1165,6 +1279,54 @@ class MapController {
       return [];
     }
   }
+
+  /**
+   * 路線の代表tripから stop_sequence 順にバス停を取得（ORS用）
+   * @param {string} routeId - 路線ID
+   * @param {string|null} direction - 方向（'0','1',null）
+   * @returns {Array<{id:string,name:string,lat:number,lng:number}>}
+   */
+  getRouteStopSequence(routeId, direction = null) {
+    try {
+      if (!window.timetableController) return [];
+      const stopTimes = window.timetableController.stopTimes || [];
+      const trips = window.timetableController.trips || [];
+
+      const routeTrips = trips.filter((t) => t.route_id === routeId);
+      if (routeTrips.length === 0) return [];
+
+      let filteredTrips = routeTrips;
+      if (direction !== null && window.DirectionDetector) {
+        filteredTrips = routeTrips.filter((trip) => {
+          const detected = window.DirectionDetector.detectDirection(trip, routeId, trips);
+          return detected === direction;
+        });
+      }
+
+      const representativeTrip = filteredTrips[0] || routeTrips[0];
+      if (!representativeTrip) return [];
+
+      const stopTimesForTrip = stopTimes
+        .filter((st) => st.trip_id === representativeTrip.trip_id)
+        .sort((a, b) => (a.stop_sequence || 0) - (b.stop_sequence || 0));
+
+      const sequence = [];
+      let lastStopId = null;
+      for (const st of stopTimesForTrip) {
+        const stop = this.busStops.find((s) => s.id === st.stop_id);
+        if (!stop) continue;
+        if (!this.isValidCoordinate(stop.lat, stop.lng)) continue;
+        if (stop.id === lastStopId) continue;
+        lastStopId = stop.id;
+        sequence.push({ id: stop.id, name: stop.name, lat: stop.lat, lng: stop.lng });
+      }
+
+      return sequence;
+    } catch (error) {
+      console.warn('[MapController] ルート停留所シーケンス取得に失敗しました', error);
+      return [];
+    }
+  }
   
   /**
    * 路線を地図上に表示（方向別に色分け）
@@ -1210,6 +1372,24 @@ class MapController {
         
         this.routeLayer.addLayer(marker);
       });
+
+      // ORSで路線の道路沿い経路を描画（有効時）
+      if (this.orsEnabled && this.orsRouteController) {
+        const orderedStops = this.getRouteStopSequence(routeId, direction);
+        if (orderedStops.length >= 2) {
+          const routeColor = direction === '1' ? '#4CAF50' : '#2196F3';
+          const routeKey = `route-${routeId}-${direction === null ? 'both' : direction}`;
+          this.drawOrsRouteWithUi(
+            routeKey,
+            orderedStops.map((s) => ({ lat: s.lat, lon: s.lng })),
+            {
+              style: { color: routeColor, weight: 4, opacity: 0.7 },
+              fitBounds: false,
+              fallback: true
+            }
+          );
+        }
+      }
       
       // 全てのバス停が見える範囲に自動ズーム
       const bounds = L.latLngBounds(stops.map(s => [s.lat, s.lng]));
@@ -1299,6 +1479,11 @@ class MapController {
       if (this.routeLayer) {
         this.routeLayer.clearLayers();
         console.log('[MapController] 経路をクリアしました');
+      }
+
+      // ORS経路描画もクリア
+      if (this.orsEnabled && this.orsRouteController) {
+        this.orsRouteController.clearAllRoutes();
       }
       
       // 「経路をクリア」ボタンを非表示
