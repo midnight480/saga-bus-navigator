@@ -2395,17 +2395,19 @@ async function initializeApp() {
     };
     
     // データの読み込み（要件1.1, 1.2: GTFSファイルを1回だけ読み込む）
-    console.log('データを読み込んでいます...');
-    
     // loadAllDataOnce()を1回だけ呼び出す（Promise.allによる並列呼び出しを削除）
     await dataLoader.loadAllDataOnce();
     
     const loadTime = Date.now() - startTime;
-    console.log(`データの読み込みが完了しました（${loadTime}ms）`);
-    console.log(`バス停数: ${dataLoader.busStops.length}`);
-    console.log(`時刻表データ数: ${dataLoader.timetable.length}`);
-    console.log(`運賃データ数: ${dataLoader.fares.length}`);
-    console.log(`GTFSデータ: stopTimes=${dataLoader.stopTimes.length}, trips=${dataLoader.trips.length}, routes=${dataLoader.routes.length}, calendar=${dataLoader.calendar.length}, gtfsStops=${dataLoader.gtfsStops.length}`);
+    
+    // 3秒以内に読み込み完了したか確認（デバッグモードが有効な場合のみ詳細ログを出力）
+    if (dataLoader.debugMode) {
+      console.log(`データの読み込みが完了しました（${loadTime}ms）`);
+      console.log(`バス停数: ${dataLoader.busStops.length}`);
+      console.log(`時刻表データ数: ${dataLoader.timetable.length}`);
+      console.log(`運賃データ数: ${dataLoader.fares.length}`);
+      console.log(`GTFSデータ: stopTimes=${dataLoader.stopTimes.length}, trips=${dataLoader.trips.length}, routes=${dataLoader.routes.length}, calendar=${dataLoader.calendar.length}, gtfsStops=${dataLoader.gtfsStops.length}`);
+    }
     
     // 3秒以内に読み込み完了したか確認
     if (loadTime > 3000) {

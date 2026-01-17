@@ -192,12 +192,116 @@ class DataLoader {
             return; // キャッシュから読み込めたので終了
           }
         } catch (error) {
-          console.warn('IndexedDBキャッシュからの読み込みに失敗しました:', error);
+          this.logDebug('IndexedDBキャッシュからの読み込みに失敗しました:', error);
           // エラーが発生しても続行（JSONファイルから読み込む）
         }
       }
       
-      // キャッシュがない場合は、ZIPファイルから読み込む
+      // 事前処理済みJSONファイルが利用可能かチェック（最速の読み込み方法）
+      const processedDataAvailable = await this.checkProcessedDataAvailable();
+      if (processedDataAvailable) {
+        this.logDebug('事前処理済みJSONファイルから読み込みます');
+        
+        try {
+          // 事前処理済みJSONファイルを読み込む（高速）
+          gtfsData = await this.loadProcessedJSONFiles();
+          
+          // 変換済みデータを生成
+          const transformStartTime = Date.now();
+          
+          this.busStops = DataTransformer.transformStops(
+            gtfsData.stops,
+            (message, data) => this.logDebug(message, data)
+          );
+          
+          this.timetable = DataTransformer.transformTimetable(
+            gtfsData.stopTimes,
+            gtfsData.trips,
+            gtfsData.routes,
+            gtfsData.calendar,
+            gtfsData.agency,
+            gtfsData.stops,
+            (message, data) => this.logDebug(message, data)
+          );
+          
+          this.fares = DataTransformer.transformFares(
+            gtfsData.fareAttributes,
+            (message, data) => this.logDebug(message, data)
+          );
+          
+          // fare_rules.txtが存在する場合は変換してキャッシュ
+          if (gtfsData.fareRules && gtfsData.fareRules.length > 0) {
+            this.fareRules = DataTransformer.transformFareRules(
+              gtfsData.fareRules,
+              (message, data) => this.logDebug(message, data)
+            );
+          } else {
+            this.logDebug('fare_rules.txtが存在しないため、運賃ルールデータはスキップされました');
+            this.fareRules = [];
+          }
+          
+          const transformEndTime = Date.now();
+          
+          // 生データをキャッシュ（TimetableController用）
+          this.stopTimes = gtfsData.stopTimes;
+          this.trips = gtfsData.trips;
+          this.routes = gtfsData.routes;
+          this.calendar = gtfsData.calendar;
+          this.gtfsStops = gtfsData.stops;
+          
+          // 方向情報を付与（データ変換後、インデックス生成前）
+          const directionStartTime = Date.now();
+          this.enrichTripsWithDirection();
+          const directionEndTime = Date.now();
+          
+          // インデックスを生成（要件2.1, 7.1）
+          const indexStartTime = Date.now();
+          this.generateIndexes();
+          const indexEndTime = Date.now();
+          
+          // バス停マッピングと路線名マッピングを並列で読み込み（多言語対応）
+          const mappingStartTime = Date.now();
+          await Promise.all([
+            this.loadBusStopMapping(),
+            this.loadRouteNameMapping()
+          ]);
+          const mappingEndTime = Date.now();
+          
+          const overallEndTime = Date.now();
+          
+          // IndexedDBキャッシュに保存（非同期で実行、エラーが発生しても続行）
+          if (this.cache) {
+            this.cache.set('gtfs-data', {
+              busStops: this.busStops,
+              timetable: this.timetable,
+              fares: this.fares,
+              fareRules: this.fareRules,
+              stopTimes: this.stopTimes,
+              trips: this.trips,
+              routes: this.routes,
+              calendar: this.calendar,
+              gtfsStops: this.gtfsStops
+            }).catch(error => {
+              this.logDebug('IndexedDBキャッシュへの保存に失敗しました:', error);
+            });
+          }
+          
+          this.logDebug('事前処理済みJSONファイルからの読み込み完了', {
+            totalDuration: `${overallEndTime - overallStartTime}ms`,
+            transformDuration: `${transformEndTime - transformStartTime}ms`,
+            directionDuration: `${directionEndTime - directionStartTime}ms`,
+            indexDuration: `${indexEndTime - indexStartTime}ms`,
+            mappingDuration: `${mappingEndTime - mappingStartTime}ms`
+          });
+          
+          return; // JSONファイルから読み込めたので終了
+        } catch (error) {
+          this.logDebug('事前処理済みJSONファイルからの読み込みに失敗しました。ZIPファイルから読み込みます:', error);
+          // エラーが発生しても続行（ZIPファイルから読み込む）
+        }
+      }
+      
+      // 事前処理済みJSONファイルがない場合は、ZIPファイルから読み込む
       // Cloudflare Pagesの25MB制限を回避するため、ZIPファイルを使用
       this.logDebug('ZIPファイルから読み込みます');
       
@@ -286,7 +390,7 @@ class DataLoader {
           calendar: this.calendar,
           gtfsStops: this.gtfsStops
         }).catch(error => {
-          console.warn('IndexedDBキャッシュへの保存に失敗しました:', error);
+          this.logDebug('IndexedDBキャッシュへの保存に失敗しました:', error);
         });
       }
       
@@ -680,7 +784,7 @@ class DataLoader {
    */
   async parseGTFSFiles(zip) {
     try {
-      console.log('[DataLoader] GTFSファイルのパース開始');
+      this.logDebug('GTFSファイルのパース開始');
       const overallStartTime = Date.now();
       
       // 必要なGTFSファイルを並列で抽出（要件6.1: Promise.allを使用）
@@ -695,8 +799,8 @@ class DataLoader {
           const duration = endTime - startTime;
           fileTimings[filename] = duration;
           
-          // 要件3.1: 各ファイルの読み込み時間をログ出力
-          console.log(`[DataLoader] ${filename} 読み込み完了: ${duration}ms`);
+          // 要件3.1: 各ファイルの読み込み時間をログ出力（デバッグモードのみ）
+          this.logDebug(`${filename} 読み込み完了: ${duration}ms`);
           
           return text;
         } catch (error) {
@@ -750,8 +854,8 @@ class DataLoader {
       const parseEndTime = Date.now();
       const parseDuration = parseEndTime - parseStartTime;
       
-      // 要件3.1: パース時間をログ出力
-      console.log(`[DataLoader] GTFSファイルのパース時間: ${parseDuration}ms`);
+      // 要件3.1: パース時間をログ出力（デバッグモードのみ）
+      this.logDebug(`GTFSファイルのパース時間: ${parseDuration}ms`);
       
       // データの妥当性チェック（要件4.4, 4.5）
       if (!gtfsData.stops || gtfsData.stops.length === 0) {
@@ -783,19 +887,20 @@ class DataLoader {
       const overallEndTime = Date.now();
       const overallDuration = overallEndTime - overallStartTime;
       
-      // 要件3.1: 読み込み時間とレコード数をログ出力
-      console.log('[DataLoader] GTFSファイルのパース完了');
-      console.log(`[DataLoader] 総読み込み時間: ${overallDuration}ms`);
-      console.log('[DataLoader] 各ファイルの読み込み時間:', fileTimings);
-      console.log('[DataLoader] 読み込んだレコード数:', {
-        stops: gtfsData.stops.length,
-        stopTimes: gtfsData.stopTimes.length,
-        routes: gtfsData.routes.length,
-        trips: gtfsData.trips.length,
-        calendar: gtfsData.calendar.length,
-        agency: gtfsData.agency.length,
-        fareAttributes: gtfsData.fareAttributes.length,
-        fareRules: gtfsData.fareRules.length
+      // 要件3.1: 読み込み時間とレコード数をログ出力（デバッグモードのみ）
+      this.logDebug('GTFSファイルのパース完了', {
+        totalDuration: `${overallDuration}ms`,
+        fileTimings: fileTimings,
+        recordCounts: {
+          stops: gtfsData.stops.length,
+          stopTimes: gtfsData.stopTimes.length,
+          routes: gtfsData.routes.length,
+          trips: gtfsData.trips.length,
+          calendar: gtfsData.calendar.length,
+          agency: gtfsData.agency.length,
+          fareAttributes: gtfsData.fareAttributes.length,
+          fareRules: gtfsData.fareRules.length
+        }
       });
       
       return gtfsData;
@@ -1985,9 +2090,6 @@ class DataTransformer {
   static transformStops(stopsData, progressCallback = null) {
     const startTime = Date.now();
     
-    // 要件3.2: 変換前のレコード数をログ出力
-    console.log(`[DataTransformer] バス停データ変換開始: ${stopsData.length}件`);
-    
     if (progressCallback) {
       progressCallback('バス停データ変換開始', { totalRecords: stopsData.length });
     }
@@ -2005,10 +2107,6 @@ class DataTransformer {
     
     const endTime = Date.now();
     const duration = endTime - startTime;
-    
-    // 要件3.2: 変換後のレコード数と変換時間をログ出力
-    console.log(`[DataTransformer] バス停データ変換完了: ${result.length}件 (${duration}ms)`);
-    console.log(`[DataTransformer] 除外されたレコード: ${stopsData.length - result.length}件`);
     
     if (progressCallback) {
       progressCallback('バス停データ変換完了', { 
@@ -2036,9 +2134,6 @@ class DataTransformer {
   static transformTimetable(stopTimesData, tripsData, routesData, calendarData, agencyData, stopsData, progressCallback = null) {
     const startTime = Date.now();
     
-    // 要件3.2: 変換前のレコード数をログ出力
-    console.log(`[DataTransformer] 時刻表データ変換開始: ${stopTimesData.length}件`);
-    
     // インデックスを作成（検索最適化）
     const indexStartTime = Date.now();
     const tripsIndex = this.createIndex(tripsData, 'trip_id');
@@ -2047,8 +2142,6 @@ class DataTransformer {
     const agencyIndex = this.createIndex(agencyData, 'agency_id');
     const stopsIndex = this.createIndex(stopsData, 'stop_id');
     const indexEndTime = Date.now();
-    
-    console.log(`[DataTransformer] インデックス作成完了: ${indexEndTime - indexStartTime}ms`);
     
     if (progressCallback) {
       progressCallback('インデックス作成完了', { duration: `${indexEndTime - indexStartTime}ms` });
@@ -2138,21 +2231,10 @@ class DataTransformer {
     
     const duplicateCheckEndTime = Date.now();
     
-    // 要件3.3: 重複が検出された場合は警告ログを出力
+    // 要件3.3: 重複が検出された場合は警告ログを出力（常に出力）
     if (duplicates.length > 0) {
       console.warn(`[DataTransformer] ⚠️ 重複データが検出されました: ${duplicates.length}件`);
-      console.warn('[DataTransformer] 重複データの詳細:', duplicates.slice(0, 10)); // 最初の10件のみ表示
-      if (duplicates.length > 10) {
-        console.warn(`[DataTransformer] ... 他 ${duplicates.length - 10}件の重複`);
-      }
-    } else {
-      console.log('[DataTransformer] 重複データは検出されませんでした');
     }
-    
-    console.log(`[DataTransformer] 重複チェック時間: ${duplicateCheckEndTime - duplicateCheckStartTime}ms`);
-    
-    // 要件3.2: 変換後のレコード数と変換時間をログ出力
-    console.log(`[DataTransformer] 時刻表データ変換完了: ${result.length}件 (${totalDuration}ms)`);
     
     if (progressCallback) {
       progressCallback('時刻表データ変換完了', { 
@@ -2175,9 +2257,6 @@ class DataTransformer {
   static transformFares(fareAttributesData, progressCallback = null) {
     const startTime = Date.now();
     
-    // 要件3.2: 変換前のレコード数をログ出力
-    console.log(`[DataTransformer] 運賃データ変換開始: ${fareAttributesData.length}件`);
-    
     if (progressCallback) {
       progressCallback('運賃データ変換開始', { totalRecords: fareAttributesData.length });
     }
@@ -2194,9 +2273,6 @@ class DataTransformer {
     
     const endTime = Date.now();
     const duration = endTime - startTime;
-    
-    // 要件3.2: 変換後のレコード数と変換時間をログ出力
-    console.log(`[DataTransformer] 運賃データ変換完了: ${result.length}件 (${duration}ms)`);
     
     if (progressCallback) {
       progressCallback('運賃データ変換完了', { 
@@ -2217,9 +2293,6 @@ class DataTransformer {
   static transformFareRules(fareRulesData, progressCallback = null) {
     const startTime = Date.now();
     
-    // 要件3.2: 変換前のレコード数をログ出力
-    console.log(`[DataTransformer] 運賃ルールデータ変換開始: ${fareRulesData.length}件`);
-    
     if (progressCallback) {
       progressCallback('運賃ルールデータ変換開始', { totalRecords: fareRulesData.length });
     }
@@ -2235,9 +2308,6 @@ class DataTransformer {
     
     const endTime = Date.now();
     const duration = endTime - startTime;
-    
-    // 要件3.2: 変換後のレコード数と変換時間をログ出力
-    console.log(`[DataTransformer] 運賃ルールデータ変換完了: ${result.length}件 (${duration}ms)`);
     
     if (progressCallback) {
       progressCallback('運賃ルールデータ変換完了', { 
