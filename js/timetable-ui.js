@@ -1191,7 +1191,8 @@ class TimetableUI {
 }
 
 // グローバルに公開（ブラウザ & テスト用）
-const __globalWindow = typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis.window : undefined;
-if (__globalWindow) {
-  __globalWindow.TimetableUI = TimetableUI;
+// __globalWindowが既に宣言されている場合は再利用、なければ新規宣言
+const __globalWindowTimetable = typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis.window : undefined;
+if (__globalWindowTimetable) {
+  __globalWindowTimetable.TimetableUI = TimetableUI;
 }

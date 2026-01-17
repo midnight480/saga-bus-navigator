@@ -2245,14 +2245,15 @@ class UIController {
 }
 
 // SearchController/UIControllerをグローバルに公開（ブラウザ & テスト用）
-const __globalWindow =
+// __globalWindowが既に宣言されている場合は再利用、なければ新規宣言
+const __globalWindowApp =
   typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis.window : undefined;
-if (__globalWindow) {
-  __globalWindow.SearchController = SearchController;
-  __globalWindow.UIController = UIController;
+if (__globalWindowApp) {
+  __globalWindowApp.SearchController = SearchController;
+  __globalWindowApp.UIController = UIController;
   // アプリケーションの初期化
-  __globalWindow.uiController = null;
-  __globalWindow.searchController = null;
+  __globalWindowApp.uiController = null;
+  __globalWindowApp.searchController = null;
 }
 
 // Node(ESM)のテスト環境では `window` 識別子が存在しないことがあるため、globalThisにも公開する
