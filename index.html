@@ -132,7 +132,11 @@
 
     <!-- Map Section -->
     <section class="map-section">
-      <div id="map-container" class="map-container"></div>
+      <div id="map-container" class="map-container">
+        <button type="button" id="clear-route-button" class="btn-clear-route" hidden data-i18n="map.clear_route">
+          経路をクリア
+        </button>
+      </div>
       
       <!-- 方向選択UI（要件4.3） -->
       <div id="direction-selector" class="direction-selector" hidden>
@@ -149,10 +153,6 @@
           </button>
         </div>
       </div>
-      
-      <button type="button" id="clear-route-button" class="btn-clear-route" hidden data-i18n="map.clear_route">
-        経路をクリア
-      </button>
     </section>
 
     <!-- Search Form -->
