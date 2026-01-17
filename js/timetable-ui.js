@@ -547,8 +547,14 @@ class TimetableUI {
     // 方向フィルタを作成
     const directionFilter = this.createDirectionFilter(this.currentDirectionFilter);
 
-    // 地図表示ボタンを作成
+    // 地図表示ボタンを作成（往路または復路が選択された時のみ表示）
     const mapButton = this.createMapButton();
+    // 方向フィルタが「全て」の場合は非表示、往路または復路が選択された時のみ表示
+    if (this.currentDirectionFilter === 'all') {
+      mapButton.style.display = 'none';
+    } else {
+      mapButton.style.display = 'block';
+    }
 
     // 時刻表コンテンツを作成
     const timetableContent = document.createElement('div');
@@ -596,6 +602,9 @@ class TimetableUI {
     contentWrapper.appendChild(mapButton);
     contentWrapper.appendChild(timetableContent);
     this.modalBody.appendChild(contentWrapper);
+
+    // 地図表示ボタンの表示/非表示を更新（往路または復路が選択された時のみ表示）
+    this.updateMapButtonVisibility();
   }
 
   /**
@@ -749,13 +758,34 @@ class TimetableUI {
       // 現在のフィルタを更新
       this.currentDirectionFilter = direction;
 
+      // 地図表示ボタンの表示/非表示を更新
+      this.updateMapButtonVisibility();
+
       // 時刻表を再表示
       this.displayTimetable();
     } catch (error) {
       console.error('TimetableUI: 方向フィルタの適用中にエラーが発生しました', error);
       // エラー時はフィルタをリセット
       this.currentDirectionFilter = 'all';
+      this.updateMapButtonVisibility();
       this.displayTimetable();
+    }
+  }
+
+  /**
+   * 地図表示ボタンの表示/非表示を更新
+   * 往路または復路が選択された時のみ表示
+   * @private
+   */
+  updateMapButtonVisibility() {
+    const mapButton = document.querySelector('.timetable-map-button');
+    if (mapButton) {
+      // 方向フィルタが「全て」の場合は非表示、往路または復路が選択された時のみ表示
+      if (this.currentDirectionFilter === 'all') {
+        mapButton.style.display = 'none';
+      } else {
+        mapButton.style.display = 'block';
+      }
     }
   }
 
