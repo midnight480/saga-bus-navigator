@@ -273,55 +273,102 @@ class MapController {
   }
 
   /**
-   * ORS経路描画を初期化する（設定が無い/無効な場合はフォールバック）
+   * ORS経路描画を初期化する（設定が無い/無効な場合でもRouteControllerは初期化してフォールバック機能を使用可能にする）
    */
   initializeOrsRouteRendering() {
     try {
       this.orsConfig = typeof window !== 'undefined' ? window.ORS_CONFIG : null;
-      if (!this.orsConfig || !this.orsConfig.enabled) {
-        this.orsEnabled = false;
-        return;
-      }
-
+      
+      // ORS関連クラスの読み込み確認
       if (
-        typeof ORSClient === 'undefined' ||
         typeof CacheManager === 'undefined' ||
         typeof RouteRenderer === 'undefined' ||
         typeof RouteController === 'undefined'
       ) {
         console.warn('[MapController] ORS関連クラスが読み込まれていないため、ORS経路描画を無効化します');
         this.orsEnabled = false;
+        this.orsRouteRenderer = null;
+        this.orsRouteController = null;
         return;
       }
 
-      const cacheManager = new CacheManager({
-        storage: typeof window !== 'undefined' ? window.localStorage : null,
-        ttl: this.orsConfig.cacheTtlMs
-      });
-
-      const orsClient = new ORSClient({
-        apiKey: this.orsConfig.apiKey,
-        baseUrl: this.orsConfig.baseUrl,
-        profile: this.orsConfig.profile,
-        RateLimiter: typeof RateLimiter !== 'undefined' ? RateLimiter : undefined,
-        maxCoordinatesPerRequest: this.orsConfig.maxCoordinatesPerRequest,
-        maxWaitOnMinuteLimitMs: this.orsConfig.maxWaitOnMinuteLimitMs
-      });
-
+      // RouteRendererは常に初期化（フォールバック機能のため）
       const routeRenderer = new RouteRenderer(this.map, {
         style: { color: '#2196F3', weight: 4, opacity: 0.7 }
       });
 
-      const routeController = new RouteController(orsClient, cacheManager, routeRenderer, {
-        debounceDelay: this.orsConfig.debounceMs,
-        maxCoordinatesPerRequest: this.orsConfig.maxCoordinatesPerRequest
-      });
+      // ORSが有効な場合のみORSClientを初期化
+      let orsClient = null;
+      let cacheManager = null;
+      
+      if (this.orsConfig && this.orsConfig.enabled && this.orsConfig.apiKey) {
+        try {
+          if (typeof ORSClient === 'undefined' || typeof RateLimiter === 'undefined') {
+            throw new Error('ORSClientまたはRateLimiterが読み込まれていません');
+          }
+
+          cacheManager = new CacheManager({
+            storage: typeof window !== 'undefined' ? window.localStorage : null,
+            ttl: this.orsConfig.cacheTtlMs
+          });
+
+          orsClient = new ORSClient({
+            apiKey: this.orsConfig.apiKey,
+            baseUrl: this.orsConfig.baseUrl,
+            profile: this.orsConfig.profile,
+            RateLimiter: RateLimiter,
+            maxCoordinatesPerRequest: this.orsConfig.maxCoordinatesPerRequest,
+            maxWaitOnMinuteLimitMs: this.orsConfig.maxWaitOnMinuteLimitMs
+          });
+
+          this.orsEnabled = true;
+          console.log('[MapController] ORS経路描画を有効化しました（APIキー設定済み）');
+        } catch (error) {
+          console.warn('[MapController] ORS APIクライアントの初期化に失敗、フォールバックモードで動作します:', error);
+          this.orsEnabled = false;
+        }
+      } else {
+        console.log('[MapController] ORS APIキーが設定されていないため、フォールバックモードで動作します');
+        this.orsEnabled = false;
+      }
+
+      // RouteControllerは常に初期化（フォールバック機能のため）
+      // ORSが無効な場合でも、RouteControllerのフォールバック機能（直線描画）を使用可能にする
+      if (orsClient && cacheManager) {
+        // ORSが有効な場合：完全なRouteControllerを初期化
+        const routeController = new RouteController(orsClient, cacheManager, routeRenderer, {
+          debounceDelay: this.orsConfig.debounceMs,
+          maxCoordinatesPerRequest: this.orsConfig.maxCoordinatesPerRequest
+        });
+        this.orsRouteController = routeController;
+      } else {
+        // ORSが無効な場合：フォールバック専用のRouteControllerを初期化
+        // ダミーのORSClientとCacheManagerを作成（実際には使用されない）
+        const dummyCacheManager = new CacheManager({
+          storage: typeof window !== 'undefined' ? window.localStorage : null,
+          ttl: 24 * 60 * 60 * 1000
+        });
+        
+        // ダミーのORSClient（実際には使用されず、常にエラーを返す）
+        const dummyOrsClient = {
+          convertCoordinates: (stops) => stops.map((s) => {
+            const lon = typeof s.lon === 'number' ? s.lon : s.lng;
+            return [lon, s.lat];
+          }),
+          getRoute: async () => {
+            throw new Error('ORS APIキーが設定されていません');
+          }
+        };
+
+        const routeController = new RouteController(dummyOrsClient, dummyCacheManager, routeRenderer, {
+          debounceDelay: 300,
+          maxCoordinatesPerRequest: 50
+        });
+        this.orsRouteController = routeController;
+        console.log('[MapController] フォールバックモードでRouteControllerを初期化しました');
+      }
 
       this.orsRouteRenderer = routeRenderer;
-      this.orsRouteController = routeController;
-      this.orsEnabled = true;
-
-      console.log('[MapController] ORS経路描画を有効化しました');
     } catch (error) {
       console.warn('[MapController] ORS経路描画の初期化に失敗したため、フォールバックします', error);
       this.orsEnabled = false;
@@ -1029,7 +1076,7 @@ class MapController {
    * @param {Object} routeData - 経路データ
    * @param {string} direction - 表示する方向（オプション: '0'=往路, '1'=復路, null=全方向）
    */
-  displayRoute(routeData, direction = null) {
+  async displayRoute(routeData, direction = null) {
     try {
       console.log('[MapController] 経路を表示します:', routeData, '方向:', direction);
       
@@ -1141,44 +1188,38 @@ class MapController {
         routeColor = '#4CAF50'; // 復路: 緑色
       }
 
-      // ORS経路描画（有効時）。失敗してもRouteController側で直線フォールバックされる
+      // ORS経路描画を優先的に使用（道路沿いの経路を描画）
+      // 失敗時はRouteController側で直線フォールバックされる
+      const stopsForOrs = allStops.map((s) => ({ lat: s.lat, lon: s.lng }));
+      
       if (this.orsEnabled && this.orsRouteController) {
-        const stopsForOrs = allStops.map((s) => ({ lat: s.lat, lon: s.lng }));
-        this.drawOrsRouteWithUi('direct-trip', stopsForOrs, {
+        // ORSが有効な場合：道路沿いの経路を描画
+        await this.drawOrsRouteWithUi('direct-trip', stopsForOrs, {
           style: { color: routeColor, weight: 4, opacity: 0.7 },
           fitBounds: false,
           fallback: true
         });
       } else {
-        // フォールバック（従来の直線描画）
-        const polyline = L.polyline(sortedCoordinates, {
-          color: routeColor,
-          weight: 4,
-          opacity: 0.7,
-          smoothFactor: 1
-        });
-
-        // 矢印を追加（進行方向を示す）
-        for (let i = 0; i < sortedCoordinates.length - 1; i++) {
-          const start = sortedCoordinates[i];
-          const end = sortedCoordinates[i + 1];
-
-          const midLat = (start[0] + end[0]) / 2;
-          const midLng = (start[1] + end[1]) / 2;
-          const angle = Math.atan2(end[1] - start[1], end[0] - start[0]) * 180 / Math.PI - 90;
-
-          const arrowIcon = L.divIcon({
-            html: `<div style="transform: rotate(${angle}deg); color: ${routeColor}; font-size: 20px;">▶</div>`,
-            className: 'route-arrow-marker',
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
-          });
-
-          const arrowMarker = L.marker([midLat, midLng], { icon: arrowIcon });
-          this.routeLayer.addLayer(arrowMarker);
+        // ORSが無効な場合：フォールバックとして直線描画
+        // ただし、RouteControllerが利用可能な場合はそれを使用（フォールバック機能付き）
+        if (this.orsRouteController) {
+          // RouteControllerが初期化されているが、ORSが無効な場合でも
+          // RouteControllerのフォールバック機能を使用
+          try {
+            await this.orsRouteController.drawBusRoute('direct-trip', stopsForOrs, {
+              style: { color: routeColor, weight: 4, opacity: 0.7 },
+              fitBounds: false,
+              fallback: true
+            });
+          } catch (error) {
+            console.warn('[MapController] ORS経路描画に失敗、直線描画にフォールバック:', error);
+            // 従来の直線描画
+            this.drawStraightLineRoute(sortedCoordinates, routeColor);
+          }
+        } else {
+          // RouteControllerが利用できない場合のみ、従来の直線描画
+          this.drawStraightLineRoute(sortedCoordinates, routeColor);
         }
-
-        this.routeLayer.addLayer(polyline);
       }
       
       // 経路全体が見える範囲に自動ズーム
@@ -1333,7 +1374,7 @@ class MapController {
    * @param {string} routeId - 路線ID
    * @param {string} direction - 表示する方向（オプション: '0', '1', null=全方向）
    */
-  displayRouteStops(routeId, direction = null) {
+  async displayRouteStops(routeId, direction = null) {
     try {
       console.log('[MapController] 路線を地図上に表示します:', routeId, '方向:', direction);
       
@@ -1373,21 +1414,32 @@ class MapController {
         this.routeLayer.addLayer(marker);
       });
 
-      // ORSで路線の道路沿い経路を描画（有効時）
-      if (this.orsEnabled && this.orsRouteController) {
-        const orderedStops = this.getRouteStopSequence(routeId, direction);
-        if (orderedStops.length >= 2) {
-          const routeColor = direction === '1' ? '#4CAF50' : '#2196F3';
-          const routeKey = `route-${routeId}-${direction === null ? 'both' : direction}`;
-          this.drawOrsRouteWithUi(
-            routeKey,
-            orderedStops.map((s) => ({ lat: s.lat, lon: s.lng })),
-            {
+      // ORSで路線の道路沿い経路を描画（優先的に使用）
+      const orderedStops = this.getRouteStopSequence(routeId, direction);
+      if (orderedStops.length >= 2) {
+        const routeColor = direction === '1' ? '#4CAF50' : '#2196F3';
+        const routeKey = `route-${routeId}-${direction === null ? 'both' : direction}`;
+        const stopsForOrs = orderedStops.map((s) => ({ lat: s.lat, lon: s.lng }));
+        
+        if (this.orsEnabled && this.orsRouteController) {
+          // ORSが有効な場合：道路沿いの経路を描画
+          await this.drawOrsRouteWithUi(routeKey, stopsForOrs, {
+            style: { color: routeColor, weight: 4, opacity: 0.7 },
+            fitBounds: false,
+            fallback: true
+          });
+        } else if (this.orsRouteController) {
+          // RouteControllerが利用可能な場合：フォールバック機能付きで描画
+          try {
+            await this.orsRouteController.drawBusRoute(routeKey, stopsForOrs, {
               style: { color: routeColor, weight: 4, opacity: 0.7 },
               fitBounds: false,
               fallback: true
-            }
-          );
+            });
+          } catch (error) {
+            console.warn('[MapController] ORS経路描画に失敗、直線描画にフォールバック:', error);
+            // フォールバックとして直線描画（必要に応じて実装）
+          }
         }
       }
       
@@ -1498,6 +1550,46 @@ class MapController {
     }
   }
   
+  /**
+   * 直線経路を描画（フォールバック用）
+   * @param {Array<Array<number>>} coordinates - 座標配列 [[lat, lng], ...]
+   * @param {string} routeColor - 経路の色
+   */
+  drawStraightLineRoute(coordinates, routeColor) {
+    try {
+      const polyline = L.polyline(coordinates, {
+        color: routeColor,
+        weight: 4,
+        opacity: 0.7,
+        smoothFactor: 1
+      });
+
+      // 矢印を追加（進行方向を示す）
+      for (let i = 0; i < coordinates.length - 1; i++) {
+        const start = coordinates[i];
+        const end = coordinates[i + 1];
+
+        const midLat = (start[0] + end[0]) / 2;
+        const midLng = (start[1] + end[1]) / 2;
+        const angle = Math.atan2(end[1] - start[1], end[0] - start[0]) * 180 / Math.PI - 90;
+
+        const arrowIcon = L.divIcon({
+          html: `<div style="transform: rotate(${angle}deg); color: ${routeColor}; font-size: 20px;">▶</div>`,
+          className: 'route-arrow-marker',
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
+        });
+
+        const arrowMarker = L.marker([midLat, midLng], { icon: arrowIcon });
+        this.routeLayer.addLayer(arrowMarker);
+      }
+
+      this.routeLayer.addLayer(polyline);
+    } catch (error) {
+      console.error('[MapController] 直線経路の描画に失敗しました:', error);
+    }
+  }
+
   /**
    * 「経路をクリア」ボタンを表示する
    */
