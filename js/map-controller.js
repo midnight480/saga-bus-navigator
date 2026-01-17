@@ -622,7 +622,7 @@ class MapController {
           const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
           const isDesktop = window.innerWidth >= 768;
           marker.bindPopup(this.createPopupContent(stop), {
-            maxWidth: isMobile ? 150 : isDesktop ? 600 : 300, // PCでは幅を広く（600px）、タブレットは300px、モバイルは150px
+            maxWidth: isMobile ? 420 : isDesktop ? 900 : 450, // PCでは幅を広く（900px）、タブレットは450px、モバイルは420px
             className: isMobile ? 'bus-stop-popup-container mobile-popup' : 'bus-stop-popup-container',
             // モバイルではautoPanを無効化し、autoPanPaddingを小さくして地図内に収める
             autoPan: !isMobile,
@@ -830,20 +830,20 @@ class MapController {
           <p><strong>${this.escapeHtml(stopIdLabel)}:</strong> ${this.escapeHtml(stop.id)}</p>
     `;
     
-    // 行き先（方向）情報を取得して表示
-    const destinations = this.getStopDestinations(stop.id);
-    if (destinations && destinations.length > 0) {
-      content += `
-          <p><strong>${this.escapeHtml(destinationsLabel)}:</strong></p>
-          <ul class="destination-list">
-      `;
-      destinations.forEach(destination => {
-        content += `<li>${this.escapeHtml(destination)}</li>`;
-      });
-      content += `
-          </ul>
-      `;
-    }
+    // 行き先（方向）情報の表示は非表示にしました（表示の高さが過剰になるため）
+    // const destinations = this.getStopDestinations(stop.id);
+    // if (destinations && destinations.length > 0) {
+    //   content += `
+    //       <p><strong>${this.escapeHtml(destinationsLabel)}:</strong></p>
+    //       <ul class="destination-list">
+    //   `;
+    //   destinations.forEach(destination => {
+    //     content += `<li>${this.escapeHtml(destination)}</li>`;
+    //   });
+    //   content += `
+    //       </ul>
+    //   `;
+    // }
     
     // 路線情報が存在する場合は表示
     if (stop.routes && stop.routes.length > 0) {
