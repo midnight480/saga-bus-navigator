@@ -228,47 +228,54 @@ class TimetableUI {
    * @param {string} stopName - バス停名
    */
   showTimetableModal(stopId, stopName) {
-    // closeModal等で参照が外れている可能性があるため再取得
-    if (!this.ensureModalElements()) {
-      return;
+    try {
+      // closeModal等で参照が外れている可能性があるため再取得
+      if (!this.ensureModalElements()) {
+        console.error('TimetableUI: モーダル要素の取得に失敗しました');
+        return;
+      }
+
+      // 入力値の検証
+      if (!stopId || !stopName) {
+        console.error('TimetableUI: stopIdまたはstopNameが指定されていません');
+        // テストでは「表示できない場合はmodalがfalsy」を期待するため参照を外す
+        this.modal = null;
+        this.modalBody = null;
+        return;
+      }
+
+      // 現在の状態を保存
+      this.currentStopId = stopId;
+      this.currentStopName = stopName;
+      this.currentRouteId = null;
+      this.currentRouteName = null;
+      this.currentTab = 'weekday';
+      this.currentDirectionFilter = 'all'; // 初期状態をリセット
+
+      // バス停で運行している路線一覧を取得
+      const routes = this.timetableController.getRoutesAtStop(stopId);
+
+      if (routes.length === 0) {
+        const errorMessage = this.translationManager ? 
+          this.translationManager.translate('timetable.no_routes_found') : 'この停留所に路線が見つかりません';
+        this.showError(errorMessage);
+        return;
+      }
+
+      // 現在のフォーカス要素を保存（モーダルを閉じたときに戻すため）
+      this.previousActiveElement = document.activeElement;
+
+      // モーダルを表示
+      this.displayRouteSelection(routes);
+      this.modal.removeAttribute('hidden');
+      this.modal.style.display = 'block';
+      
+      // アクセシビリティ: フォーカスをモーダルに移動
+      this.modal.focus();
+    } catch (error) {
+      console.error('TimetableUI: モーダル表示中にエラーが発生しました', error);
+      // エラーが発生してもアプリケーションがクラッシュしないようにする
     }
-
-    // 入力値の検証
-    if (!stopId || !stopName) {
-      console.error('TimetableUI: stopIdまたはstopNameが指定されていません');
-      // テストでは「表示できない場合はmodalがfalsy」を期待するため参照を外す
-      this.modal = null;
-      this.modalBody = null;
-      return;
-    }
-
-    // 現在の状態を保存
-    this.currentStopId = stopId;
-    this.currentStopName = stopName;
-    this.currentRouteId = null;
-    this.currentRouteName = null;
-    this.currentTab = 'weekday';
-
-    // バス停で運行している路線一覧を取得
-    const routes = this.timetableController.getRoutesAtStop(stopId);
-
-    if (routes.length === 0) {
-      const errorMessage = this.translationManager ? 
-        this.translationManager.translate('timetable.no_routes_found') : 'この停留所に路線が見つかりません';
-      this.showError(errorMessage);
-      return;
-    }
-
-    // 現在のフォーカス要素を保存（モーダルを閉じたときに戻すため）
-    this.previousActiveElement = document.activeElement;
-
-    // モーダルを表示
-    this.displayRouteSelection(routes);
-    this.modal.removeAttribute('hidden');
-    this.modal.style.display = 'block';
-    
-    // アクセシビリティ: フォーカスをモーダルに移動
-    this.modal.focus();
   }
 
 
@@ -547,8 +554,14 @@ class TimetableUI {
     // 方向フィルタを作成
     const directionFilter = this.createDirectionFilter(this.currentDirectionFilter);
 
-    // 地図表示ボタンを作成
+    // 地図表示ボタンを作成（往路または復路が選択された時のみ表示）
     const mapButton = this.createMapButton();
+    // 方向フィルタが「全て」の場合は非表示、往路または復路が選択された時のみ表示
+    if (this.currentDirectionFilter === 'all') {
+      mapButton.style.display = 'none';
+    } else {
+      mapButton.style.display = 'block';
+    }
 
     // 時刻表コンテンツを作成
     const timetableContent = document.createElement('div');
@@ -596,6 +609,9 @@ class TimetableUI {
     contentWrapper.appendChild(mapButton);
     contentWrapper.appendChild(timetableContent);
     this.modalBody.appendChild(contentWrapper);
+
+    // 地図表示ボタンの表示/非表示を更新（往路または復路が選択された時のみ表示）
+    this.updateMapButtonVisibility();
   }
 
   /**
@@ -749,13 +765,39 @@ class TimetableUI {
       // 現在のフィルタを更新
       this.currentDirectionFilter = direction;
 
+      // 地図表示ボタンの表示/非表示を更新
+      this.updateMapButtonVisibility();
+
       // 時刻表を再表示
       this.displayTimetable();
     } catch (error) {
       console.error('TimetableUI: 方向フィルタの適用中にエラーが発生しました', error);
       // エラー時はフィルタをリセット
       this.currentDirectionFilter = 'all';
+      this.updateMapButtonVisibility();
       this.displayTimetable();
+    }
+  }
+
+  /**
+   * 地図表示ボタンの表示/非表示を更新
+   * 往路または復路が選択された時のみ表示
+   * @private
+   */
+  updateMapButtonVisibility() {
+    try {
+      const mapButton = document.querySelector('.timetable-map-button');
+      if (mapButton) {
+        // 方向フィルタが「全て」の場合は非表示、往路または復路が選択された時のみ表示
+        if (this.currentDirectionFilter === 'all') {
+          mapButton.style.display = 'none';
+        } else {
+          mapButton.style.display = 'block';
+        }
+      }
+    } catch (error) {
+      // エラーが発生してもモーダル表示を妨げないようにする
+      console.warn('TimetableUI: 地図表示ボタンの表示状態更新中にエラーが発生しました', error);
     }
   }
 
@@ -1191,7 +1233,8 @@ class TimetableUI {
 }
 
 // グローバルに公開（ブラウザ & テスト用）
-const __globalWindow = typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis.window : undefined;
-if (__globalWindow) {
-  __globalWindow.TimetableUI = TimetableUI;
+// __globalWindowが既に宣言されている場合は再利用、なければ新規宣言
+const __globalWindowTimetable = typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis.window : undefined;
+if (__globalWindowTimetable) {
+  __globalWindowTimetable.TimetableUI = TimetableUI;
 }

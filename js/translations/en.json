@@ -62,6 +62,7 @@
     "direction_label": "Display Direction",
     "stop_id": "Bus Stop ID",
     "passing_routes": "Passing Routes",
+    "destinations": "Destinations",
     "view_timetable": "View Timetable",
     "set_departure": "Set as Departure Stop",
     "set_arrival": "Set as Arrival Stop",

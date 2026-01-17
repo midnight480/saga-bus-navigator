@@ -1,7 +1,7 @@
 /* 時刻表モーダル */
 .timetable-modal {
   position: fixed;
-  z-index: 1000;
+  z-index: 2000; /* Leafletの経路（z-index: 400）やポップアップ（z-index: 700）より上に表示 */
   left: 0;
   top: 0;
   width: 100%;
@@ -33,6 +33,8 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin: 0 auto;
   min-width: 320px;
+  position: relative; /* z-indexを有効にするため */
+  z-index: 2001; /* モーダルオーバーレイより上に表示 */
 }
 
 /* モーダルヘッダー */

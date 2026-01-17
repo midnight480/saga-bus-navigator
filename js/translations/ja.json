@@ -62,6 +62,7 @@
     "direction_label": "表示方向",
     "stop_id": "バス停ID",
     "passing_routes": "通過路線",
+    "destinations": "行き先",
     "view_timetable": "時刻表を見る",
     "set_departure": "乗車バス停に設定する",
     "set_arrival": "降車バス停に設定する",
