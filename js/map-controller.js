@@ -622,7 +622,7 @@ class MapController {
           const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
           const isDesktop = window.innerWidth >= 768;
           marker.bindPopup(this.createPopupContent(stop), {
-            maxWidth: isMobile ? 150 : isDesktop ? 400 : 300, // PCでは幅を広く（400px）、タブレットは300px、モバイルは150px
+            maxWidth: isMobile ? 150 : isDesktop ? 600 : 300, // PCでは幅を広く（600px）、タブレットは300px、モバイルは150px
             className: isMobile ? 'bus-stop-popup-container mobile-popup' : 'bus-stop-popup-container',
             // モバイルではautoPanを無効化し、autoPanPaddingを小さくして地図内に収める
             autoPan: !isMobile,
