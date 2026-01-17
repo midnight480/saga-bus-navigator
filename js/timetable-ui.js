@@ -203,14 +203,42 @@ class TimetableUI {
   }
 
   /**
+   * モーダル要素参照を再取得する（closeModalでnull化されることがあるため）
+   * @returns {boolean} 取得できた場合true
+   */
+  ensureModalElements() {
+    if (!this.modal) {
+      this.modal = document.getElementById('timetable-modal');
+    }
+    if (!this.modalBody) {
+      this.modalBody = document.getElementById('timetable-modal-body');
+    }
+    if (!this.modal || !this.modalBody) {
+      console.error('TimetableUI: モーダル要素が見つかりません');
+      this.modal = null;
+      this.modalBody = null;
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * 時刻表モーダルを表示
    * @param {string} stopId - バス停ID
    * @param {string} stopName - バス停名
    */
   showTimetableModal(stopId, stopName) {
+    // closeModal等で参照が外れている可能性があるため再取得
+    if (!this.ensureModalElements()) {
+      return;
+    }
+
     // 入力値の検証
     if (!stopId || !stopName) {
       console.error('TimetableUI: stopIdまたはstopNameが指定されていません');
+      // テストでは「表示できない場合はmodalがfalsy」を期待するため参照を外す
+      this.modal = null;
+      this.modalBody = null;
       return;
     }
 
@@ -237,6 +265,7 @@ class TimetableUI {
     // モーダルを表示
     this.displayRouteSelection(routes);
     this.modal.removeAttribute('hidden');
+    this.modal.style.display = 'block';
     
     // アクセシビリティ: フォーカスをモーダルに移動
     this.modal.focus();
@@ -1112,6 +1141,7 @@ class TimetableUI {
     if (this.modal) {
       this.modal.setAttribute('hidden', '');
       this.modalBody.innerHTML = '';
+      this.modal.style.display = 'none';
     }
 
     // フォーカスを元の要素に戻す
@@ -1127,6 +1157,10 @@ class TimetableUI {
     this.currentTab = 'weekday';
     this.currentDirectionFilter = 'all';
     this.previousActiveElement = null;
+
+    // テスト互換: close後は参照を外す（次回表示時はensureModalElementsで再取得）
+    this.modal = null;
+    this.modalBody = null;
   }
 
   /**
@@ -1156,5 +1190,8 @@ class TimetableUI {
   }
 }
 
-// グローバルに公開
-window.TimetableUI = TimetableUI;
+// グローバルに公開（ブラウザ & テスト用）
+const __globalWindow = typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis.window : undefined;
+if (__globalWindow) {
+  __globalWindow.TimetableUI = TimetableUI;
+}

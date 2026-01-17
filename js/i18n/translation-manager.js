@@ -89,22 +89,26 @@ class TranslationManager {
     let text = this.getTranslationText(key);
     
     // パラメータの置換
-    if (params && typeof params === 'object' && Object.keys(params).length > 0) {
-      Object.keys(params).forEach(param => {
+    if (params && typeof params === 'object') {
+      const beforeReplace = text;
+
+      // 通常は enumerable key を置換対象にする
+      const keys = Object.keys(params);
+
+      // "__proto__" は Object.keys に出ないことがあるため、プレースホルダーが存在する場合のみ対象に含める
+      if (!keys.includes('__proto__') && text.includes('{{__proto__}}')) {
+        keys.push('__proto__');
+      }
+
+      keys.forEach((param) => {
         const safeValue = this.escapeHtml(String(params[param]));
-        // 正規表現の特殊文字をエスケープ
-        const escapedParam = param.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // {{param}}形式のパターンを置換（二重波括弧）
-        const pattern = `{{${escapedParam}}}`;
-        const regex = new RegExp(pattern, 'g');
-        const beforeReplace = text;
-        text = text.replace(regex, safeValue);
-        
-        // 開発環境でのみデバッグログを出力
-        if (this.isDevelopment && beforeReplace !== text) {
-          console.log(`TranslationManager: パラメータ置換 - キー: ${key}, パラメータ: ${param}, 値: ${safeValue}, 置換前: ${beforeReplace}, 置換後: ${text}`);
-        }
+        const placeholder = `{{${param}}}`;
+        text = text.split(placeholder).join(safeValue);
       });
+
+      if (this.isDevelopment && beforeReplace !== text) {
+        console.log(`TranslationManager: パラメータ置換 - キー: ${key}, 置換前: ${beforeReplace}, 置換後: ${text}`);
+      }
     }
     
     return text;
@@ -116,8 +120,14 @@ class TranslationManager {
    * @returns {string} 翻訳テキスト
    */
   getTranslationText(key) {
-    // 翻訳データが読み込まれていない場合は、キーをそのまま返す（警告は出さない）
+    // 現在言語の翻訳データが未読み込みの場合でも、フォールバック言語が読み込まれていれば利用する
     if (!this.isTranslationLoaded(this.currentLocale)) {
+      if (this.currentLocale !== this.fallbackLocale && this.isTranslationLoaded(this.fallbackLocale)) {
+        const fallbackText = this.getNestedValue(this.translations[this.fallbackLocale], key);
+        if (fallbackText !== undefined) {
+          return fallbackText;
+        }
+      }
       return key;
     }
     
@@ -125,11 +135,11 @@ class TranslationManager {
     let text = this.getNestedValue(this.translations[this.currentLocale], key);
     
     // 翻訳が見つからない場合はフォールバック言語を試行
-    if (!text && this.currentLocale !== this.fallbackLocale) {
+    if (text === undefined && this.currentLocale !== this.fallbackLocale) {
       // フォールバック言語のデータが読み込まれている場合のみ試行
       if (this.isTranslationLoaded(this.fallbackLocale)) {
         text = this.getNestedValue(this.translations[this.fallbackLocale], key);
-        if (text) {
+        if (text !== undefined) {
           // 開発環境でのみ警告を表示（一度だけ）
           if (this.isDevelopment && !this.warnedKeys.has(`fallback:${key}`)) {
             console.warn(`TranslationManager: 翻訳キー "${key}" が ${this.currentLocale} で見つからないため、${this.fallbackLocale} を使用しました`);
@@ -140,7 +150,7 @@ class TranslationManager {
     }
     
     // それでも見つからない場合はキー名を返す
-    if (!text) {
+    if (text === undefined) {
       // 開発環境でのみ警告を表示（一度だけ）
       // ただし、翻訳データが読み込まれている場合のみ警告を出す
       if (this.isDevelopment && this.isTranslationLoaded(this.currentLocale) && !this.warnedKeys.has(`missing:${key}`)) {
@@ -157,10 +167,10 @@ class TranslationManager {
    * ネストされたオブジェクトから値を取得
    * @param {Object} obj 対象オブジェクト
    * @param {string} path ドット記法のパス
-   * @returns {string|null} 取得した値
+   * @returns {string|undefined} 取得した値（未取得の場合はundefined）
    */
   getNestedValue(obj, path) {
-    if (!obj || !path) return null;
+    if (!obj || !path) return undefined;
     
     const keys = path.split('.');
     let current = obj;
@@ -168,12 +178,10 @@ class TranslationManager {
     for (const key of keys) {
       if (current && typeof current === 'object' && key in current) {
         current = current[key];
-        // nullまたはundefinedの場合は早期リターン
-        if (current === null || current === undefined) {
-          return null;
-        }
+        // nullまたはundefinedの場合は未取得扱い
+        if (current === null || current === undefined) return undefined;
       } else {
-        return null;
+        return undefined;
       }
     }
     
@@ -182,7 +190,7 @@ class TranslationManager {
       return current;
     }
     
-    return null;
+    return undefined;
   }
 
   /**
@@ -270,6 +278,7 @@ class TranslationManager {
    */
   updateDOMTranslations() {
     if (typeof document === 'undefined') return;
+    if (typeof document.querySelectorAll !== 'function') return;
 
     // data-i18n属性を持つ要素を更新
     const elements = document.querySelectorAll('[data-i18n]');

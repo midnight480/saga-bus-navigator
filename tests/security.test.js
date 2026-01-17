@@ -10,7 +10,7 @@ describe('セキュリティ対策', () => {
   let document;
   let window;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // DOMを初期化
     dom = new JSDOM(`
       <!DOCTYPE html>
@@ -36,12 +36,16 @@ describe('セキュリティ対策', () => {
     window = dom.window;
     global.document = document;
     global.window = window;
+
+    // app.js はモジュールキャッシュされるため、毎回 import しつつ現在のwindowへ再バインドする
+    await import('../js/app.js');
+    if (globalThis.UIController) {
+      window.UIController = globalThis.UIController;
+    }
   });
 
   describe('バス停名の入力検証', () => {
     it('有効なバス停名を受け入れる', async () => {
-      // UIControllerをロード
-      await import('../js/app.js');
       const UIController = window.UIController;
       
       const busStops = [
@@ -58,7 +62,6 @@ describe('セキュリティ対策', () => {
     });
 
     it('無効なバス停名を拒否する', async () => {
-      await import('../js/app.js');
       const UIController = window.UIController;
       
       const busStops = [
@@ -78,7 +81,6 @@ describe('セキュリティ対策', () => {
 
   describe('時刻の入力検証', () => {
     it('有効な時刻を受け入れる', async () => {
-      await import('../js/app.js');
       const UIController = window.UIController;
       
       const uiController = new UIController();
@@ -90,7 +92,6 @@ describe('セキュリティ対策', () => {
     });
 
     it('無効な時刻を拒否する', async () => {
-      await import('../js/app.js');
       const UIController = window.UIController;
       
       const uiController = new UIController();
@@ -108,7 +109,6 @@ describe('セキュリティ対策', () => {
 
   describe('DOM操作のセキュリティ', () => {
     it('textContentを使用してXSSを防ぐ', async () => {
-      await import('../js/app.js');
       const UIController = window.UIController;
       
       const uiController = new UIController();
@@ -124,7 +124,6 @@ describe('セキュリティ対策', () => {
     });
 
     it('createElementを使用して安全にDOM要素を作成する', async () => {
-      await import('../js/app.js');
       const UIController = window.UIController;
       
       const uiController = new UIController();
@@ -146,7 +145,6 @@ describe('セキュリティ対策', () => {
 
   describe('入力のサニタイゼーション', () => {
     it('バス停選択時に無効な入力を拒否する', async () => {
-      await import('../js/app.js');
       const UIController = window.UIController;
       
       const busStops = [

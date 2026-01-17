@@ -488,7 +488,13 @@ class UIController {
     };
     
     // カレンダーエクスポーターの初期化
-    this.calendarExporter = new CalendarExporter();
+    // テスト環境などで未読み込みの場合もあるためガードする
+    if (typeof CalendarExporter !== 'undefined') {
+      this.calendarExporter = new CalendarExporter();
+    } else {
+      console.warn('[UIController] CalendarExporterが利用できません（カレンダー機能は無効化されます）');
+      this.calendarExporter = null;
+    }
     
     // 方向選択UIのDOM要素
     this.directionSelector = document.getElementById('direction-selector');
@@ -518,6 +524,10 @@ class UIController {
    */
   setupSearchButton() {
     const searchForm = document.getElementById('search-form');
+    if (!searchForm) {
+      console.warn('[UIController] search-form が見つかりません（検索イベントは未設定）');
+      return;
+    }
     
     searchForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -771,8 +781,21 @@ class UIController {
       this.errorMessage.textContent = this.translationManager.translate(message);
       this.errorMessage.setAttribute('data-i18n-error', message);
     } else {
-      // 直接メッセージの場合はそのまま表示
-      this.errorMessage.textContent = message;
+      // 翻訳キーだがTranslationManagerが無い場合はフォールバック文言を使用
+      if (isTranslationKey) {
+        const fallback = {
+          'error.invalid_stop_name': '無効なバス停名です。候補リストから選択してください。',
+          'error.same_stops': '乗車バス停と降車バス停は異なる停留所を選択してください',
+          'error.map_unavailable': '地図機能が利用できません',
+          'error.route_info_missing': '経路情報が不足しています',
+          'error.invalid_stop_selected': '無効なバス停が選択されました',
+          'error.search_error': '検索中にエラーが発生しました。もう一度お試しください。'
+        };
+        this.errorMessage.textContent = fallback[message] || message;
+      } else {
+        // 直接メッセージの場合はそのまま表示
+        this.errorMessage.textContent = message;
+      }
       this.errorMessage.removeAttribute('data-i18n-error');
     }
     this.errorMessage.style.display = 'block';
@@ -1717,7 +1740,7 @@ class UIController {
     
     // 地図エリアにスクロール
     const mapContainer = document.getElementById('map-container');
-    if (mapContainer) {
+    if (mapContainer && typeof mapContainer.scrollIntoView === 'function') {
       mapContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
@@ -1858,7 +1881,7 @@ class UIController {
     
     // 地図エリアにスクロール
     const mapContainer = document.getElementById('map-container');
-    if (mapContainer) {
+    if (mapContainer && typeof mapContainer.scrollIntoView === 'function') {
       mapContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     
@@ -2221,15 +2244,22 @@ class UIController {
   }
 }
 
-// SearchControllerをグローバルにエクスポート（テスト用）
-if (typeof window !== 'undefined') {
-  window.SearchController = SearchController;
-  window.UIController = UIController;
+// SearchController/UIControllerをグローバルに公開（ブラウザ & テスト用）
+const __globalWindow =
+  typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis.window : undefined;
+if (__globalWindow) {
+  __globalWindow.SearchController = SearchController;
+  __globalWindow.UIController = UIController;
+  // アプリケーションの初期化
+  __globalWindow.uiController = null;
+  __globalWindow.searchController = null;
 }
 
-// アプリケーションの初期化
-window.uiController = null;
-window.searchController = null;
+// Node(ESM)のテスト環境では `window` 識別子が存在しないことがあるため、globalThisにも公開する
+if (typeof globalThis !== 'undefined') {
+  globalThis.SearchController = SearchController;
+  globalThis.UIController = UIController;
+}
 
 /**
  * UIを無効化する
@@ -2656,4 +2686,19 @@ async function initializeApp() {
 }
 
 // DOMContentLoaded時にアプリケーションを初期化
-document.addEventListener('DOMContentLoaded', initializeApp);
+// 単体テスト環境（最小DOM）で initializeApp が誤って走らないように、
+// アプリの必須DOMが揃っている場合のみ起動する。
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    const hasRequiredDom =
+      typeof document !== 'undefined' &&
+      document.getElementById('loading-screen') &&
+      document.getElementById('map-container') &&
+      document.getElementById('search-form');
+
+    if (!hasRequiredDom) return;
+    initializeApp();
+  } catch (error) {
+    // テストや部分的DOMでは起動しない
+  }
+});

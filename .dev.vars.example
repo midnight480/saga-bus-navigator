@@ -6,3 +6,7 @@
 AWS_ACCESS_KEY_ID=your-access-key-id
 AWS_SECRET_ACCESS_KEY=your-secret-access-key
 AWS_REGION=ap-northeast-1
+
+# OpenRouteService APIキー（ORS経路描画用）
+# ローカル開発では `.dev.vars` に実キーを設定してください（このexampleはダミー）
+ORS_API_KEY=your-ors-api-key
