@@ -620,8 +620,9 @@ class MapController {
           // ポップアップを設定
           // モバイルではポップアップが地図の上下からはみ出ないように調整
           const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          const isDesktop = window.innerWidth >= 768;
           marker.bindPopup(this.createPopupContent(stop), {
-            maxWidth: isMobile ? 150 : 300, // モバイルでは幅をさらに小さく（150px）
+            maxWidth: isMobile ? 150 : isDesktop ? 400 : 300, // PCでは幅を広く（400px）、タブレットは300px、モバイルは150px
             className: isMobile ? 'bus-stop-popup-container mobile-popup' : 'bus-stop-popup-container',
             // モバイルではautoPanを無効化し、autoPanPaddingを小さくして地図内に収める
             autoPan: !isMobile,
@@ -813,6 +814,8 @@ class MapController {
       this.translationManager.translate('map.stop_id') : 'バス停ID';
     const passingRoutesLabel = this.translationManager ? 
       this.translationManager.translate('map.passing_routes') : '通過路線';
+    const destinationsLabel = this.translationManager ? 
+      this.translationManager.translate('map.destinations') : '行き先';
     const viewTimetableText = this.translationManager ? 
       this.translationManager.translate('map.view_timetable') : '時刻表を見る';
     const setDepartureText = this.translationManager ? 
@@ -826,6 +829,21 @@ class MapController {
         <div class="popup-info">
           <p><strong>${this.escapeHtml(stopIdLabel)}:</strong> ${this.escapeHtml(stop.id)}</p>
     `;
+    
+    // 行き先（方向）情報を取得して表示
+    const destinations = this.getStopDestinations(stop.id);
+    if (destinations && destinations.length > 0) {
+      content += `
+          <p><strong>${this.escapeHtml(destinationsLabel)}:</strong></p>
+          <ul class="destination-list">
+      `;
+      destinations.forEach(destination => {
+        content += `<li>${this.escapeHtml(destination)}</li>`;
+      });
+      content += `
+          </ul>
+      `;
+    }
     
     // 路線情報が存在する場合は表示
     if (stop.routes && stop.routes.length > 0) {
@@ -858,6 +876,46 @@ class MapController {
     `;
     
     return content;
+  }
+
+  /**
+   * バス停の行き先（方向）情報を取得
+   * @param {string} stopId - バス停ID
+   * @returns {Array<string>} 行き先の配列（重複除去済み）
+   */
+  getStopDestinations(stopId) {
+    try {
+      if (!window.timetableController || !window.timetableController.stopTimes || !window.timetableController.trips) {
+        return [];
+      }
+
+      const stopTimes = window.timetableController.stopTimes;
+      const trips = window.timetableController.trips;
+      const tripsIndex = window.timetableController.tripsIndex || {};
+
+      // このバス停に停車するtrip IDのリストを取得
+      const tripIds = new Set();
+      stopTimes.forEach(stopTime => {
+        if (stopTime.stop_id === stopId) {
+          tripIds.add(stopTime.trip_id);
+        }
+      });
+
+      // 各tripの行き先（trip_headsign）を取得
+      const destinations = new Set();
+      tripIds.forEach(tripId => {
+        const trip = tripsIndex[tripId] || trips.find(t => t.trip_id === tripId);
+        if (trip && trip.trip_headsign && trip.trip_headsign.trim() !== '') {
+          destinations.add(trip.trip_headsign.trim());
+        }
+      });
+
+      // 配列に変換してソート
+      return Array.from(destinations).sort((a, b) => a.localeCompare(b, 'ja'));
+    } catch (error) {
+      console.warn('[MapController] 行き先情報の取得に失敗しました:', error);
+      return [];
+    }
   }
   
   /**
