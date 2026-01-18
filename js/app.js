@@ -2398,6 +2398,10 @@ async function initializeApp() {
     // loadAllDataOnce()を1回だけ呼び出す（Promise.allによる並列呼び出しを削除）
     await dataLoader.loadAllDataOnce();
     
+    // 進捗メッセージ「データの読み込みが完了しました」が表示されるまで少し待機
+    // これにより、Skeletonの読み込みアニメーションが最後まで表示される
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
     const loadTime = Date.now() - startTime;
     
     // 3秒以内に読み込み完了したか確認（デバッグモードが有効な場合のみ詳細ログを出力）
