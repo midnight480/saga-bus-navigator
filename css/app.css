@@ -861,8 +861,9 @@ body {
   .skeleton-map {
     height: 300px;
     /* モバイルでもアニメーションが確実に動作するように明示的に再定義 */
-    animation: shimmer 2s infinite;
-    animation-timing-function: ease-in-out;
+    animation: shimmer 2s ease-in-out infinite;
+    animation-play-state: running;
+    animation-fill-mode: both;
     will-change: background-position;
   }
   
@@ -892,14 +893,74 @@ body {
   
   /* モバイルでもスケルトンラインのアニメーションが確実に動作するように */
   .skeleton-line {
-    animation: shimmer 2s infinite;
-    animation-timing-function: ease-in-out;
+    animation: shimmer 2s ease-in-out infinite;
+    animation-play-state: running;
+    animation-fill-mode: both;
     will-change: background-position;
+  }
+  
+  /* モバイルでもアニメーション遅延を保持 */
+  .skeleton-title {
+    animation-delay: 0s;
+  }
+  
+  .skeleton-subtitle {
+    animation-delay: 0.2s;
+  }
+  
+  .skeleton-section-title {
+    animation-delay: 0.1s;
+  }
+  
+  .skeleton-label {
+    animation-delay: 0.15s;
+  }
+  
+  .skeleton-input {
+    animation-delay: 0.25s;
+  }
+  
+  .skeleton-button {
+    animation-delay: 0.3s;
+  }
+  
+  .skeleton-submit-button {
+    animation-delay: 0.35s;
+  }
+  
+  .skeleton-radio {
+    animation-delay: 0.4s;
+  }
+  
+  .skeleton-direction-label {
+    animation-delay: 0.2s;
+  }
+  
+  .skeleton-direction-button {
+    animation-delay: 0.3s;
+  }
+  
+  .skeleton-help {
+    animation-delay: 0.25s;
+  }
+  
+  .skeleton-time-label {
+    animation-delay: 0.2s;
+  }
+  
+  .skeleton-time-input {
+    animation-delay: 0.3s;
+  }
+  
+  .skeleton-time-separator {
+    animation-delay: 0.25s;
   }
   
   /* モバイルでも進捗メッセージのアニメーションが確実に動作するように */
   .loading-message {
     animation: loadingPulse 2s ease-in-out infinite;
+    animation-play-state: running;
+    animation-fill-mode: both;
   }
   
   .loading-screen .loading-error {
