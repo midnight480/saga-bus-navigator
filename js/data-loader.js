@@ -158,9 +158,17 @@ class DataLoader {
       let gtfsData = null;
       if (this.cache) {
         try {
+          if (this.onProgress) {
+            this.onProgress('キャッシュからデータを読み込んでいます...');
+          }
           gtfsData = await this.cache.get('gtfs-data', 24 * 60 * 60 * 1000); // 24時間有効
           if (gtfsData) {
             this.logDebug('IndexedDBキャッシュからデータを読み込みました');
+            
+            if (this.onProgress) {
+              this.onProgress('データを処理しています...');
+            }
+            
             // キャッシュから読み込んだデータをメモリに設定
             this.busStops = gtfsData.busStops;
             this.timetable = gtfsData.timetable;
@@ -172,11 +180,23 @@ class DataLoader {
             this.calendar = gtfsData.calendar;
             this.gtfsStops = gtfsData.gtfsStops;
             
+            if (this.onProgress) {
+              this.onProgress('方向情報を付与しています...');
+            }
+            
             // 方向情報を付与
             this.enrichTripsWithDirection();
             
+            if (this.onProgress) {
+              this.onProgress('インデックスを生成しています...');
+            }
+            
             // インデックスを生成
             this.generateIndexes();
+            
+            if (this.onProgress) {
+              this.onProgress('マッピングデータを読み込んでいます...');
+            }
             
             // バス停マッピングと路線名マッピングを並列で読み込み
             await Promise.all([
@@ -188,6 +208,10 @@ class DataLoader {
             this.logDebug('IndexedDBキャッシュからの読み込み完了', {
               totalDuration: `${overallEndTime - overallStartTime}ms`
             });
+            
+            if (this.onProgress) {
+              this.onProgress('データの読み込みが完了しました');
+            }
             
             return; // キャッシュから読み込めたので終了
           }
@@ -203,8 +227,16 @@ class DataLoader {
         this.logDebug('事前処理済みJSONファイルから読み込みます');
         
         try {
+          if (this.onProgress) {
+            this.onProgress('JSONファイルを読み込んでいます...');
+          }
+          
           // 事前処理済みJSONファイルを読み込む（高速）
           gtfsData = await this.loadProcessedJSONFiles();
+          
+          if (this.onProgress) {
+            this.onProgress('データを変換しています...');
+          }
           
           // 変換済みデータを生成
           const transformStartTime = Date.now();
@@ -249,15 +281,27 @@ class DataLoader {
           this.calendar = gtfsData.calendar;
           this.gtfsStops = gtfsData.stops;
           
+          if (this.onProgress) {
+            this.onProgress('方向情報を付与しています...');
+          }
+          
           // 方向情報を付与（データ変換後、インデックス生成前）
           const directionStartTime = Date.now();
           this.enrichTripsWithDirection();
           const directionEndTime = Date.now();
           
+          if (this.onProgress) {
+            this.onProgress('インデックスを生成しています...');
+          }
+          
           // インデックスを生成（要件2.1, 7.1）
           const indexStartTime = Date.now();
           this.generateIndexes();
           const indexEndTime = Date.now();
+          
+          if (this.onProgress) {
+            this.onProgress('マッピングデータを読み込んでいます...');
+          }
           
           // バス停マッピングと路線名マッピングを並列で読み込み（多言語対応）
           const mappingStartTime = Date.now();
@@ -294,6 +338,10 @@ class DataLoader {
             mappingDuration: `${mappingEndTime - mappingStartTime}ms`
           });
           
+          if (this.onProgress) {
+            this.onProgress('データの読み込みが完了しました');
+          }
+          
           return; // JSONファイルから読み込めたので終了
         } catch (error) {
           this.logDebug('事前処理済みJSONファイルからの読み込みに失敗しました。ZIPファイルから読み込みます:', error);
@@ -305,14 +353,30 @@ class DataLoader {
       // Cloudflare Pagesの25MB制限を回避するため、ZIPファイルを使用
       this.logDebug('ZIPファイルから読み込みます');
       
+      if (this.onProgress) {
+        this.onProgress('ZIPファイルを検索しています...');
+      }
+      
       // GTFS ZIPファイルを検索
       const zipPath = await this.findGTFSZipFile();
+      
+      if (this.onProgress) {
+        this.onProgress('ZIPファイルを読み込んでいます...');
+      }
       
       // ZIPファイルを読み込んで解凍（1回のみ）
       const zip = await this.loadGTFSZip(zipPath);
       
+      if (this.onProgress) {
+        this.onProgress('GTFSファイルを解析しています...');
+      }
+      
       // GTFSファイルをパース（1回のみ）
       gtfsData = await this.parseGTFSFiles(zip);
+      
+      if (this.onProgress) {
+        this.onProgress('データを変換しています...');
+      }
       
       // 変換済みデータを生成
       const transformStartTime = Date.now();
@@ -357,15 +421,27 @@ class DataLoader {
       this.calendar = gtfsData.calendar;
       this.gtfsStops = gtfsData.stops;
       
+      if (this.onProgress) {
+        this.onProgress('方向情報を付与しています...');
+      }
+      
       // 方向情報を付与（データ変換後、インデックス生成前）
       const directionStartTime = Date.now();
       this.enrichTripsWithDirection();
       const directionEndTime = Date.now();
       
+      if (this.onProgress) {
+        this.onProgress('インデックスを生成しています...');
+      }
+      
       // インデックスを生成（要件2.1, 7.1）
       const indexStartTime = Date.now();
       this.generateIndexes();
       const indexEndTime = Date.now();
+      
+      if (this.onProgress) {
+        this.onProgress('マッピングデータを読み込んでいます...');
+      }
       
       // バス停マッピングと路線名マッピングを並列で読み込み（多言語対応）
       const mappingStartTime = Date.now();
@@ -411,6 +487,10 @@ class DataLoader {
         gtfsStopsCount: this.gtfsStops.length,
         busStopMappingCount: this.busStopMapping ? this.busStopMapping.length : 0
       });
+      
+      if (this.onProgress) {
+        this.onProgress('データの読み込みが完了しました');
+      }
     } catch (error) {
       // エラーコードが設定されている場合はそのまま再スロー
       if (error.code) {
