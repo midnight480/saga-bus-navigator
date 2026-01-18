@@ -159,7 +159,7 @@ class DataLoader {
       if (this.cache) {
         try {
           if (this.onProgress) {
-            this.onProgress('キャッシュからデータを読み込んでいます...');
+            this.onProgress('データを読み込んでいます...');
           }
           gtfsData = await this.cache.get('gtfs-data', 24 * 60 * 60 * 1000); // 24時間有効
           if (gtfsData) {
