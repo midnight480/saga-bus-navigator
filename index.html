@@ -31,19 +31,20 @@
 <body>
   <!-- Loading Screen (Skeleton) -->
   <div id="loading-screen" class="loading-screen" role="status" aria-live="polite" aria-label="データ読み込み状態">
-    <div class="skeleton-container">
-      <!-- Progress Message -->
-      <div class="loading-message-container">
-        <p class="loading-message">データを読み込んでいます...</p>
-      </div>
-      
+    <!-- Progress Message -->
+    <div class="loading-message-container">
+      <p class="loading-message">データを読み込んでいます...</p>
+    </div>
+    
+    <!-- Skeleton Container (実際の.containerと同じ構造) -->
+    <div class="skeleton-container-wrapper">
       <!-- Skeleton Header -->
       <header class="skeleton-header">
         <div class="skeleton-line skeleton-title"></div>
         <div class="skeleton-line skeleton-subtitle"></div>
       </header>
       
-      <!-- Skeleton Map -->
+      <!-- Skeleton Map Section -->
       <section class="skeleton-map-section">
         <div class="skeleton-map"></div>
         <!-- Direction Selector Skeleton -->
@@ -57,8 +58,9 @@
         </div>
       </section>
       
-      <!-- Skeleton Search Form -->
+      <!-- Skeleton Main (実際の.mainと同じ構造) -->
       <main class="skeleton-main">
+        <!-- Skeleton Search Section -->
         <section class="skeleton-search-section">
           <div class="skeleton-line skeleton-section-title"></div>
           
@@ -112,6 +114,16 @@
           
           <!-- Search Button -->
           <div class="skeleton-line skeleton-submit-button"></div>
+        </section>
+        
+        <!-- Skeleton Results Section -->
+        <section class="skeleton-results-section">
+          <div class="skeleton-line skeleton-section-title"></div>
+          <div class="skeleton-results-placeholder">
+            <div class="skeleton-line skeleton-result-item"></div>
+            <div class="skeleton-line skeleton-result-item"></div>
+            <div class="skeleton-line skeleton-result-item"></div>
+          </div>
         </section>
       </main>
     </div>
