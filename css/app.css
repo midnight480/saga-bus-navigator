@@ -860,6 +860,10 @@ body {
   
   .skeleton-map {
     height: 300px;
+    /* モバイルでもアニメーションが確実に動作するように明示的に再定義 */
+    animation: shimmer 2s infinite;
+    animation-timing-function: ease-in-out;
+    will-change: background-position;
   }
   
   .skeleton-title {
@@ -884,6 +888,18 @@ body {
   
   .skeleton-radio {
     width: 100%;
+  }
+  
+  /* モバイルでもスケルトンラインのアニメーションが確実に動作するように */
+  .skeleton-line {
+    animation: shimmer 2s infinite;
+    animation-timing-function: ease-in-out;
+    will-change: background-position;
+  }
+  
+  /* モバイルでも進捗メッセージのアニメーションが確実に動作するように */
+  .loading-message {
+    animation: loadingPulse 2s ease-in-out infinite;
   }
   
   .loading-screen .loading-error {
