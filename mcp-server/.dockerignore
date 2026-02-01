@@ -1,0 +1,35 @@
+# Node modules
+node_modules/
+
+# Source files (only build output is needed)
+src/
+
+# Test files
+*.test.ts
+*.spec.ts
+*.test.js
+*.spec.js
+
+# Configuration files
+tsconfig.json
+vitest.config.ts
+
+# Documentation
+README.md
+docs/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db

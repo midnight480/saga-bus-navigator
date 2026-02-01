@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    image: midnight480/saga-bus-mcp-server:latest
+    environment:
+      - API_BASE_URL=${API_BASE_URL:-https://saga-bus.midnight480.com/api}
+    stdin_open: true
+    tty: true
