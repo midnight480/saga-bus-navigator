@@ -350,6 +350,7 @@
         <div id="language-switcher" class="language-switcher-dropdown"></div>
         &copy; 2025 <span data-i18n="footer.copyright">佐賀バスナビ</span> | 
         <a href="#usage" class="footer-link" data-i18n="footer.usage">使い方</a> | 
+        <a href="#api" class="footer-link" data-i18n="footer.api">API</a> | 
         <a href="#contact" class="footer-link" data-i18n="footer.contact">お問い合わせ</a>
       </p>
       <p class="footer-text">
@@ -630,6 +631,511 @@
             <span class="calendar-option-icon">🗓️</span>
             <span class="calendar-option-text" data-i18n="modal.google_calendar">Google Calendarで開く</span>
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Documentation Modal -->
+  <div id="api-modal" class="footer-modal" role="dialog" aria-labelledby="api-modal-title" aria-modal="true" hidden>
+    <div class="footer-modal-overlay"></div>
+    <div class="footer-modal-content">
+      <div class="footer-modal-header">
+        <h2 id="api-modal-title" class="footer-modal-title" data-i18n="footer.api">API</h2>
+        <button type="button" class="footer-modal-close" data-i18n-aria-label="modal.close_aria" data-i18n="modal.close">×</button>
+      </div>
+      
+      <div class="footer-modal-tabs" role="tablist">
+        <button type="button" class="footer-tab-button active" data-tab="api-overview" role="tab" aria-selected="true" aria-controls="api-overview-tab" data-i18n="api.overview">
+          概要
+        </button>
+        <button type="button" class="footer-tab-button" data-tab="api-stops-search" role="tab" aria-selected="false" aria-controls="api-stops-search-tab" data-i18n="api.stops_search">
+          バス停検索
+        </button>
+        <button type="button" class="footer-tab-button" data-tab="api-routes-search" role="tab" aria-selected="false" aria-controls="api-routes-search-tab" data-i18n="api.routes_search">
+          経路検索
+        </button>
+        <button type="button" class="footer-tab-button" data-tab="api-first-last" role="tab" aria-selected="false" aria-controls="api-first-last-tab" data-i18n="api.first_last">
+          始発・終電
+        </button>
+      </div>
+      
+      <div class="footer-modal-body">
+        <!-- 概要タブ -->
+        <div id="api-overview-tab" class="footer-tab-content active" role="tabpanel" aria-labelledby="api-overview-tab-button">
+          <section class="api-section">
+            <h3 class="api-heading" data-i18n="api.overview_title">佐賀バスナビ API</h3>
+            <p class="api-text" data-i18n="api.overview_desc">佐賀バスナビでは、外部アプリケーションから利用可能なREST APIを提供しています。バス停情報、時刻表、経路検索機能をプログラマティックに利用できます。</p>
+          </section>
+          
+          <section class="api-section">
+            <h3 class="api-heading" data-i18n="api.base_url_title">ベースURL</h3>
+            <div class="api-code-block">
+              <code class="api-code" data-i18n="api.base_url">https://saga-bus.midnight480.com/api</code>
+            </div>
+          </section>
+          
+          <section class="api-section">
+            <h3 class="api-heading" data-i18n="api.authentication_title">認証</h3>
+            <p class="api-text" data-i18n="api.authentication_desc">現在、APIの利用に認証は不要です。全てのエンドポイントは自由にアクセスできます。</p>
+          </section>
+          
+          <section class="api-section">
+            <h3 class="api-heading" data-i18n="api.response_format_title">レスポンス形式</h3>
+            <p class="api-text" data-i18n="api.response_format_desc">全てのレスポンスはJSON形式で返されます。</p>
+          </section>
+          
+          <section class="api-section">
+            <h3 class="api-heading" data-i18n="api.cors_title">CORS対応</h3>
+            <p class="api-text" data-i18n="api.cors_desc">全てのエンドポイントはCORS（Cross-Origin Resource Sharing）に対応しており、異なるドメインからのアクセスが可能です。</p>
+          </section>
+          
+          <section class="api-section">
+            <h3 class="api-heading" data-i18n="api.endpoints_title">利用可能なエンドポイント</h3>
+            <ul class="api-list">
+              <li><strong data-i18n="api.endpoint_stops_search">GET /api/stops/search</strong> - <span data-i18n="api.endpoint_stops_search_desc">バス停名で検索し、次の発車時刻を取得</span></li>
+              <li><strong data-i18n="api.endpoint_routes_search">GET /api/routes/search</strong> - <span data-i18n="api.endpoint_routes_search_desc">始点と終点を指定して経路を検索</span></li>
+              <li><strong data-i18n="api.endpoint_first_last">GET /api/stops/first-last</strong> - <span data-i18n="api.endpoint_first_last_desc">指定バス停の始発・終電情報を取得</span></li>
+            </ul>
+          </section>
+        </div>
+        
+        <!-- バス停検索タブ -->
+        <div id="api-stops-search-tab" class="footer-tab-content" role="tabpanel" aria-labelledby="api-stops-search-tab-button" hidden>
+          <section class="api-section">
+            <h3 class="api-heading" data-i18n="api.stops_search_title">バス停検索 API</h3>
+            <p class="api-text" data-i18n="api.stops_search_desc">バス停名で検索し、次の発車時刻と路線情報を取得します。</p>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.endpoint">エンドポイント</h4>
+            <div class="api-endpoint-badge">
+              <span class="api-method get">GET</span>
+              <span class="api-endpoint-url">/api/stops/search</span>
+            </div>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.parameters">パラメータ</h4>
+            <div class="api-table-wrapper">
+              <table class="api-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="api.param_name">パラメータ名</th>
+                    <th data-i18n="api.param_type">型</th>
+                    <th data-i18n="api.param_required">必須</th>
+                    <th data-i18n="api.param_description">説明</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>q</code></td>
+                    <td>string</td>
+                    <td data-i18n="api.required">必須</td>
+                    <td data-i18n="api.stops_search_param_q">バス停名（部分一致検索）</td>
+                  </tr>
+                  <tr>
+                    <td><code>limit</code></td>
+                    <td>number</td>
+                    <td data-i18n="api.optional">オプション</td>
+                    <td data-i18n="api.stops_search_param_limit">最大結果件数（デフォルト: 10、最大: 50）</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.request_example">リクエスト例</h4>
+            <div class="api-code-block">
+              <pre class="api-code"><code>curl "https://saga-bus.midnight480.com/api/stops/search?q=佐賀駅&limit=5"</code></pre>
+            </div>
+            <div class="api-code-block">
+              <pre class="api-code"><code>// JavaScript
+fetch('https://saga-bus.midnight480.com/api/stops/search?q=佐賀駅&limit=5')
+  .then(response => response.json())
+  .then(data => console.log(data));</code></pre>
+            </div>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.response_example">レスポンス例（成功）</h4>
+            <div class="api-success-example">
+              <h5 class="api-success-title">200 OK</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "stops": [
+    {
+      "id": "stop_001",
+      "name": "佐賀駅バスセンター",
+      "lat": 33.2634,
+      "lon": 130.3006,
+      "nextDepartures": [
+        {
+          "routeNumber": "1",
+          "routeName": "佐賀駅バスセンター～佐賀大学",
+          "destination": "佐賀大学",
+          "departureTime": "09:30",
+          "operator": "佐賀市営バス"
+        }
+      ]
+    }
+  ],
+  "count": 1
+}</code></pre>
+              </div>
+            </div>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.error_response_example">エラーレスポンス例</h4>
+            
+            <div class="api-error-example">
+              <h5 class="api-error-title" data-i18n="api.error_400_title">400 Bad Request - 必須パラメータ不足</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "error": "クエリパラメータ 'q' は必須です"
+}</code></pre>
+              </div>
+            </div>
+            
+            <div class="api-error-example">
+              <h5 class="api-error-title" data-i18n="api.error_404_title">404 Not Found - バス停が見つからない</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "stops": [],
+  "count": 0
+}</code></pre>
+              </div>
+            </div>
+            
+            <div class="api-error-example">
+              <h5 class="api-error-title" data-i18n="api.error_500_title">500 Internal Server Error - サーバーエラー</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "error": "データの読み込みに失敗しました"
+}</code></pre>
+              </div>
+            </div>
+          </section>
+        </div>
+        
+        <!-- 経路検索タブ -->
+        <div id="api-routes-search-tab" class="footer-tab-content" role="tabpanel" aria-labelledby="api-routes-search-tab-button" hidden>
+          <section class="api-section">
+            <h3 class="api-heading" data-i18n="api.routes_search_title">経路検索 API</h3>
+            <p class="api-text" data-i18n="api.routes_search_desc">始点と終点を指定して経路を検索し、時刻表情報を取得します。</p>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.endpoint">エンドポイント</h4>
+            <div class="api-endpoint-badge">
+              <span class="api-method get">GET</span>
+              <span class="api-endpoint-url">/api/routes/search</span>
+            </div>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.parameters">パラメータ</h4>
+            <div class="api-table-wrapper">
+              <table class="api-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="api.param_name">パラメータ名</th>
+                    <th data-i18n="api.param_type">型</th>
+                    <th data-i18n="api.param_required">必須</th>
+                    <th data-i18n="api.param_description">説明</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>from</code></td>
+                    <td>string</td>
+                    <td data-i18n="api.required">必須</td>
+                    <td data-i18n="api.routes_search_param_from">乗車バス停名</td>
+                  </tr>
+                  <tr>
+                    <td><code>to</code></td>
+                    <td>string</td>
+                    <td data-i18n="api.required">必須</td>
+                    <td data-i18n="api.routes_search_param_to">降車バス停名</td>
+                  </tr>
+                  <tr>
+                    <td><code>time</code></td>
+                    <td>string</td>
+                    <td data-i18n="api.optional">オプション</td>
+                    <td data-i18n="api.routes_search_param_time">検索時刻（HH:MM形式、デフォルト: 現在時刻）</td>
+                  </tr>
+                  <tr>
+                    <td><code>type</code></td>
+                    <td>string</td>
+                    <td data-i18n="api.optional">オプション</td>
+                    <td data-i18n="api.routes_search_param_type">検索タイプ（departure-time | arrival-time | now | first-bus | last-bus、デフォルト: now）</td>
+                  </tr>
+                  <tr>
+                    <td><code>weekday</code></td>
+                    <td>string</td>
+                    <td data-i18n="api.optional">オプション</td>
+                    <td data-i18n="api.routes_search_param_weekday">曜日区分（平日 | 土日祝 | auto、デフォルト: auto）</td>
+                  </tr>
+                  <tr>
+                    <td><code>limit</code></td>
+                    <td>number</td>
+                    <td data-i18n="api.optional">オプション</td>
+                    <td data-i18n="api.routes_search_param_limit">最大結果件数（デフォルト: 5、最大: 20）</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.request_example">リクエスト例</h4>
+            <div class="api-code-block">
+              <pre class="api-code"><code>curl "https://saga-bus.midnight480.com/api/routes/search?from=佐賀駅バスセンター&to=佐賀大学&type=now"</code></pre>
+            </div>
+            <div class="api-code-block">
+              <pre class="api-code"><code>// JavaScript
+fetch('https://saga-bus.midnight480.com/api/routes/search?from=佐賀駅バスセンター&to=佐賀大学&type=now')
+  .then(response => response.json())
+  .then(data => console.log(data));</code></pre>
+            </div>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.response_example">レスポンス例（成功）</h4>
+            <div class="api-success-example">
+              <h5 class="api-success-title">200 OK</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "routes": [
+    {
+      "tripId": "trip_001",
+      "routeNumber": "1",
+      "routeName": "佐賀駅バスセンター～佐賀大学",
+      "operator": "佐賀市営バス",
+      "departureStop": "佐賀駅バスセンター",
+      "arrivalStop": "佐賀大学",
+      "departureTime": "09:30",
+      "arrivalTime": "09:50",
+      "duration": 20,
+      "adultFare": 200,
+      "childFare": 100,
+      "weekdayType": "平日",
+      "viaStops": [
+        {
+          "name": "県庁前",
+          "time": "09:35"
+        }
+      ],
+      "tripHeadsign": "佐賀大学"
+    }
+  ],
+  "count": 1,
+  "searchCriteria": {
+    "from": "佐賀駅バスセンター",
+    "to": "佐賀大学",
+    "time": "09:30",
+    "type": "now",
+    "weekday": "平日"
+  }
+}</code></pre>
+              </div>
+            </div>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.error_response_example">エラーレスポンス例</h4>
+            
+            <div class="api-error-example">
+              <h5 class="api-error-title" data-i18n="api.error_400_title">400 Bad Request - 必須パラメータ不足</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "error": "クエリパラメータ 'from' と 'to' は必須です"
+}</code></pre>
+              </div>
+            </div>
+            
+            <div class="api-error-example">
+              <h5 class="api-error-title" data-i18n="api.error_400_invalid_time">400 Bad Request - 時刻形式が不正</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "error": "時刻は HH:MM 形式で指定してください"
+}</code></pre>
+              </div>
+            </div>
+            
+            <div class="api-error-example">
+              <h5 class="api-error-title" data-i18n="api.error_404_no_route">404 Not Found - 経路が見つからない</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "routes": [],
+  "count": 0,
+  "searchCriteria": {
+    "from": "佐賀駅バスセンター",
+    "to": "佐賀大学",
+    "time": "09:30",
+    "type": "now",
+    "weekday": "平日"
+  }
+}</code></pre>
+              </div>
+            </div>
+            
+            <div class="api-error-example">
+              <h5 class="api-error-title" data-i18n="api.error_500_title">500 Internal Server Error - サーバーエラー</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "error": "検索処理中にエラーが発生しました"
+}</code></pre>
+              </div>
+            </div>
+          </section>
+        </div>
+        
+        <!-- 始発・終電タブ -->
+        <div id="api-first-last-tab" class="footer-tab-content" role="tabpanel" aria-labelledby="api-first-last-tab-button" hidden>
+          <section class="api-section">
+            <h3 class="api-heading" data-i18n="api.first_last_title">始発・終電検索 API</h3>
+            <p class="api-text" data-i18n="api.first_last_desc">指定バス停の始発・終電情報を取得します。</p>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.endpoint">エンドポイント</h4>
+            <div class="api-endpoint-badge">
+              <span class="api-method get">GET</span>
+              <span class="api-endpoint-url">/api/stops/first-last</span>
+            </div>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.parameters">パラメータ</h4>
+            <div class="api-table-wrapper">
+              <table class="api-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="api.param_name">パラメータ名</th>
+                    <th data-i18n="api.param_type">型</th>
+                    <th data-i18n="api.param_required">必須</th>
+                    <th data-i18n="api.param_description">説明</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>stop</code></td>
+                    <td>string</td>
+                    <td data-i18n="api.required">必須</td>
+                    <td data-i18n="api.first_last_param_stop">バス停名</td>
+                  </tr>
+                  <tr>
+                    <td><code>to</code></td>
+                    <td>string</td>
+                    <td data-i18n="api.optional">オプション</td>
+                    <td data-i18n="api.first_last_param_to">行先バス停名（指定した場合、その行先への始発・終電のみ）</td>
+                  </tr>
+                  <tr>
+                    <td><code>weekday</code></td>
+                    <td>string</td>
+                    <td data-i18n="api.optional">オプション</td>
+                    <td data-i18n="api.first_last_param_weekday">曜日区分（平日 | 土日祝 | auto、デフォルト: auto）</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.request_example">リクエスト例</h4>
+            <div class="api-code-block">
+              <pre class="api-code"><code>curl "https://saga-bus.midnight480.com/api/stops/first-last?stop=佐賀駅バスセンター"</code></pre>
+            </div>
+            <div class="api-code-block">
+              <pre class="api-code"><code>// JavaScript
+fetch('https://saga-bus.midnight480.com/api/stops/first-last?stop=佐賀駅バスセンター')
+  .then(response => response.json())
+  .then(data => console.log(data));</code></pre>
+            </div>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.response_example">レスポンス例（成功）</h4>
+            <div class="api-success-example">
+              <h5 class="api-success-title">200 OK</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "stop": "佐賀駅バスセンター",
+  "weekdayType": "平日",
+  "firstBus": {
+    "tripId": "trip_001",
+    "routeNumber": "1",
+    "routeName": "佐賀駅バスセンター～佐賀大学",
+    "operator": "佐賀市営バス",
+    "departureTime": "06:00",
+    "destination": "佐賀大学",
+    "arrivalTime": "06:20",
+    "duration": 20,
+    "adultFare": 200,
+    "childFare": 100
+  },
+  "lastBus": {
+    "tripId": "trip_002",
+    "routeNumber": "1",
+    "routeName": "佐賀駅バスセンター～佐賀大学",
+    "operator": "佐賀市営バス",
+    "departureTime": "22:30",
+    "destination": "佐賀大学",
+    "arrivalTime": "22:50",
+    "duration": 20,
+    "adultFare": 200,
+    "childFare": 100
+  }
+}</code></pre>
+              </div>
+            </div>
+          </section>
+          
+          <section class="api-section">
+            <h4 class="api-subheading" data-i18n="api.error_response_example">エラーレスポンス例</h4>
+            
+            <div class="api-error-example">
+              <h5 class="api-error-title" data-i18n="api.error_400_title">400 Bad Request - 必須パラメータ不足</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "error": "クエリパラメータ 'stop' は必須です"
+}</code></pre>
+              </div>
+            </div>
+            
+            <div class="api-error-example">
+              <h5 class="api-error-title" data-i18n="api.error_404_no_bus">404 Not Found - 始発・終電が見つからない</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "stop": "佐賀駅バスセンター",
+  "weekdayType": "平日",
+  "firstBus": null,
+  "lastBus": null
+}</code></pre>
+              </div>
+            </div>
+            
+            <div class="api-error-example">
+              <h5 class="api-error-title" data-i18n="api.error_404_stop_not_found">404 Not Found - バス停が存在しない</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "error": "指定されたバス停が見つかりません"
+}</code></pre>
+              </div>
+            </div>
+            
+            <div class="api-error-example">
+              <h5 class="api-error-title" data-i18n="api.error_500_title">500 Internal Server Error - サーバーエラー</h5>
+              <div class="api-code-block">
+                <pre class="api-code"><code>{
+  "error": "検索処理中にエラーが発生しました"
+}</code></pre>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>

@@ -6,7 +6,9 @@ class FooterPagesController {
   constructor() {
     this.usageModal = null;
     this.contactModal = null;
+    this.apiModal = null;
     this.activeTab = 'usage';
+    this.activeApiTab = 'api-overview';
     this.previousFocus = null;
     this.translationManager = null;
     this.init();
@@ -63,6 +65,9 @@ class FooterPagesController {
     if (this.contactModal && !this.contactModal.hasAttribute('hidden')) {
       this.translationManager.updateDOMTranslations();
     }
+    if (this.apiModal && !this.apiModal.hasAttribute('hidden')) {
+      this.translationManager.updateDOMTranslations();
+    }
   }
 
   /**
@@ -80,12 +85,14 @@ class FooterPagesController {
     // モーダル要素
     this.usageModal = document.getElementById('usage-modal');
     this.contactModal = document.getElementById('contact-modal');
+    this.apiModal = document.getElementById('api-modal');
     
     // リンク要素
     this.usageLink = document.querySelector('a[href="#usage"]');
     this.contactLink = document.querySelector('a[href="#contact"]');
+    this.apiLink = document.querySelector('a[href="#api"]');
     
-    if (!this.usageModal || !this.contactModal) {
+    if (!this.usageModal || !this.contactModal || !this.apiModal) {
       console.warn('モーダル要素が見つかりません');
     }
   }
@@ -102,6 +109,13 @@ class FooterPagesController {
    */
   openContactModal() {
     this.openModal(this.contactModal);
+  }
+
+  /**
+   * APIドキュメントモーダルを開く
+   */
+  openApiModal() {
+    this.openModal(this.apiModal);
   }
 
   /**
@@ -161,10 +175,14 @@ class FooterPagesController {
   /**
    * タブを切り替える
    * @param {string} tabName - 切り替え先のタブ名
+   * @param {HTMLElement} modal - タブが属するモーダル要素（オプション）
    */
-  switchTab(tabName) {
+  switchTab(tabName, modal = null) {
+    // モーダルが指定されていない場合は、使い方モーダルのタブとして扱う
+    const targetModal = modal || this.usageModal;
+    
     // ボタンの状態更新
-    const tabButtons = document.querySelectorAll('.footer-tab-button');
+    const tabButtons = targetModal.querySelectorAll('.footer-tab-button');
     tabButtons.forEach(button => {
       const isActive = button.dataset.tab === tabName;
       button.classList.toggle('active', isActive);
@@ -172,7 +190,7 @@ class FooterPagesController {
     });
     
     // コンテンツの表示切り替え
-    const tabContents = document.querySelectorAll('.footer-tab-content');
+    const tabContents = targetModal.querySelectorAll('.footer-tab-content');
     tabContents.forEach(content => {
       const isActive = content.id === `${tabName}-tab`;
       content.classList.toggle('active', isActive);
@@ -184,7 +202,12 @@ class FooterPagesController {
       }
     });
     
-    this.activeTab = tabName;
+    // アクティブタブを記録
+    if (targetModal === this.apiModal) {
+      this.activeApiTab = tabName;
+    } else {
+      this.activeTab = tabName;
+    }
   }
 
   /**
@@ -243,9 +266,17 @@ class FooterPagesController {
       });
     }
     
+    if (this.apiLink) {
+      this.apiLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.openApiModal();
+      });
+    }
+    
     // モーダル閉じる処理
     this.attachCloseListeners(this.usageModal);
     this.attachCloseListeners(this.contactModal);
+    this.attachCloseListeners(this.apiModal);
     
     // タブ切り替え
     this.attachTabListeners();
@@ -282,14 +313,27 @@ class FooterPagesController {
    * タブのイベントリスナーを設定
    */
   attachTabListeners() {
-    const tabButtons = document.querySelectorAll('.footer-tab-button');
-    
-    tabButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        const tabName = button.dataset.tab;
-        this.switchTab(tabName);
+    // 使い方モーダルのタブ
+    if (this.usageModal) {
+      const usageTabButtons = this.usageModal.querySelectorAll('.footer-tab-button');
+      usageTabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const tabName = button.dataset.tab;
+          this.switchTab(tabName, this.usageModal);
+        });
       });
-    });
+    }
+    
+    // APIモーダルのタブ
+    if (this.apiModal) {
+      const apiTabButtons = this.apiModal.querySelectorAll('.footer-tab-button');
+      apiTabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const tabName = button.dataset.tab;
+          this.switchTab(tabName, this.apiModal);
+        });
+      });
+    }
   }
 }
 
