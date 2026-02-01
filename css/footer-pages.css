@@ -461,6 +461,147 @@
     height: calc(100vh - 180px);
     min-height: 400px;
   }
+  
+  /* API Documentation - Mobile */
+  .api-section {
+    margin-bottom: 1.5rem;
+  }
+  
+  .api-heading {
+    font-size: 1rem;
+  }
+  
+  .api-subheading {
+    font-size: 0.9375rem;
+  }
+  
+  .api-text {
+    font-size: 0.875rem;
+  }
+  
+  .api-list li {
+    font-size: 0.875rem;
+    padding-left: 1.25rem;
+  }
+  
+  .api-code-block {
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    /* モバイルでのスクロール改善 */
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .api-code {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  
+  .api-table-wrapper {
+    margin: 0.5rem 0;
+    /* モバイルでのスクロール改善 */
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .api-table {
+    font-size: 0.8125rem;
+    min-width: 450px;
+  }
+  
+  .api-table th,
+  .api-table td {
+    padding: 0.5rem;
+  }
+  
+  .api-table code {
+    font-size: 0.75rem;
+  }
+  
+  .api-endpoint-badge {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.375rem;
+    padding: 0.625rem;
+    font-size: 0.8125rem;
+  }
+  
+  .api-method {
+    font-size: 0.6875rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .api-endpoint-url {
+    font-size: 0.8125rem;
+    word-break: break-all;
+  }
+  
+  .api-error-example,
+  .api-success-example,
+  .api-note,
+  .api-tip {
+    padding: 0.75rem;
+    margin: 1rem 0;
+  }
+  
+  .api-error-title,
+  .api-success-title,
+  .api-note-title,
+  .api-tip-title {
+    font-size: 0.875rem;
+  }
+  
+  .api-note-text,
+  .api-tip-text {
+    font-size: 0.8125rem;
+  }
+  
+  /* インラインコードのモバイル対応 */
+  .api-text code,
+  .api-list code {
+    font-size: 0.8125rem;
+    padding: 0.125rem 0.25rem;
+  }
+  
+  /* Usage Section - Mobile */
+  .usage-section {
+    margin-bottom: 1.5rem;
+  }
+  
+  .usage-heading {
+    font-size: 1rem;
+  }
+  
+  .usage-subheading {
+    font-size: 0.9375rem;
+  }
+  
+  .usage-text {
+    font-size: 0.875rem;
+  }
+  
+  .usage-item {
+    margin-bottom: 1rem;
+  }
+  
+  /* Acknowledgments Section - Mobile */
+  .acknowledgments-section {
+    margin-bottom: 1.5rem;
+  }
+  
+  .acknowledgments-heading {
+    font-size: 1rem;
+  }
+  
+  .acknowledgments-subheading {
+    font-size: 0.9375rem;
+  }
+  
+  .acknowledgments-text {
+    font-size: 0.875rem;
+  }
+  
+  .acknowledgments-item {
+    margin-bottom: 1rem;
+  }
 }
 
 /* ========================================
@@ -483,6 +624,488 @@
   .content-section-title {
     font-size: 1.25rem;
   }
+  
+  /* API Documentation - Desktop */
+  .api-section {
+    margin-bottom: 2.5rem;
+  }
+  
+  .api-heading {
+    font-size: 1.25rem;
+  }
+  
+  .api-subheading {
+    font-size: 1.0625rem;
+  }
+  
+  .api-code-block {
+    padding: 1.25rem;
+  }
+  
+  .api-code {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+  
+  .api-table {
+    font-size: 0.9375rem;
+  }
+  
+  .api-endpoint-badge {
+    padding: 0.625rem 1rem;
+  }
+  
+  .api-method {
+    font-size: 0.8125rem;
+  }
+  
+  .api-endpoint-url {
+    font-size: 0.9375rem;
+  }
+}
+
+/* ========================================
+   API Documentation Styles
+   ======================================== */
+
+.api-section {
+  margin-bottom: 2rem;
+}
+
+.api-section:last-child {
+  margin-bottom: 0;
+}
+
+.api-heading {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.api-subheading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0066cc;
+  margin: 1.5rem 0 0.75rem 0;
+}
+
+.api-text {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: #333;
+  margin-bottom: 0.75rem;
+}
+
+.api-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.75rem 0;
+}
+
+.api-list li {
+  padding: 0.5rem 0 0.5rem 1.5rem;
+  position: relative;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: #333;
+}
+
+.api-list li:before {
+  content: "•";
+  position: absolute;
+  left: 0.5rem;
+  color: #0066cc;
+  font-weight: bold;
+}
+
+/* コードブロック */
+.api-code-block {
+  background-color: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 1rem;
+  margin: 0.75rem 0;
+  overflow-x: auto;
+  position: relative;
+  /* スクロールバーのスタイリング */
+  scrollbar-width: thin;
+  scrollbar-color: #c0c0c0 #f5f5f5;
+}
+
+.api-code-block::-webkit-scrollbar {
+  height: 8px;
+}
+
+.api-code-block::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.api-code-block::-webkit-scrollbar-thumb {
+  background-color: #c0c0c0;
+  border-radius: 4px;
+}
+
+.api-code-block::-webkit-scrollbar-thumb:hover {
+  background-color: #a0a0a0;
+}
+
+.api-code {
+  font-family: 'Consolas', 'Monaco', 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #333;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+  display: block;
+}
+
+/* コードブロック内のシンタックスハイライト風スタイル */
+.api-code .keyword {
+  color: #0066cc;
+  font-weight: 600;
+}
+
+.api-code .string {
+  color: #22863a;
+}
+
+.api-code .number {
+  color: #005cc5;
+}
+
+.api-code .comment {
+  color: #6a737d;
+  font-style: italic;
+}
+
+/* インラインコード */
+.api-text code,
+.api-list code {
+  background-color: #f5f5f5;
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+  color: #d73a49;
+  border: 1px solid #e0e0e0;
+}
+
+/* パラメータテーブル */
+.api-table-wrapper {
+  overflow-x: auto;
+  margin: 0.75rem 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  /* スクロールバーのスタイリング */
+  scrollbar-width: thin;
+  scrollbar-color: #c0c0c0 #fff;
+}
+
+.api-table-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.api-table-wrapper::-webkit-scrollbar-track {
+  background: #fff;
+  border-radius: 4px;
+}
+
+.api-table-wrapper::-webkit-scrollbar-thumb {
+  background-color: #c0c0c0;
+  border-radius: 4px;
+}
+
+.api-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background-color: #a0a0a0;
+}
+
+.api-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  min-width: 500px;
+}
+
+.api-table thead {
+  background-color: #f8f9fa;
+}
+
+.api-table th {
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border: 1px solid #e0e0e0;
+  white-space: nowrap;
+}
+
+.api-table td {
+  padding: 0.75rem;
+  border: 1px solid #e0e0e0;
+  color: #333;
+  vertical-align: top;
+}
+
+.api-table code {
+  background-color: #f5f5f5;
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', Courier, monospace;
+  font-size: 0.8125rem;
+  color: #d73a49;
+  border: 1px solid #e0e0e0;
+  white-space: nowrap;
+}
+
+/* エンドポイントバッジ */
+.api-endpoint-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+}
+
+.api-method {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.api-method.get {
+  background-color: #61affe;
+  color: white;
+}
+
+.api-method.post {
+  background-color: #49cc90;
+  color: white;
+}
+
+.api-method.put {
+  background-color: #fca130;
+  color: white;
+}
+
+.api-method.delete {
+  background-color: #f93e3e;
+  color: white;
+}
+
+.api-endpoint-url {
+  color: #333;
+  font-weight: 600;
+}
+
+/* エラーレスポンス例 */
+.api-error-example {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background-color: #fff5f5;
+  border-left: 4px solid #dc3545;
+  border-radius: 4px;
+}
+
+.api-error-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #dc3545;
+  margin: 0 0 0.75rem 0;
+}
+
+.api-error-example .api-code-block {
+  background-color: #fff;
+  margin-bottom: 0;
+}
+
+/* 成功レスポンス例 */
+.api-success-example {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background-color: #f0f9ff;
+  border-left: 4px solid #0066cc;
+  border-radius: 4px;
+}
+
+.api-success-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0066cc;
+  margin: 0 0 0.75rem 0;
+}
+
+.api-success-example .api-code-block {
+  background-color: #fff;
+  margin-bottom: 0;
+}
+
+/* 注意事項ボックス */
+.api-note {
+  margin: 1rem 0;
+  padding: 1rem;
+  background-color: #fffbf0;
+  border-left: 4px solid #ffc107;
+  border-radius: 4px;
+}
+
+.api-note-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #856404;
+  margin: 0 0 0.5rem 0;
+}
+
+.api-note-text {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #856404;
+  margin: 0;
+}
+
+/* ヒントボックス */
+.api-tip {
+  margin: 1rem 0;
+  padding: 1rem;
+  background-color: #f0fdf4;
+  border-left: 4px solid #22c55e;
+  border-radius: 4px;
+}
+
+.api-tip-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #166534;
+  margin: 0 0 0.5rem 0;
+}
+
+.api-tip-text {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #166534;
+  margin: 0;
+}
+
+/* ========================================
+   Acknowledgments Section (謝辞)
+   ======================================== */
+
+.acknowledgments-section {
+  margin-bottom: 2rem;
+}
+
+.acknowledgments-section:last-child {
+  margin-bottom: 0;
+}
+
+.acknowledgments-heading {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.acknowledgments-subheading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0066cc;
+  margin: 1rem 0 0.5rem 0;
+}
+
+.acknowledgments-text {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: #333;
+  margin-bottom: 0.75rem;
+}
+
+.acknowledgments-item {
+  margin-bottom: 1.5rem;
+}
+
+.acknowledgments-item:last-child {
+  margin-bottom: 0;
+}
+
+.acknowledgments-link-wrapper {
+  margin-top: 0.5rem;
+}
+
+.acknowledgments-link {
+  color: #0066cc;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s;
+  word-break: break-all;
+}
+
+.acknowledgments-link:hover {
+  text-decoration: underline;
+  color: #0052a3;
+}
+
+.acknowledgments-link:focus-visible {
+  outline: 3px solid #0066cc;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ========================================
+   Usage Section (使い方)
+   ======================================== */
+
+.usage-section {
+  margin-bottom: 2rem;
+}
+
+.usage-section:last-child {
+  margin-bottom: 0;
+}
+
+.usage-heading {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.usage-subheading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0066cc;
+  margin: 1rem 0 0.5rem 0;
+}
+
+.usage-text {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: #333;
+  margin-bottom: 0.75rem;
+}
+
+.usage-item {
+  margin-bottom: 1.5rem;
+}
+
+.usage-item:last-child {
+  margin-bottom: 0;
 }
 
 /* ========================================
@@ -562,5 +1185,39 @@
   .footer-tab-content[hidden] {
     display: block !important;
     page-break-before: always;
+  }
+  
+  /* API Documentation - Print */
+  .api-code-block {
+    background-color: #f5f5f5;
+    border: 1px solid #000;
+    page-break-inside: avoid;
+  }
+  
+  .api-table-wrapper {
+    border: 1px solid #000;
+    page-break-inside: avoid;
+  }
+  
+  .api-table {
+    border-collapse: collapse;
+  }
+  
+  .api-table th,
+  .api-table td {
+    border: 1px solid #000;
+  }
+  
+  .api-endpoint-badge {
+    border: 1px solid #000;
+    page-break-inside: avoid;
+  }
+  
+  .api-error-example,
+  .api-success-example,
+  .api-note,
+  .api-tip {
+    border: 1px solid #000;
+    page-break-inside: avoid;
   }
 }
