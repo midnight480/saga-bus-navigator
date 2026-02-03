@@ -43,6 +43,7 @@ interface GTFSData {
   trips: any[];
   calendar: any[];
   agency: any[];
+  fareAttributes?: any[];
 }
 
 export class DataLoaderAdapter {
