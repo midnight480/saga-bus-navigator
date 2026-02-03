@@ -11,7 +11,7 @@
     "test:e2e:ui": "playwright test --ui",
     "lint": "eslint js/**/*.js",
     "format": "prettier --write js/**/*.js",
-    "build": "cd functions && npm install",
+    "build": "cd functions && npm install --production",
     "preprocess": "node scripts/preprocess-gtfs.js",
     "preprocess:force": "node scripts/preprocess-gtfs.js data data/processed"
   },
