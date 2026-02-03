@@ -68,6 +68,9 @@ class FooterPagesController {
     if (this.apiModal && !this.apiModal.hasAttribute('hidden')) {
       this.translationManager.updateDOMTranslations();
     }
+    if (this.mcpModal && !this.mcpModal.hasAttribute('hidden')) {
+      this.translationManager.updateDOMTranslations();
+    }
   }
 
   /**
@@ -86,13 +89,15 @@ class FooterPagesController {
     this.usageModal = document.getElementById('usage-modal');
     this.contactModal = document.getElementById('contact-modal');
     this.apiModal = document.getElementById('api-modal');
+    this.mcpModal = document.getElementById('mcp-modal');
     
     // リンク要素
     this.usageLink = document.querySelector('a[href="#usage"]');
     this.contactLink = document.querySelector('a[href="#contact"]');
     this.apiLink = document.querySelector('a[href="#api"]');
+    this.mcpLink = document.querySelector('a[href="#mcp"]');
     
-    if (!this.usageModal || !this.contactModal || !this.apiModal) {
+    if (!this.usageModal || !this.contactModal || !this.apiModal || !this.mcpModal) {
       console.warn('モーダル要素が見つかりません');
     }
   }
@@ -116,6 +121,13 @@ class FooterPagesController {
    */
   openApiModal() {
     this.openModal(this.apiModal);
+  }
+
+  /**
+   * MCPドキュメントモーダルを開く
+   */
+  openMcpModal() {
+    this.openModal(this.mcpModal);
   }
 
   /**
@@ -273,10 +285,18 @@ class FooterPagesController {
       });
     }
     
+    if (this.mcpLink) {
+      this.mcpLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.openMcpModal();
+      });
+    }
+    
     // モーダル閉じる処理
     this.attachCloseListeners(this.usageModal);
     this.attachCloseListeners(this.contactModal);
     this.attachCloseListeners(this.apiModal);
+    this.attachCloseListeners(this.mcpModal);
     
     // タブ切り替え
     this.attachTabListeners();
@@ -331,6 +351,17 @@ class FooterPagesController {
         button.addEventListener('click', () => {
           const tabName = button.dataset.tab;
           this.switchTab(tabName, this.apiModal);
+        });
+      });
+    }
+    
+    // MCPモーダルのタブ
+    if (this.mcpModal) {
+      const mcpTabButtons = this.mcpModal.querySelectorAll('.footer-tab-button');
+      mcpTabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const tabName = button.dataset.tab;
+          this.switchTab(tabName, this.mcpModal);
         });
       });
     }
