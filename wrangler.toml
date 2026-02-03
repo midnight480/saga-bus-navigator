@@ -3,9 +3,6 @@ pages_build_output_dir = "."
 compatibility_date = "2025-11-16"
 compatibility_flags = ["nodejs_compat"]
 
-[build]
-command = "cd functions && npm install --omit=dev && cd .."
-
 [[kv_namespaces]]
 binding = "GTFS_DATA"
 id = "3ae3f515d413458d913a9be942fdf056"
