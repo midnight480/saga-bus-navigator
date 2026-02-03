@@ -1,127 +1,120 @@
 /**
- * 経路検索API
+ * 経路検索API（簡易版）
  * GET /api/routes/search
  * 
  * 始点と終点を指定して経路を検索し、時刻表情報を返す
  */
 
-import { DataLoaderAdapter } from '../../lib/data-loader-adapter';
-import { SearchControllerAdapter } from '../../lib/search-controller-adapter';
-import { TimeUtils } from '../../lib/time-utils';
-import { BadRequestError, handleError } from '../../lib/api-errors';
-
 interface Env {
-  // Cloudflare環境変数（必要に応じて追加）
+  GTFS_DATA: KVNamespace;
 }
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
-    // クエリパラメータを取得
     const url = new URL(context.request.url);
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
-    const timeParam = url.searchParams.get('time');
-    const typeParam = url.searchParams.get('type') || 'now';
-    const weekdayParam = url.searchParams.get('weekday') || 'auto';
+    const type = url.searchParams.get('type') || 'now';
     const limitParam = url.searchParams.get('limit');
 
     // パラメータバリデーション
-    if (!from || from.trim() === '') {
-      throw new BadRequestError('クエリパラメータ "from" は必須です');
+    if (!from || !to) {
+      return new Response(
+        JSON.stringify({ error: 'fromとtoパラメータは必須です' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
-    if (!to || to.trim() === '') {
-      throw new BadRequestError('クエリパラメータ "to" は必須です');
-    }
-
-    if (from.trim() === to.trim()) {
-      throw new BadRequestError('乗車バス停と降車バス停は異なる停留所を指定してください');
-    }
-
-    // typeパラメータのバリデーション
-    const validTypes = ['departure-time', 'arrival-time', 'now', 'first-bus', 'last-bus'];
-    if (!validTypes.includes(typeParam)) {
-      throw new BadRequestError(`typeは ${validTypes.join(', ')} のいずれかを指定してください`);
-    }
-
-    // limitパラメータのバリデーション
     const limit = limitParam ? parseInt(limitParam, 10) : 5;
-    if (isNaN(limit) || limit < 1 || limit > 20) {
-      throw new BadRequestError('limitは1〜20の範囲で指定してください');
+
+    // KVから現在のバージョンを取得
+    const currentVersion = await context.env.GTFS_DATA.get('current_version');
+    if (!currentVersion) {
+      return new Response(
+        JSON.stringify({ error: 'GTFSデータが利用できません' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
-    // DataLoaderを初期化
-    const dataLoader = DataLoaderAdapter.getInstance();
-    // ベースURLを設定（リクエストURLから取得）
-    dataLoader.setBaseUrl(url.origin);
-    await dataLoader.loadData();
+    // データを取得
+    const [stops, routes, trips] = await Promise.all([
+      context.env.GTFS_DATA.get(`gtfs:v${currentVersion}:stops`, 'json'),
+      context.env.GTFS_DATA.get(`gtfs:v${currentVersion}:routes`, 'json'),
+      context.env.GTFS_DATA.get(`gtfs:v${currentVersion}:trips`, 'json'),
+    ]);
 
-    // 現在時刻を取得
-    const currentTime = await TimeUtils.getCurrentTimeFromNTP();
-    
-    // 曜日区分を決定
-    let weekdayType: string;
-    if (weekdayParam === 'auto') {
-      weekdayType = TimeUtils.getWeekdayType(currentTime);
-    } else if (weekdayParam === '平日' || weekdayParam === '土日祝') {
-      weekdayType = weekdayParam;
-    } else {
-      throw new BadRequestError('weekdayは "平日", "土日祝", "auto" のいずれかを指定してください');
+    // stop_timesを全チャンク読み込み
+    const stopTimesChunks: any[] = [];
+    let chunkIndex = 0;
+    while (chunkIndex < 10) { // 最大10チャンク
+      const chunk = await context.env.GTFS_DATA.get(`gtfs:v${currentVersion}:stop_times_${chunkIndex}`, 'json');
+      if (!chunk || !Array.isArray(chunk)) break;
+      stopTimesChunks.push(...chunk);
+      chunkIndex++;
     }
 
-    // 検索時刻を決定
-    let searchHour: number;
-    let searchMinute: number;
+    if (!Array.isArray(stops) || !Array.isArray(routes) || !Array.isArray(trips)) {
+      return new Response(
+        JSON.stringify({ error: 'データ形式が不正です' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
-    if (typeParam === 'departure-time' || typeParam === 'arrival-time') {
-      if (!timeParam) {
-        throw new BadRequestError(`type が "${typeParam}" の場合、timeパラメータは必須です`);
+    // バス停を検索
+    const fromStops = stops.filter((s: any) => s.stop_name && s.stop_name.includes(from));
+    const toStops = stops.filter((s: any) => s.stop_name && s.stop_name.includes(to));
+
+    if (fromStops.length === 0 || toStops.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          routes: [],
+          count: 0,
+          message: 'バス停が見つかりません'
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      );
+    }
+
+    // 経路を検索
+    const foundRoutes: any[] = [];
+    const fromStopIds = fromStops.map((s: any) => s.stop_id);
+    const toStopIds = toStops.map((s: any) => s.stop_id);
+
+    // 各tripで始点と終点を通るものを探す
+    for (const trip of trips) {
+      const tripStopTimes = stopTimesChunks
+        .filter((st: any) => st.trip_id === trip.trip_id)
+        .sort((a: any, b: any) => parseInt(a.stop_sequence) - parseInt(b.stop_sequence));
+
+      // 始点と終点のインデックスを探す
+      const fromIndex = tripStopTimes.findIndex((st: any) => fromStopIds.includes(st.stop_id));
+      const toIndex = tripStopTimes.findIndex((st: any) => toStopIds.includes(st.stop_id));
+
+      // 始点→終点の順で存在するか確認
+      if (fromIndex !== -1 && toIndex !== -1 && fromIndex < toIndex) {
+        const fromStopTime = tripStopTimes[fromIndex];
+        const toStopTime = tripStopTimes[toIndex];
+        
+        const route = routes.find((r: any) => r.route_id === trip.route_id);
+        
+        foundRoutes.push({
+          tripId: trip.trip_id,
+          routeName: route?.route_long_name || route?.route_short_name || '不明',
+          headsign: trip.trip_headsign || '',
+          departureTime: fromStopTime.departure_time,
+          arrivalTime: toStopTime.arrival_time,
+          fromStop: fromStops.find((s: any) => s.stop_id === fromStopTime.stop_id)?.stop_name,
+          toStop: toStops.find((s: any) => s.stop_id === toStopTime.stop_id)?.stop_name,
+        });
+
+        if (foundRoutes.length >= limit) break;
       }
-
-      try {
-        const parsedTime = TimeUtils.parseTime(timeParam);
-        searchHour = parsedTime.hour;
-        searchMinute = parsedTime.minute;
-      } catch (error) {
-        throw new BadRequestError(`timeパラメータの形式が不正です: ${timeParam}`);
-      }
-    } else if (typeParam === 'now') {
-      searchHour = currentTime.getHours();
-      searchMinute = currentTime.getMinutes();
-    } else {
-      // first-bus, last-busの場合は時刻指定不要
-      searchHour = 0;
-      searchMinute = 0;
     }
 
-    // SearchControllerを使用して検索
-    const searchController = new SearchControllerAdapter(dataLoader);
-    const results = searchController.searchDirectTrips(
-      from.trim(),
-      to.trim(),
-      {
-        type: typeParam as any,
-        hour: searchHour,
-        minute: searchMinute
-      },
-      weekdayType
-    );
-
-    // 結果を最大limit件に制限
-    const limitedResults = results.slice(0, limit);
-
-    // レスポンスを返す
     return new Response(
       JSON.stringify({
-        routes: limitedResults,
-        count: limitedResults.length,
-        searchCriteria: {
-          from: from.trim(),
-          to: to.trim(),
-          time: timeParam || TimeUtils.formatTime(searchHour, searchMinute),
-          type: typeParam,
-          weekday: weekdayType
-        }
+        routes: foundRoutes,
+        count: foundRoutes.length
       }),
       {
         status: 200,
@@ -132,11 +125,15 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       }
     );
   } catch (error) {
-    return handleError(error as Error);
+    console.error('[API Error]', error);
+    return new Response(
+      JSON.stringify({ error: (error as Error).message }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 };
 
-// OPTIONSリクエストハンドラー（CORSプリフライト対応）
+// CORS対応
 export const onRequestOptions: PagesFunction<Env> = async () => {
   return new Response(null, {
     status: 204,
