@@ -415,20 +415,6 @@ class RetryHandler {
   }
 }
 
-// エクスポート（CommonJSとESモジュールの両方に対応）
-if (typeof module !== 'undefined' && module.exports) {
-  // CommonJS
-  module.exports = {
-    Logger,
-    ErrorHandler,
-    RetryHandler,
-    GTFSError,
-    LogLevel,
-    ErrorCategory,
-    RetryConfig
-  };
-}
-
 // ESモジュール用のエクスポート
 export {
   Logger,
