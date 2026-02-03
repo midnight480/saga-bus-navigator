@@ -130,11 +130,211 @@ class DataLoader {
     if (typeof IndexedDBCache !== 'undefined') {
       this.cache = new IndexedDBCache();
     }
+    
+    // Cloudflare KV統合（要件4.1）
+    this.kvNamespace = null; // Pages Functionから設定される
+  }
+
+  /**
+   * KV Namespaceを設定（Pages Functionから呼び出される）
+   * @param {Object} kvNamespace - Cloudflare KV Namespace
+   */
+  setKVNamespace(kvNamespace) {
+    this.kvNamespace = kvNamespace;
+    this.logDebug('KV Namespaceが設定されました');
+  }
+
+  /**
+   * KVからGTFSデータを読み込む（要件4.1, 4.2, 4.3）
+   * @returns {Promise<Object>} パースされたGTFSデータ
+   * @throws {Error} KVからの読み込みに失敗した場合
+   */
+  async loadFromKV() {
+    if (!this.kvNamespace) {
+      throw new Error('KV Namespaceが設定されていません');
+    }
+
+    this.logDebug('KVからのデータ読み込み開始');
+    const overallStartTime = Date.now();
+
+    try {
+      // 現在のバージョンを取得（要件4.1）
+      const version = await this.kvNamespace.get('gtfs:current_version', 'text');
+      
+      if (!version) {
+        throw new Error('KVに現在のバージョンが見つかりません');
+      }
+
+      this.logDebug('現在のバージョン取得', { version });
+
+      // 各テーブルを並列に読み込み（要件4.2）
+      const tables = ['stops', 'routes', 'trips', 'calendar', 'agency', 'fare_attributes'];
+      const promises = tables.map(table => this.loadTableFromKV(version, table));
+
+      // stop_timesは分割されている可能性があるため特別処理（要件4.3）
+      promises.push(this.loadStopTimesFromKV(version));
+
+      // fare_rulesもオプショナルで読み込み
+      promises.push(this.loadTableFromKV(version, 'fare_rules').catch(() => []));
+
+      const results = await Promise.all(promises);
+
+      // 結果をオブジェクトにまとめる
+      const data = {};
+      for (let i = 0; i < tables.length; i++) {
+        data[tables[i]] = results[i];
+      }
+      data.stop_times = results[tables.length];
+      data.fare_rules = results[tables.length + 1];
+
+      const overallEndTime = Date.now();
+      this.logDebug('KVからのデータ読み込み完了', {
+        duration: `${overallEndTime - overallStartTime}ms`,
+        version: version,
+        recordCounts: {
+          stops: data.stops.length,
+          stopTimes: data.stop_times.length,
+          routes: data.routes.length,
+          trips: data.trips.length,
+          calendar: data.calendar.length,
+          agency: data.agency.length,
+          fareAttributes: data.fare_attributes.length,
+          fareRules: data.fare_rules.length
+        }
+      });
+
+      return {
+        stops: data.stops,
+        stopTimes: data.stop_times,
+        routes: data.routes,
+        trips: data.trips,
+        calendar: data.calendar,
+        agency: data.agency,
+        fareAttributes: data.fare_attributes,
+        fareRules: data.fare_rules
+      };
+    } catch (error) {
+      this.logDebug('KVからのデータ読み込みに失敗しました', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * KVから単一のテーブルを読み込む
+   * @param {string} version - バージョン番号
+   * @param {string} table - テーブル名
+   * @returns {Promise<Array>} テーブルデータ
+   * @throws {Error} テーブルが見つからない場合
+   */
+  async loadTableFromKV(version, table) {
+    const key = `gtfs:v${version}:${table}`;
+    this.logDebug(`KVからテーブル読み込み: ${key}`);
+    
+    const startTime = Date.now();
+    const data = await this.kvNamespace.get(key, 'json');
+    const endTime = Date.now();
+    
+    if (!data) {
+      throw new Error(`テーブル ${table} がKVに見つかりません`);
+    }
+    
+    this.logDebug(`テーブル読み込み完了: ${table}`, {
+      duration: `${endTime - startTime}ms`,
+      records: data.length
+    });
+    
+    return data;
+  }
+
+  /**
+   * KVから分割されたstop_timesデータを読み込んで結合（要件4.3）
+   * @param {string} version - バージョン番号
+   * @returns {Promise<Array>} 結合されたstop_timesデータ
+   * @throws {Error} stop_timesデータが見つからない場合
+   */
+  async loadStopTimesFromKV(version) {
+    this.logDebug('stop_timesデータの読み込み開始');
+    const overallStartTime = Date.now();
+
+    // まず分割されていないキーを試す
+    try {
+      const data = await this.loadTableFromKV(version, 'stop_times');
+      this.logDebug('stop_timesデータ読み込み完了（分割なし）', {
+        duration: `${Date.now() - overallStartTime}ms`,
+        records: data.length
+      });
+      return data;
+    } catch (error) {
+      this.logDebug('分割されていないstop_timesが見つかりません。分割ファイルを検索します。');
+    }
+
+    // 分割されている場合は全てのチャンクを並列に読み込んで結合
+    const chunks = [];
+    let chunkIndex = 0;
+    const chunkPromises = [];
+
+    // 最大100チャンクまで試行（通常は数チャンク程度）
+    while (chunkIndex < 100) {
+      const key = `gtfs:v${version}:stop_times_${chunkIndex}`;
+      
+      chunkPromises.push(
+        this.kvNamespace.get(key, 'json')
+          .then(chunk => {
+            if (chunk) {
+              this.logDebug(`チャンク読み込み完了: stop_times_${chunkIndex}`, {
+                records: chunk.length
+              });
+              return { index: chunkIndex, data: chunk };
+            }
+            return null;
+          })
+          .catch(() => null)
+      );
+      
+      chunkIndex++;
+      
+      // 10チャンクごとに並列実行して結果を確認
+      if (chunkIndex % 10 === 0) {
+        const results = await Promise.all(chunkPromises.splice(0, chunkPromises.length));
+        const validResults = results.filter(r => r !== null);
+        
+        if (validResults.length === 0) {
+          // 10チャンク連続で見つからなければ終了
+          break;
+        }
+        
+        chunks.push(...validResults);
+      }
+    }
+
+    // 残りのプロミスを処理
+    if (chunkPromises.length > 0) {
+      const results = await Promise.all(chunkPromises);
+      const validResults = results.filter(r => r !== null);
+      chunks.push(...validResults);
+    }
+
+    if (chunks.length === 0) {
+      throw new Error('KVにstop_timesデータが見つかりません');
+    }
+
+    // インデックス順にソートしてから結合
+    chunks.sort((a, b) => a.index - b.index);
+    const combined = chunks.flatMap(chunk => chunk.data);
+
+    const overallEndTime = Date.now();
+    this.logDebug('stop_timesデータ読み込み完了（分割あり）', {
+      duration: `${overallEndTime - overallStartTime}ms`,
+      chunks: chunks.length,
+      records: combined.length
+    });
+
+    return combined;
   }
 
   /**
    * 全データを1回の読み込みで取得（要件1.1, 1.2）
-   * 事前処理済みJSONファイルを優先的に使用し、なければZIPから読み込む
+   * KV、事前処理済みJSONファイル、ZIPファイルの順に試行
    * @returns {Promise<void>}
    * @throws {Error} データ読み込みに失敗した場合
    */
@@ -217,7 +417,139 @@ class DataLoader {
           }
         } catch (error) {
           this.logDebug('IndexedDBキャッシュからの読み込みに失敗しました:', error);
-          // エラーが発生しても続行（JSONファイルから読み込む）
+          // エラーが発生しても続行（KVまたはJSONファイルから読み込む）
+        }
+      }
+      
+      // KVからの読み込みを試行（要件4.1, 4.5）
+      if (this.kvNamespace) {
+        try {
+          if (this.onProgress) {
+            this.onProgress('KVからデータを読み込んでいます...');
+          }
+          
+          // タイムアウト付きでKVから読み込み（要件4.5: 5秒タイムアウト）
+          gtfsData = await Promise.race([
+            this.loadFromKV(),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('KV読み込みタイムアウト')), 5000)
+            )
+          ]);
+          
+          if (this.onProgress) {
+            this.onProgress('データを変換しています...');
+          }
+          
+          // 変換済みデータを生成
+          const transformStartTime = Date.now();
+          
+          this.busStops = DataTransformer.transformStops(
+            gtfsData.stops,
+            (message, data) => this.logDebug(message, data)
+          );
+          
+          this.timetable = DataTransformer.transformTimetable(
+            gtfsData.stopTimes,
+            gtfsData.trips,
+            gtfsData.routes,
+            gtfsData.calendar,
+            gtfsData.agency,
+            gtfsData.stops,
+            (message, data) => this.logDebug(message, data)
+          );
+          
+          this.fares = DataTransformer.transformFares(
+            gtfsData.fareAttributes,
+            (message, data) => this.logDebug(message, data)
+          );
+          
+          // fare_rules.txtが存在する場合は変換してキャッシュ
+          if (gtfsData.fareRules && gtfsData.fareRules.length > 0) {
+            this.fareRules = DataTransformer.transformFareRules(
+              gtfsData.fareRules,
+              (message, data) => this.logDebug(message, data)
+            );
+          } else {
+            this.logDebug('fare_rules.txtが存在しないため、運賃ルールデータはスキップされました');
+            this.fareRules = [];
+          }
+          
+          const transformEndTime = Date.now();
+          
+          // 生データをキャッシュ（TimetableController用）
+          this.stopTimes = gtfsData.stopTimes;
+          this.trips = gtfsData.trips;
+          this.routes = gtfsData.routes;
+          this.calendar = gtfsData.calendar;
+          this.gtfsStops = gtfsData.stops;
+          
+          if (this.onProgress) {
+            this.onProgress('方向情報を付与しています...');
+          }
+          
+          // 方向情報を付与（データ変換後、インデックス生成前）
+          const directionStartTime = Date.now();
+          this.enrichTripsWithDirection();
+          const directionEndTime = Date.now();
+          
+          if (this.onProgress) {
+            this.onProgress('インデックスを生成しています...');
+          }
+          
+          // インデックスを生成（要件2.1, 7.1）
+          const indexStartTime = Date.now();
+          this.generateIndexes();
+          const indexEndTime = Date.now();
+          
+          if (this.onProgress) {
+            this.onProgress('マッピングデータを読み込んでいます...');
+          }
+          
+          // バス停マッピングと路線名マッピングを並列で読み込み（多言語対応）
+          const mappingStartTime = Date.now();
+          await Promise.all([
+            this.loadBusStopMapping(),
+            this.loadRouteNameMapping()
+          ]);
+          const mappingEndTime = Date.now();
+          
+          const overallEndTime = Date.now();
+          
+          // IndexedDBキャッシュに保存（非同期で実行、エラーが発生しても続行）
+          if (this.cache) {
+            this.cache.set('gtfs-data', {
+              busStops: this.busStops,
+              timetable: this.timetable,
+              fares: this.fares,
+              fareRules: this.fareRules,
+              stopTimes: this.stopTimes,
+              trips: this.trips,
+              routes: this.routes,
+              calendar: this.calendar,
+              gtfsStops: this.gtfsStops
+            }).catch(error => {
+              this.logDebug('IndexedDBキャッシュへの保存に失敗しました:', error);
+            });
+          }
+          
+          this.logDebug('KVからの読み込み完了', {
+            totalDuration: `${overallEndTime - overallStartTime}ms`,
+            transformDuration: `${transformEndTime - transformStartTime}ms`,
+            directionDuration: `${directionEndTime - directionStartTime}ms`,
+            indexDuration: `${indexEndTime - indexStartTime}ms`,
+            mappingDuration: `${mappingEndTime - mappingStartTime}ms`
+          });
+          
+          if (this.onProgress) {
+            this.onProgress('データの読み込みが完了しました');
+          }
+          
+          return; // KVから読み込めたので終了
+        } catch (error) {
+          // KV読み込み失敗時のフォールバック（要件4.5, 6.1, 6.2, 6.3）
+          console.warn('KVからの読み込みに失敗しました。ZIPファイルにフォールバックします:', error);
+          this.logDebug('KVフォールバック', { error: error.message });
+          // エラーが発生しても続行（JSONファイルまたはZIPから読み込む）
         }
       }
       
