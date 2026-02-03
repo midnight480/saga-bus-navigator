@@ -100,7 +100,7 @@ export class DataLoaderAdapter {
           this.dataLoader = {
             busStops: this.transformStops(gtfsData.stops),
             timetable: this.transformTimetable(gtfsData),
-            fares: this.transformFares(gtfsData.fareAttributes),
+            fares: this.transformFares(gtfsData.fareAttributes || []),
             gtfsData: gtfsData
           };
           this.isInitialized = true;
@@ -124,7 +124,7 @@ export class DataLoaderAdapter {
       this.dataLoader = {
         busStops: this.transformStops(gtfsData.stops),
         timetable: this.transformTimetable(gtfsData),
-        fares: this.transformFares(gtfsData.fareAttributes),
+        fares: this.transformFares(gtfsData.fareAttributes || []),
         gtfsData: gtfsData
       };
       
@@ -233,18 +233,20 @@ export class DataLoaderAdapter {
       while (true) {
         const chunk = await this.kvNamespace.get(`gtfs:v${currentVersion}:stop_times_${chunkIndex}`, 'json');
         if (!chunk) break;
-        stopTimesChunks.push(...chunk);
+        if (Array.isArray(chunk)) {
+          stopTimesChunks.push(...chunk);
+        }
         chunkIndex++;
       }
 
       return {
-        stops: stops || [],
+        stops: (stops as any[]) || [],
         stopTimes: stopTimesChunks,
-        routes: routes || [],
-        trips: trips || [],
-        calendar: calendar || [],
-        agency: agency || [],
-        fareAttributes: fareAttributes || []
+        routes: (routes as any[]) || [],
+        trips: (trips as any[]) || [],
+        calendar: (calendar as any[]) || [],
+        agency: (agency as any[]) || [],
+        fareAttributes: (fareAttributes as any[]) || []
       };
     } catch (error) {
       console.error('[DataLoaderAdapter] KVからの読み込みエラー:', error);
