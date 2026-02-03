@@ -2,4 +2,9 @@ name = "saga-bus-navigator"
 pages_build_output_dir = "."
 compatibility_date = "2025-11-16"
 compatibility_flags = ["nodejs_compat"]
+account_id = "d592a4c2a2de7ea02141c61c424b2a7c"
+
+[[kv_namespaces]]
+binding = "GTFS_DATA"
+id = "3ae3f515d413458d913a9be942fdf056"
 

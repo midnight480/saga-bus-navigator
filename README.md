@@ -107,8 +107,10 @@
 - **フロントエンド**: HTML5, CSS3, Vanilla JavaScript
 - **データ形式**: GTFS（General Transit Feed Specification）標準形式
 - **データ処理**: 
-  - 事前処理済みJSONファイル（優先、高速）
+  - Cloudflare KV（本番環境、最速）
+  - 事前処理済みJSONファイル（フォールバック、高速）
   - JSZip（ブラウザ上でのZIP解凍、フォールバック）
+- **データ管理**: Cloudflare KVによるバージョン管理とロールバック機能
 - **時刻取得**: NTP over HTTP（ntp.nict.jp）
 - **ホスティング**: Cloudflare Pages
 - **テスト**: Vitest（単体テスト）、Playwright（E2Eテスト）
@@ -165,6 +167,24 @@ npm run dev
 
 ### データ更新手順
 
+#### Cloudflare KVを使用した更新（推奨）
+
+本番環境では、Cloudflare KVを使用してGTFSデータを管理します。詳細は[KVデプロイメントガイド](docs/deployment/KV_DEPLOYMENT.md)を参照してください。
+
+1. 最新のGTFSデータ（saga-YYYY-MM-DD.zip）をダウンロード
+2. `./data/`ディレクトリに配置
+3. GTFS前処理を実行:
+   ```bash
+   node scripts/gtfs_to_json.js
+   ```
+4. KVにアップロード:
+   ```bash
+   node scripts/upload_to_kv.js
+   ```
+5. Gitにコミット＆プッシュ（自動デプロイ）
+
+#### ローカル開発環境での更新
+
 1. 最新のGTFSデータ（saga-YYYY-MM-DD.zip）をダウンロード
 2. `./data/`ディレクトリに配置
 3. ファイル名を`saga-current.zip`にリネーム（推奨）
@@ -176,9 +196,10 @@ npm run dev
 
 アプリケーションは以下の優先順位でデータを読み込みます：
 
-1. **IndexedDBキャッシュ**（24時間有効）
-2. **事前処理済みJSONファイル**（`data/processed/`ディレクトリ、最速）
-3. **GTFS ZIPファイル**（`saga-current.zip`または`saga-YYYY-MM-DD.zip`）
+1. **Cloudflare KV**（本番環境、最速、5秒タイムアウト）
+2. **IndexedDBキャッシュ**（24時間有効）
+3. **事前処理済みJSONファイル**（`data/processed/`ディレクトリ、高速）
+4. **GTFS ZIPファイル**（`saga-current.zip`または`saga-YYYY-MM-DD.zip`）
 
 事前処理済みJSONファイルを使用することで、ZIP展開のオーバーヘッドを削減し、約50-70%の高速化が期待できます。詳細は[GTFSデータの事前処理ガイド](docs/GTFS_PREPROCESSING.md)を参照してください。
 
@@ -395,6 +416,11 @@ saga-bus-navigator/
 
 - [APIドキュメント](docs/API.md)
 - [デプロイ手順](docs/deployment/DEPLOYMENT.md)
+- [KVデプロイメントガイド](docs/deployment/KV_DEPLOYMENT.md)
+- [KV運用手順書](docs/KV_OPERATIONS.md)
+- [KVトラブルシューティング](docs/KV_TROUBLESHOOTING.md)
+- [KV統合ドキュメント](docs/KV_INTEGRATION.md)
+- [KVアップロードスクリプト](docs/KV_UPLOAD_SCRIPTS.md)
 - [プロジェクト構成](docs/FILES_STRUCTURE.md)
 - [セキュリティ](docs/SECURITY.md)
 - [レスポンシブデザイン](docs/RESPONSIVE_DESIGN.md)
@@ -410,11 +436,13 @@ saga-bus-navigator/
 ## 📊 パフォーマンス
 
 - **データ読み込み**: 
+  - Cloudflare KV使用時: 約0.5-1.5秒（本番環境、最速）
   - 事前処理済みJSONファイル使用時: 約1.5-3秒（約50-70%高速化）
   - ZIPファイル使用時: 約3-5秒
 - **検索実行**: 2秒以内
 - **Cloudflare CDNによる高速配信**
 - **IndexedDBキャッシュ**: 24時間有効で2回目以降の読み込みを高速化
+- **KVフォールバック**: KV読み込み失敗時（5秒タイムアウト）は自動的にZIPファイルにフォールバック
 
 ## 🌐 ブラウザサポート
 
@@ -661,6 +689,24 @@ const platforms = dataLoader.stopsGrouped['station_001'];
 - [データ構造最適化 - 実装タスク](.kiro/specs/data-structure-optimization/tasks.md)
 
 ## 📅 更新履歴
+
+### v2.9.0 (2025-02-03)
+
+- **Cloudflare KV統合**: GTFSデータをCloudflare KVで管理
+  - KVからのデータ読み込み機能（5秒タイムアウト）
+  - 自動フォールバック機能（KV失敗時はZIPファイルを使用）
+  - バージョン管理機能（最新2世代を保持）
+  - ロールバック機能（1世代前に戻す）
+- **GTFS前処理スクリプト**: ZIPファイルをJSON形式に変換
+  - 25MB超のstop_timesデータを自動分割
+  - メタデータファイルの生成
+- **KVアップロードスクリプト**: JSONファイルをKVにアップロード
+  - タイムスタンプベースのバージョン番号生成
+  - 古いバージョンの自動削除
+  - リトライ処理（指数バックオフ）
+- **Deploy Hook**: デプロイ後に自動的にKVにアップロード
+- **運用ドキュメント**: デプロイメント、運用、トラブルシューティングガイドを追加
+- **統合テスト**: GTFS ZIP読み込みとKVフォールバックのテストを追加
 
 ### v2.8.0 (2025-01-XX)
 

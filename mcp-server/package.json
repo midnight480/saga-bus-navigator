@@ -1,0 +1,38 @@
+{
+  "name": "saga-bus-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for Saga Bus Navigator - provides bus information via Model Context Protocol",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "saga-bus-mcp-server": "build/index.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x build/index.js",
+    "watch": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "saga",
+    "bus",
+    "transit",
+    "gtfs"
+  ],
+  "author": "midnight480",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "fast-check": "^3.23.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
