@@ -10,7 +10,7 @@ import { TimeUtils } from '../../lib/time-utils';
 import { BadRequestError, NotFoundError, handleError } from '../../lib/api-errors';
 
 interface Env {
-  // Cloudflare環境変数（必要に応じて追加）
+  GTFS_DATA: KVNamespace;
 }
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
@@ -37,6 +37,10 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
     // DataLoaderを初期化
     const dataLoader = DataLoaderAdapter.getInstance();
+    // KV Namespaceを設定
+    if (context.env.GTFS_DATA) {
+      dataLoader.setKVNamespace(context.env.GTFS_DATA);
+    }
     // ベースURLを設定（リクエストURLから取得）
     dataLoader.setBaseUrl(url.origin);
     await dataLoader.loadData();

@@ -50,6 +50,7 @@ export class DataLoaderAdapter {
   private dataLoader: any = null;
   private isInitialized: boolean = false;
   private baseUrl: string = '';
+  private kvNamespace: KVNamespace | null = null;
 
   private constructor() {}
 
@@ -61,6 +62,13 @@ export class DataLoaderAdapter {
       DataLoaderAdapter.instance = new DataLoaderAdapter();
     }
     return DataLoaderAdapter.instance;
+  }
+
+  /**
+   * KV Namespaceを設定
+   */
+  setKVNamespace(kv: KVNamespace): void {
+    this.kvNamespace = kv;
   }
 
   /**
@@ -82,7 +90,26 @@ export class DataLoaderAdapter {
     try {
       console.log('[DataLoaderAdapter] GTFSデータの読み込みを開始します');
       
-      // GTFS ZIPファイルのパスを決定
+      // KVから読み込みを試行
+      if (this.kvNamespace) {
+        console.log('[DataLoaderAdapter] KVからデータを読み込みます');
+        const gtfsData = await this.loadFromKV();
+        if (gtfsData) {
+          // データを変換してキャッシュ
+          this.dataLoader = {
+            busStops: this.transformStops(gtfsData.stops),
+            timetable: this.transformTimetable(gtfsData),
+            fares: this.transformFares(gtfsData.fareAttributes),
+            gtfsData: gtfsData
+          };
+          this.isInitialized = true;
+          console.log('[DataLoaderAdapter] KVからのデータ読み込みが完了しました');
+          return;
+        }
+      }
+      
+      // KVから読み込めない場合はZIPファイルから読み込み
+      console.log('[DataLoaderAdapter] ZIPファイルからデータを読み込みます');
       const zipPath = await this.findGTFSZipFile();
       console.log('[DataLoaderAdapter] ZIPファイルを検出:', zipPath);
       
@@ -169,6 +196,59 @@ export class DataLoaderAdapter {
     return busStops.filter(stop => 
       stop.name.toLowerCase().includes(lowerQuery)
     );
+  }
+
+  /**
+   * KVからGTFSデータを読み込み
+   */
+  private async loadFromKV(): Promise<GTFSData | null> {
+    if (!this.kvNamespace) {
+      return null;
+    }
+
+    try {
+      // current_versionを取得
+      const currentVersion = await this.kvNamespace.get('current_version');
+      if (!currentVersion) {
+        console.log('[DataLoaderAdapter] KVにcurrent_versionが見つかりません');
+        return null;
+      }
+
+      console.log('[DataLoaderAdapter] KVバージョン:', currentVersion);
+
+      // 各テーブルを読み込み
+      const [stops, routes, trips, calendar, agency, fareAttributes] = await Promise.all([
+        this.kvNamespace.get(`gtfs:v${currentVersion}:stops`, 'json'),
+        this.kvNamespace.get(`gtfs:v${currentVersion}:routes`, 'json'),
+        this.kvNamespace.get(`gtfs:v${currentVersion}:trips`, 'json'),
+        this.kvNamespace.get(`gtfs:v${currentVersion}:calendar`, 'json'),
+        this.kvNamespace.get(`gtfs:v${currentVersion}:agency`, 'json'),
+        this.kvNamespace.get(`gtfs:v${currentVersion}:fare_attributes`, 'json'),
+      ]);
+
+      // stop_timesは分割されている可能性があるので、全チャンクを読み込む
+      const stopTimesChunks: any[] = [];
+      let chunkIndex = 0;
+      while (true) {
+        const chunk = await this.kvNamespace.get(`gtfs:v${currentVersion}:stop_times_${chunkIndex}`, 'json');
+        if (!chunk) break;
+        stopTimesChunks.push(...chunk);
+        chunkIndex++;
+      }
+
+      return {
+        stops: stops || [],
+        stopTimes: stopTimesChunks,
+        routes: routes || [],
+        trips: trips || [],
+        calendar: calendar || [],
+        agency: agency || [],
+        fareAttributes: fareAttributes || []
+      };
+    } catch (error) {
+      console.error('[DataLoaderAdapter] KVからの読み込みエラー:', error);
+      return null;
+    }
   }
 
   /**
