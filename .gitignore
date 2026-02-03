@@ -50,3 +50,9 @@ playwright/.cache/
 # Cloudflare Pagesの25MB制限を回避するため、ZIPファイルから直接読み込む方式に変更
 # ZIPファイル（data/*.zip）はコミット対象
 data/processed/
+
+# GTFS JSON files for Cloudflare KV (自動生成されるためコミット対象外)
+# メタデータとREADMEは保持
+gtfs-json/*.json
+!gtfs-json/metadata.json
+!gtfs-json/README.md
