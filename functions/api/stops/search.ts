@@ -15,13 +15,18 @@ interface Env {
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
+    console.log('[API] Request received:', context.request.url);
+    
     // クエリパラメータを取得
     const url = new URL(context.request.url);
     const query = url.searchParams.get('q');
     const limitParam = url.searchParams.get('limit');
 
+    console.log('[API] Query params:', { query, limit: limitParam });
+
     // パラメータバリデーション
     if (!query || query.trim() === '') {
+      console.log('[API] Bad request: query parameter missing');
       throw new BadRequestError('クエリパラメータ "q" は必須です');
     }
 
