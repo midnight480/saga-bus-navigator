@@ -3,6 +3,9 @@ pages_build_output_dir = "."
 compatibility_date = "2025-11-16"
 compatibility_flags = ["nodejs_compat"]
 
+[build]
+command = "cd functions && npm ci --omit=dev && cd .."
+
 # GTFS data storage
 [[kv_namespaces]]
 binding = "GTFS_DATA"
