@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "@aws-sdk/client-translate": "^3.700.0",
-    "@modelcontextprotocol/sdk": "^1.0.4",
     "ajv": "^8.17.1",
     "jszip": "^3.10.1"
   },
