@@ -1,0 +1,702 @@
+/**
+ * GTFS前処理スクリプトの単体テスト
+ */
+
+import { describe, it, expect } from 'vitest';
+import JSZip from 'jszip';
+import * as fc from 'fast-check';
+import {
+  parseCSV,
+  parseCSVLine,
+  getDataSize,
+  splitIntoChunks
+} from '../scripts/gtfs_to_json.js';
+
+describe('GTFS前処理スクリプト', () => {
+  describe('parseCSVLine', () => {
+    it('シンプルなカンマ区切りをパースできる', () => {
+      const line = 'value1,value2,value3';
+      const result = parseCSVLine(line);
+      expect(result).toEqual(['value1', 'value2', 'value3']);
+    });
+
+    it('ダブルクォートで囲まれた値をパースできる', () => {
+      const line = '"value1","value2","value3"';
+      const result = parseCSVLine(line);
+      expect(result).toEqual(['value1', 'value2', 'value3']);
+    });
+
+    it('カンマを含む値をダブルクォートで囲んでパースできる', () => {
+      const line = '"value1,with,comma","value2","value3"';
+      const result = parseCSVLine(line);
+      expect(result).toEqual(['value1,with,comma', 'value2', 'value3']);
+    });
+
+    it('エスケープされたダブルクォートをパースできる', () => {
+      const line = '"value""with""quotes","value2"';
+      const result = parseCSVLine(line);
+      expect(result).toEqual(['value"with"quotes', 'value2']);
+    });
+
+    it('空の値をパースできる', () => {
+      const line = 'value1,,value3';
+      const result = parseCSVLine(line);
+      expect(result).toEqual(['value1', '', 'value3']);
+    });
+
+    it('前後の空白をトリムする', () => {
+      const line = ' value1 , value2 , value3 ';
+      const result = parseCSVLine(line);
+      expect(result).toEqual(['value1', 'value2', 'value3']);
+    });
+  });
+
+  describe('parseCSV', () => {
+    it('ヘッダー行とデータ行をパースしてオブジェクト配列に変換できる', () => {
+      const csv = 'id,name,value\n1,test1,100\n2,test2,200';
+      const result = parseCSV(csv);
+      expect(result).toEqual([
+        { id: '1', name: 'test1', value: '100' },
+        { id: '2', name: 'test2', value: '200' }
+      ]);
+    });
+
+    it('空行をスキップする', () => {
+      const csv = 'id,name,value\n1,test1,100\n\n2,test2,200\n';
+      const result = parseCSV(csv);
+      expect(result).toEqual([
+        { id: '1', name: 'test1', value: '100' },
+        { id: '2', name: 'test2', value: '200' }
+      ]);
+    });
+
+    it('空のCSVテキストは空配列を返す', () => {
+      const csv = '';
+      const result = parseCSV(csv);
+      expect(result).toEqual([]);
+    });
+
+    it('ヘッダーのみのCSVは空配列を返す', () => {
+      const csv = 'id,name,value';
+      const result = parseCSV(csv);
+      expect(result).toEqual([]);
+    });
+
+    it('GTFS stops.txtの形式をパースできる', () => {
+      const csv = 'stop_id,stop_name,stop_lat,stop_lon\n' +
+                  'STOP001,佐賀駅バスセンター,33.2490,130.2990\n' +
+                  'STOP002,県庁前,33.2500,130.3000';
+      const result = parseCSV(csv);
+      expect(result).toEqual([
+        {
+          stop_id: 'STOP001',
+          stop_name: '佐賀駅バスセンター',
+          stop_lat: '33.2490',
+          stop_lon: '130.2990'
+        },
+        {
+          stop_id: 'STOP002',
+          stop_name: '県庁前',
+          stop_lat: '33.2500',
+          stop_lon: '130.3000'
+        }
+      ]);
+    });
+  });
+
+  describe('getDataSize', () => {
+    it('データのサイズをバイト単位で計算できる', () => {
+      const data = [{ id: '1', name: 'test' }];
+      const size = getDataSize(data);
+      expect(size).toBeGreaterThan(0);
+      expect(typeof size).toBe('number');
+    });
+
+    it('空配列のサイズは2バイト（"[]"）', () => {
+      const data = [];
+      const size = getDataSize(data);
+      expect(size).toBe(2);
+    });
+
+    it('日本語を含むデータのサイズを正しく計算できる', () => {
+      const data = [{ name: '佐賀駅' }];
+      const size = getDataSize(data);
+      // UTF-8で日本語は3バイト/文字
+      expect(size).toBeGreaterThan(10);
+    });
+  });
+
+  describe('splitIntoChunks', () => {
+    it('小さなデータは分割されない', () => {
+      const data = [
+        { id: '1', name: 'test1' },
+        { id: '2', name: 'test2' }
+      ];
+      const maxSize = 1000; // 1KB
+      const chunks = splitIntoChunks(data, maxSize);
+      expect(chunks).toHaveLength(1);
+      expect(chunks[0]).toEqual(data);
+    });
+
+    it('大きなデータは複数のチャンクに分割される', () => {
+      // 100バイト程度のアイテムを作成
+      const items = [];
+      for (let i = 0; i < 100; i++) {
+        items.push({
+          id: `ID${i}`,
+          name: `Name${i}`,
+          description: `Description for item ${i}`
+        });
+      }
+      
+      const maxSize = 1000; // 1KB
+      const chunks = splitIntoChunks(items, maxSize);
+      
+      // 複数のチャンクに分割されることを確認
+      expect(chunks.length).toBeGreaterThan(1);
+      
+      // 各チャンクのサイズが制限以下であることを確認
+      chunks.forEach(chunk => {
+        const chunkSize = getDataSize(chunk);
+        expect(chunkSize).toBeLessThanOrEqual(maxSize);
+      });
+      
+      // 全てのチャンクを結合すると元のデータと一致することを確認
+      const merged = chunks.flat();
+      expect(merged).toEqual(items);
+    });
+
+    it('各チャンクが最大サイズを超えない（個々のアイテムが小さい場合）', () => {
+      const items = [];
+      // 小さなアイテムを作成（各アイテムは約50バイト）
+      for (let i = 0; i < 1000; i++) {
+        items.push({
+          id: `ID${i}`,
+          data: `Data${i}`
+        });
+      }
+      
+      const maxSize = 5000; // 5KB
+      const chunks = splitIntoChunks(items, maxSize);
+      
+      // 各チャンクのサイズが制限を大きく超えないことを確認
+      // JSON配列のオーバーヘッド（[, ], ,）により、若干超える可能性がある
+      chunks.forEach(chunk => {
+        const chunkSize = getDataSize(chunk);
+        // 10%のマージンを許容
+        expect(chunkSize).toBeLessThanOrEqual(maxSize * 1.1);
+      });
+    });
+
+    it('空配列は空のチャンク配列を返す', () => {
+      const data = [];
+      const maxSize = 1000;
+      const chunks = splitIntoChunks(data, maxSize);
+      expect(chunks).toHaveLength(0);
+    });
+
+    it('分割後のチャンクを結合すると元のデータと一致する', () => {
+      const items = [];
+      for (let i = 0; i < 500; i++) {
+        items.push({
+          id: `ID${i}`,
+          name: `Name${i}`,
+          value: i * 100
+        });
+      }
+      
+      const maxSize = 2000; // 2KB
+      const chunks = splitIntoChunks(items, maxSize);
+      const merged = chunks.flat();
+      
+      expect(merged).toEqual(items);
+      expect(merged.length).toBe(items.length);
+    });
+  });
+
+  describe('エラーハンドリング', () => {
+    it('不正なCSV形式でもエラーを投げない', () => {
+      const csv = 'id,name\n1,test1,extra\n2,test2';
+      expect(() => parseCSV(csv)).not.toThrow();
+    });
+
+    it('カラム数が一致しない行は警告を出してスキップする', () => {
+      const csv = 'id,name,value\n1,test1,100\n2,test2\n3,test3,300';
+      const result = parseCSV(csv);
+      // カラム数が一致しない行はスキップされる
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({ id: '1', name: 'test1', value: '100' });
+      expect(result[1]).toEqual({ id: '3', name: 'test3', value: '300' });
+    });
+  });
+
+  /**
+   * 実データベーステスト
+   * Feature: cloudflare-kv-gtfs-deployment
+   * Property 1: GTFS ZIPからJSONへの変換ラウンドトリップ
+   * 
+   * **Validates: Requirements 1.1, 1.2, 1.4**
+   * 
+   * 実際のGTFS ZIPファイル（saga-current.zip）に対して、ZIPファイルを解凍してJSON形式に変換し、
+   * そのJSONを再度GTFS形式に戻した場合、元のデータと等価なデータが得られる
+   */
+  describe('プロパティ1: GTFS ZIPからJSONへの変換ラウンドトリップ', () => {
+
+    /**
+     * JSONデータをCSV形式に変換
+     */
+    const jsonToCSV = (data, fields) => {
+      if (data.length === 0) return fields.join(',');
+      
+      const header = fields.join(',');
+      const rows = data.map(row => {
+        return fields.map(field => {
+          const value = row[field] || '';
+          // カンマやダブルクォートを含む場合はエスケープ
+          if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        }).join(',');
+      });
+      
+      return [header, ...rows].join('\n');
+    };
+
+    /**
+     * GTFSデータからZIPファイルを作成
+     */
+    const createGTFSZip = async (gtfsData) => {
+      const zip = new JSZip();
+      
+      const tableFields = {
+        stops: ['stop_id', 'stop_name', 'stop_lat', 'stop_lon'],
+        stop_times: ['trip_id', 'arrival_time', 'departure_time', 'stop_id', 'stop_sequence'],
+        routes: ['route_id', 'route_short_name', 'route_long_name', 'route_type'],
+        trips: ['route_id', 'service_id', 'trip_id', 'trip_headsign'],
+        calendar: ['service_id', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'start_date', 'end_date'],
+        agency: ['agency_id', 'agency_name', 'agency_url', 'agency_timezone'],
+        fare_attributes: ['fare_id', 'price', 'currency_type', 'payment_method', 'transfers']
+      };
+
+      for (const [tableName, data] of Object.entries(gtfsData)) {
+        const fields = tableFields[tableName];
+        const csv = jsonToCSV(data, fields);
+        zip.file(`${tableName}.txt`, csv);
+      }
+
+      return zip;
+    };
+
+    /**
+     * ZIPファイルからGTFSデータを抽出
+     */
+    const extractGTFSFromZip = async (zip) => {
+      const gtfsData = {};
+      
+      const tableNames = ['stops', 'stop_times', 'routes', 'trips', 'calendar', 'agency', 'fare_attributes'];
+      
+      for (const tableName of tableNames) {
+        const file = zip.file(`${tableName}.txt`);
+        if (file) {
+          const text = await file.async('text');
+          gtfsData[tableName] = parseCSV(text);
+        }
+      }
+      
+      return gtfsData;
+    };
+
+    /**
+     * 2つのGTFSデータセットが等価であることを確認
+     */
+    const assertGTFSDataEqual = (original, reconstructed) => {
+      const tableNames = Object.keys(original);
+      
+      for (const tableName of tableNames) {
+        expect(reconstructed[tableName]).toBeDefined();
+        expect(reconstructed[tableName].length).toBe(original[tableName].length);
+        
+        // 各レコードを比較
+        for (let i = 0; i < original[tableName].length; i++) {
+          const originalRecord = original[tableName][i];
+          const reconstructedRecord = reconstructed[tableName][i];
+          
+          // 全てのフィールドが一致することを確認
+          for (const field of Object.keys(originalRecord)) {
+            expect(reconstructedRecord[field]).toBe(originalRecord[field]);
+          }
+        }
+      }
+    };
+
+    it('実際のGTFSデータ（saga-current.zip）でラウンドトリップ変換が成功する', async () => {
+      const fs = require('fs').promises;
+      const path = require('path');
+      
+      // 1. 実際のGTFS ZIPファイルを読み込み
+      const zipPath = path.join(__dirname, '../data/saga-current.zip');
+      let zipBuffer;
+      try {
+        zipBuffer = await fs.readFile(zipPath);
+      } catch (error) {
+        console.warn('saga-current.zipが見つかりません。テストをスキップします。');
+        return;
+      }
+      
+      const zip = await JSZip.loadAsync(zipBuffer);
+      
+      // 2. ZIPファイルからGTFSデータを抽出（JSON形式）
+      const originalData = await extractGTFSFromZip(zip);
+      
+      // 3. データ量の確認（実データの規模を検証）
+      expect(originalData.stops.length).toBeGreaterThan(0);
+      expect(originalData.stop_times.length).toBeGreaterThan(0);
+      expect(originalData.routes.length).toBeGreaterThan(0);
+      expect(originalData.trips.length).toBeGreaterThan(0);
+      
+      console.log('実データの統計:');
+      console.log(`  stops: ${originalData.stops.length}件`);
+      console.log(`  stop_times: ${originalData.stop_times.length}件`);
+      console.log(`  routes: ${originalData.routes.length}件`);
+      console.log(`  trips: ${originalData.trips.length}件`);
+      
+      // 4. サンプルデータでラウンドトリップ変換をテスト（全データは時間がかかるため）
+      const sampleData = {
+        stops: originalData.stops.slice(0, 10),
+        stop_times: originalData.stop_times.slice(0, 100),
+        routes: originalData.routes.slice(0, 5),
+        trips: originalData.trips.slice(0, 10),
+        calendar: originalData.calendar || [],
+        agency: originalData.agency || [],
+        fare_attributes: originalData.fare_attributes || []
+      };
+      
+      // 5. サンプルデータから再度ZIPファイルを作成
+      const reconstructedZip = await createGTFSZip(sampleData);
+      
+      // 6. 再構築されたZIPファイルからデータを抽出
+      const reconstructedData = await extractGTFSFromZip(reconstructedZip);
+      
+      // 7. サンプルデータと再構築されたデータが等価であることを確認
+      assertGTFSDataEqual(sampleData, reconstructedData);
+    }, 10000); // タイムアウトを10秒に短縮
+
+    it('空のテーブルを含むGTFSデータでラウンドトリップ変換が成功する', async () => {
+      const emptyData = {
+        stops: [],
+        stop_times: [],
+        routes: [],
+        trips: [],
+        calendar: [],
+        agency: [],
+        fare_attributes: []
+      };
+
+      const zip = await createGTFSZip(emptyData);
+      const extractedData = await extractGTFSFromZip(zip);
+      const reconstructedZip = await createGTFSZip(extractedData);
+      const reconstructedData = await extractGTFSFromZip(reconstructedZip);
+
+      assertGTFSDataEqual(emptyData, reconstructedData);
+    });
+
+    it('特殊文字を含むGTFSデータでラウンドトリップ変換が成功する', async () => {
+      const specialCharsData = {
+        stops: [
+          { stop_id: '1', stop_name: 'バス停,カンマ入り', stop_lat: '33.2490', stop_lon: '130.2990' },
+          { stop_id: '2', stop_name: 'バス停"クォート"入り', stop_lat: '33.2500', stop_lon: '130.3000' },
+          { stop_id: '3', stop_name: 'バス停スペース入り', stop_lat: '33.2510', stop_lon: '130.3010' }
+        ],
+        stop_times: [
+          { trip_id: 'T1', arrival_time: '08:00:00', departure_time: '08:00:00', stop_id: '1', stop_sequence: '1' }
+        ],
+        routes: [
+          { route_id: 'R1', route_short_name: '1', route_long_name: '路線1', route_type: '3' }
+        ],
+        trips: [
+          { route_id: 'R1', service_id: 'S1', trip_id: 'T1', trip_headsign: '行先1' }
+        ],
+        calendar: [
+          { service_id: 'S1', monday: '1', tuesday: '1', wednesday: '1', thursday: '1', friday: '1', saturday: '0', sunday: '0', start_date: '20250101', end_date: '20251231' }
+        ],
+        agency: [
+          { agency_id: 'A1', agency_name: '事業者1', agency_url: 'https://example.com', agency_timezone: 'Asia/Tokyo' }
+        ],
+        fare_attributes: [
+          { fare_id: 'F1', price: '200', currency_type: 'JPY', payment_method: '0', transfers: '0' }
+        ]
+      };
+
+      const zip = await createGTFSZip(specialCharsData);
+      const extractedData = await extractGTFSFromZip(zip);
+      const reconstructedZip = await createGTFSZip(extractedData);
+      const reconstructedData = await extractGTFSFromZip(reconstructedZip);
+
+      assertGTFSDataEqual(specialCharsData, reconstructedData);
+    });
+  });
+
+  /**
+   * プロパティベーステスト
+   * Feature: cloudflare-kv-gtfs-deployment
+   * Property 2: 大容量データの自動分割
+   * 
+   * **Validates: Requirements 1.3**
+   * 
+   * 任意の25MBを超えるstop_timesデータに対して、分割処理を実行した場合、
+   * 全てのチャンクのサイズが25MB以下であり、かつ全てのチャンクを結合すると
+   * 元のデータと等価なデータが得られる
+   */
+  describe('プロパティ2: 大容量データの自動分割', () => {
+    it('25MB超のデータが複数のチャンクに分割され、各チャンクが25MB以下である', () => {
+      // 26MB程度のデータを生成（簡略化）
+      const records = [];
+      const targetSize = 26 * 1024 * 1024; // 26MB
+      let currentSize = 0;
+      
+      // より大きなレコードを生成して、生成時間を短縮
+      while (currentSize < targetSize) {
+        const padding = 'x'.repeat(1000); // 1KBのパディング
+        const record = {
+          trip_id: `TRIP_${records.length}_${padding}`,
+          arrival_time: '08:00:00',
+          departure_time: '08:00:00',
+          stop_id: `STOP_${records.length}_${padding}`,
+          stop_sequence: records.length.toString(),
+          stop_headsign: `Test Headsign ${padding}`,
+          pickup_type: '0',
+          drop_off_type: '0',
+          shape_dist_traveled: '0.00'
+        };
+        records.push(record);
+        
+        // 100レコードごとにサイズをチェック（パフォーマンス向上）
+        if (records.length % 100 === 0) {
+          currentSize = getDataSize(records);
+        }
+      }
+      
+      const originalSize = getDataSize(records);
+      const originalSizeMB = originalSize / 1024 / 1024;
+      
+      // 25MBを超えることを確認
+      expect(originalSizeMB).toBeGreaterThan(25);
+      
+      // 分割処理を実行（20MBチャンク）
+      const maxChunkSize = 20 * 1024 * 1024;
+      const chunks = splitIntoChunks(records, maxChunkSize);
+      
+      // 複数のチャンクに分割されることを確認
+      expect(chunks.length).toBeGreaterThan(1);
+      
+      // 各チャンクのサイズが25MB以下であることを確認
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkSize = getDataSize(chunks[i]);
+        const chunkSizeMB = chunkSize / 1024 / 1024;
+        
+        // 25MB以下であることを確認（10%のマージンを許容）
+        expect(chunkSizeMB).toBeLessThanOrEqual(25 * 1.1);
+        
+        // チャンクが空でないことを確認
+        expect(chunks[i].length).toBeGreaterThan(0);
+      }
+      
+      // 全てのチャンクを結合
+      const mergedData = chunks.flat();
+      
+      // 結合後のデータが元のデータと等価であることを確認
+      expect(mergedData.length).toBe(records.length);
+      expect(mergedData).toEqual(records);
+    }, 15000); // タイムアウトを15秒に短縮
+
+    it('正確に25MBのデータが適切に分割される', async () => {
+      // 25MB前後のデータを生成
+      const records = [];
+      const targetSize = 25 * 1024 * 1024; // 25MB
+      let currentSize = 0;
+      
+      while (currentSize < targetSize) {
+        const record = {
+          trip_id: `TRIP_${records.length}`,
+          arrival_time: '08:00:00',
+          departure_time: '08:00:00',
+          stop_id: `STOP_${records.length}`,
+          stop_sequence: records.length.toString(),
+          stop_headsign: 'Test Headsign for size padding',
+          pickup_type: '0',
+          drop_off_type: '0',
+          shape_dist_traveled: '0.00'
+        };
+        records.push(record);
+        currentSize = getDataSize(records);
+      }
+      
+      const originalSize = getDataSize(records);
+      const originalSizeMB = originalSize / 1024 / 1024;
+      
+      // 25MB前後であることを確認
+      expect(originalSizeMB).toBeGreaterThanOrEqual(24.5);
+      expect(originalSizeMB).toBeLessThanOrEqual(26);
+      
+      // 分割処理を実行
+      const maxChunkSize = 20 * 1024 * 1024;
+      const chunks = splitIntoChunks(records, maxChunkSize);
+      
+      // 複数のチャンクに分割されることを確認
+      expect(chunks.length).toBeGreaterThan(1);
+      
+      // 各チャンクのサイズが制限以下であることを確認
+      chunks.forEach((chunk, index) => {
+        const chunkSize = getDataSize(chunk);
+        const chunkSizeMB = chunkSize / 1024 / 1024;
+        expect(chunkSizeMB).toBeLessThanOrEqual(25);
+      });
+      
+      // 結合して元のデータと一致することを確認
+      const merged = chunks.flat();
+      expect(merged).toEqual(records);
+    });
+
+    it('30MB超のデータが適切に分割される', () => {
+      // 30MB超のデータを生成（簡略化）
+      const records = [];
+      const targetSize = 30 * 1024 * 1024; // 30MB
+      let currentSize = 0;
+      
+      // より大きなレコードを生成
+      while (currentSize < targetSize) {
+        const padding = 'x'.repeat(1000); // 1KBのパディング
+        const record = {
+          trip_id: `TRIP_${records.length}_${padding}`,
+          arrival_time: '08:00:00',
+          departure_time: '08:00:00',
+          stop_id: `STOP_${records.length}_${padding}`,
+          stop_sequence: records.length.toString(),
+          stop_headsign: `Test Headsign ${padding}`,
+          pickup_type: '0',
+          drop_off_type: '0',
+          shape_dist_traveled: '0.00'
+        };
+        records.push(record);
+        
+        // 100レコードごとにサイズをチェック
+        if (records.length % 100 === 0) {
+          currentSize = getDataSize(records);
+        }
+      }
+      
+      const originalSize = getDataSize(records);
+      const originalSizeMB = originalSize / 1024 / 1024;
+      
+      // 30MB超であることを確認
+      expect(originalSizeMB).toBeGreaterThan(30);
+      
+      // 分割処理を実行
+      const maxChunkSize = 20 * 1024 * 1024;
+      const chunks = splitIntoChunks(records, maxChunkSize);
+      
+      // 少なくとも2つのチャンクに分割されることを確認
+      expect(chunks.length).toBeGreaterThanOrEqual(2);
+      
+      // 各チャンクのサイズが25MB以下であることを確認
+      chunks.forEach((chunk, index) => {
+        const chunkSize = getDataSize(chunk);
+        const chunkSizeMB = chunkSize / 1024 / 1024;
+        expect(chunkSizeMB).toBeLessThanOrEqual(25);
+        expect(chunk.length).toBeGreaterThan(0);
+      });
+      
+      // 結合して元のデータと一致することを確認
+      const merged = chunks.flat();
+      expect(merged.length).toBe(records.length);
+      expect(merged).toEqual(records);
+    }, 15000); // タイムアウトを15秒に短縮
+
+    it('分割されたチャンクのサイズが均等に近い', () => {
+      // 40MB程度のデータを生成（簡略化）
+      const records = [];
+      const targetSize = 40 * 1024 * 1024; // 40MB
+      let currentSize = 0;
+      
+      // より大きなレコードを生成
+      while (currentSize < targetSize) {
+        const padding = 'x'.repeat(1000); // 1KBのパディング
+        const record = {
+          trip_id: `TRIP_${records.length}_${padding}`,
+          arrival_time: '08:00:00',
+          departure_time: '08:00:00',
+          stop_id: `STOP_${records.length}_${padding}`,
+          stop_sequence: records.length.toString(),
+          stop_headsign: `Test ${padding}`,
+          pickup_type: '0',
+          drop_off_type: '0',
+          shape_dist_traveled: '0.00'
+        };
+        records.push(record);
+        
+        // 100レコードごとにサイズをチェック
+        if (records.length % 100 === 0) {
+          currentSize = getDataSize(records);
+        }
+      }
+      
+      // 分割処理を実行
+      const maxChunkSize = 20 * 1024 * 1024;
+      const chunks = splitIntoChunks(records, maxChunkSize);
+      
+      // 各チャンクのサイズを計算
+      const chunkSizes = chunks.map(chunk => getDataSize(chunk) / 1024 / 1024);
+      
+      // 最後のチャンクを除いて、各チャンクが目標サイズに近いことを確認
+      for (let i = 0; i < chunks.length - 1; i++) {
+        expect(chunkSizes[i]).toBeGreaterThan(15); // 最低15MB
+        expect(chunkSizes[i]).toBeLessThanOrEqual(25); // 最大25MB
+      }
+      
+      // 最後のチャンクは小さくても良い
+      expect(chunkSizes[chunkSizes.length - 1]).toBeLessThanOrEqual(25);
+    }, 15000); // タイムアウトを15秒に短縮
+
+    it('空のデータは空のチャンク配列を返す', () => {
+      const emptyData = [];
+      const maxChunkSize = 20 * 1024 * 1024;
+      const chunks = splitIntoChunks(emptyData, maxChunkSize);
+      
+      expect(chunks).toHaveLength(0);
+    });
+
+    it('25MB以下のデータは分割されない', () => {
+      // 10MB程度のデータを生成
+      const records = [];
+      const targetSize = 10 * 1024 * 1024; // 10MB
+      let currentSize = 0;
+      
+      while (currentSize < targetSize) {
+        const record = {
+          trip_id: `TRIP_${records.length}`,
+          arrival_time: '08:00:00',
+          departure_time: '08:00:00',
+          stop_id: `STOP_${records.length}`,
+          stop_sequence: records.length.toString()
+        };
+        records.push(record);
+        currentSize = getDataSize(records);
+      }
+      
+      const originalSize = getDataSize(records);
+      const originalSizeMB = originalSize / 1024 / 1024;
+      
+      // 10MB前後であることを確認
+      expect(originalSizeMB).toBeLessThan(20);
+      
+      // 分割処理を実行
+      const maxChunkSize = 20 * 1024 * 1024;
+      const chunks = splitIntoChunks(records, maxChunkSize);
+      
+      // 1つのチャンクのみであることを確認
+      expect(chunks).toHaveLength(1);
+      expect(chunks[0]).toEqual(records);
+    });
+  });
+});

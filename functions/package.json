@@ -2,13 +2,23 @@
   "name": "saga-bus-navigator-functions",
   "version": "1.0.0",
   "description": "Cloudflare Pages Functions for Saga Bus Navigator",
+  "scripts": {
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
   "dependencies": {
     "@aws-sdk/client-translate": "^3.700.0",
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "ajv": "^8.17.1",
     "jszip": "^3.10.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260203.0",
     "@types/node": "^22.10.2",
-    "typescript": "^5.7.2"
+    "@vitest/coverage-v8": "^2.1.8",
+    "fast-check": "^3.23.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }
