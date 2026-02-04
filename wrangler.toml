@@ -8,9 +8,8 @@ compatibility_flags = ["nodejs_compat"]
 binding = "GTFS_DATA"
 id = "3ae3f515d413458d913a9be942fdf056"
 
-# MCP Apps rate limiting
-# Note: Create this KV namespace with: wrangler kv:namespace create "RATE_LIMIT_KV"
-[[kv_namespaces]]
-binding = "RATE_LIMIT_KV"
-id = "YOUR_RATE_LIMIT_KV_ID_HERE"
+# MCP Apps rate limiting (Optional - uncomment and set ID when needed)
+# [[kv_namespaces]]
+# binding = "RATE_LIMIT_KV"
+# id = "YOUR_RATE_LIMIT_KV_ID_HERE"
 
