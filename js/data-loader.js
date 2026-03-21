@@ -133,6 +133,9 @@ class DataLoader {
     
     // Cloudflare KV統合（要件4.1）
     this.kvNamespace = null; // Pages Functionから設定される
+
+    // メタデータキャッシュ（metadata.jsonの重複取得を防ぐ）
+    this._metadataCache = null;
   }
 
   /**
@@ -571,13 +574,16 @@ class DataLoader {
           }
           
           // 変換済みデータを生成
+          // プリビルドファイルが存在する場合はブラウザ側の変換処理をスキップ
           const transformStartTime = Date.now();
-          
-          this.busStops = DataTransformer.transformStops(
-            gtfsData.stops,
-            (message, data) => this.logDebug(message, data)
-          );
-          
+
+          // バス停: プリビルド済みなら変換スキップ
+          this.busStops = gtfsData.busStopsPrebuilt ??
+            DataTransformer.transformStops(
+              gtfsData.stops,
+              (message, data) => this.logDebug(message, data)
+            );
+
           this.timetable = DataTransformer.transformTimetable(
             gtfsData.stopTimes,
             gtfsData.trips,
@@ -587,14 +593,18 @@ class DataLoader {
             gtfsData.stops,
             (message, data) => this.logDebug(message, data)
           );
-          
-          this.fares = DataTransformer.transformFares(
-            gtfsData.fareAttributes,
-            (message, data) => this.logDebug(message, data)
-          );
-          
-          // fare_rules.txtが存在する場合は変換してキャッシュ
-          if (gtfsData.fareRules && gtfsData.fareRules.length > 0) {
+
+          // 運賃: プリビルド済みなら変換スキップ
+          this.fares = gtfsData.faresPrebuilt ??
+            DataTransformer.transformFares(
+              gtfsData.fareAttributes,
+              (message, data) => this.logDebug(message, data)
+            );
+
+          // 運賃ルール: プリビルド済みなら変換スキップ
+          if (gtfsData.fareRulesPrebuilt) {
+            this.fareRules = gtfsData.fareRulesPrebuilt;
+          } else if (gtfsData.fareRules && gtfsData.fareRules.length > 0) {
             this.fareRules = DataTransformer.transformFareRules(
               gtfsData.fareRules,
               (message, data) => this.logDebug(message, data)
@@ -603,38 +613,38 @@ class DataLoader {
             this.logDebug('fare_rules.txtが存在しないため、運賃ルールデータはスキップされました');
             this.fareRules = [];
           }
-          
+
           const transformEndTime = Date.now();
-          
+
           // 生データをキャッシュ（TimetableController用）
           this.stopTimes = gtfsData.stopTimes;
           this.trips = gtfsData.trips;
           this.routes = gtfsData.routes;
           this.calendar = gtfsData.calendar;
           this.gtfsStops = gtfsData.stops;
-          
+
           if (this.onProgress) {
             this.onProgress('方向情報を付与しています...');
           }
-          
-          // 方向情報を付与（データ変換後、インデックス生成前）
+
+          // 方向情報を付与（trips_with_direction.jsonを使用時はスキップ）
           const directionStartTime = Date.now();
           this.enrichTripsWithDirection();
           const directionEndTime = Date.now();
-          
+
           if (this.onProgress) {
             this.onProgress('インデックスを生成しています...');
           }
-          
+
           // インデックスを生成（要件2.1, 7.1）
           const indexStartTime = Date.now();
           this.generateIndexes();
           const indexEndTime = Date.now();
-          
+
           if (this.onProgress) {
             this.onProgress('マッピングデータを読み込んでいます...');
           }
-          
+
           // バス停マッピングと路線名マッピングを並列で読み込み（多言語対応）
           const mappingStartTime = Date.now();
           await Promise.all([
@@ -642,9 +652,9 @@ class DataLoader {
             this.loadRouteNameMapping()
           ]);
           const mappingEndTime = Date.now();
-          
+
           const overallEndTime = Date.now();
-          
+
           // IndexedDBキャッシュに保存（非同期で実行、エラーが発生しても続行）
           if (this.cache) {
             this.cache.set('gtfs-data', {
@@ -661,13 +671,19 @@ class DataLoader {
               this.logDebug('IndexedDBキャッシュへの保存に失敗しました:', error);
             });
           }
-          
+
           this.logDebug('事前処理済みJSONファイルからの読み込み完了', {
             totalDuration: `${overallEndTime - overallStartTime}ms`,
             transformDuration: `${transformEndTime - transformStartTime}ms`,
             directionDuration: `${directionEndTime - directionStartTime}ms`,
             indexDuration: `${indexEndTime - indexStartTime}ms`,
-            mappingDuration: `${mappingEndTime - mappingStartTime}ms`
+            mappingDuration: `${mappingEndTime - mappingStartTime}ms`,
+            prebuiltUsed: {
+              busStops: !!gtfsData.busStopsPrebuilt,
+              fares: !!gtfsData.faresPrebuilt,
+              fareRules: !!gtfsData.fareRulesPrebuilt,
+              trips: !!gtfsData.tripsHaveDirection
+            }
           });
           
           if (this.onProgress) {
@@ -1426,13 +1442,16 @@ class DataLoader {
 
   /**
    * 事前処理済みJSONファイルが利用可能かチェック
+   * metadata.jsonを取得してキャッシュする（以降の重複取得を防ぐ）
    * @returns {Promise<boolean>} JSONファイルが利用可能な場合はtrue
    */
   async checkProcessedDataAvailable() {
     try {
-      // metadata.jsonの存在をチェック
-      const response = await fetch('data/processed/metadata.json', { method: 'HEAD' });
-      return response.ok;
+      if (this._metadataCache) return true;
+      const response = await fetch('data/processed/metadata.json');
+      if (!response.ok) return false;
+      this._metadataCache = await response.json();
+      return true;
     } catch (error) {
       return false;
     }
@@ -1479,18 +1498,18 @@ class DataLoader {
   }
 
   /**
-   * ファイルが分割されているかチェック（メタデータから）
+   * ファイルが分割されているかチェック（キャッシュ済みメタデータから）
    * @param {string} baseName - ベースファイル名
    * @returns {Promise<Array<string>|null>} 分割されたファイル名のリスト、分割されていない場合はnull
    */
   async checkSplitFiles(baseName) {
     try {
-      const response = await fetch('data/processed/metadata.json');
-      if (!response.ok) {
-        return null;
+      if (!this._metadataCache) {
+        const response = await fetch('data/processed/metadata.json');
+        if (!response.ok) return null;
+        this._metadataCache = await response.json();
       }
-      const metadata = await response.json();
-      
+      const metadata = this._metadataCache;
       if (metadata.splitFiles && metadata.splitFiles[baseName]) {
         return metadata.splitFiles[baseName];
       }
@@ -1501,8 +1520,10 @@ class DataLoader {
   }
 
   /**
-   * 事前処理済みJSONファイルをプログレッシブに読み込む
-   * 小さいファイルを先に読み込んでUIを早く表示し、その後大きなファイルを読み込む
+   * 事前処理済みJSONファイルを全て並列で読み込む
+   * - metadata.jsonを1回だけ取得してキャッシュし、分割ファイル情報とプリビルド情報を利用
+   * - 全ファイルをPromise.allで同時ダウンロードして待機時間を最小化
+   * - プリビルドファイルがあれば活用してブラウザ側の変換処理をスキップ
    * Cloudflare Pagesの25MB制限に対応するため、分割されたファイルもサポート
    * @returns {Promise<Object>} パースされたGTFSデータ
    * @throws {Error} JSONファイルの読み込みに失敗した場合
@@ -1511,99 +1532,87 @@ class DataLoader {
     try {
       this.logDebug('事前処理済みJSONファイルの読み込み開始');
       const overallStartTime = Date.now();
-      
-      const fileTimings = {};
-      
-      const loadWithTiming = async (filename) => {
+
+      // metadata.jsonを1回だけ取得（キャッシュ済みなら再利用）
+      if (!this._metadataCache) {
+        const resp = await fetch('data/processed/metadata.json');
+        if (!resp.ok) throw new Error('metadata.json の取得に失敗しました');
+        this._metadataCache = await resp.json();
+      }
+      const metadata = this._metadataCache;
+      const prebuilt = metadata.prebuilt || null;
+
+      const loadJson = async (filename) => {
         const startTime = Date.now();
-        try {
-          const response = await fetch(`data/processed/${filename}`);
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          const data = await response.json();
-          const endTime = Date.now();
-          const duration = endTime - startTime;
-          fileTimings[filename] = duration;
-          
-          this.logDebug(`${filename} 読み込み完了: ${duration}ms (${data.length}件)`);
-          return data;
-        } catch (error) {
-          const endTime = Date.now();
-          const duration = endTime - startTime;
-          fileTimings[filename] = duration;
-          throw error;
-        }
+        const response = await fetch(`data/processed/${filename}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        this.logDebug(`${filename} 読み込み完了: ${Date.now() - startTime}ms (${Array.isArray(data) ? data.length : '?'}件)`);
+        return data;
       };
-      
-      // フェーズ1: 小さい必須ファイルを先に読み込む（UI表示に必要）
-      // これらを先に読み込むことで、UIを早く表示できる
+
+      const loadJsonOptional = (filename) => loadJson(filename).catch(() => []);
+
+      // 分割ファイルの並列ダウンロードヘルパー
+      const loadSplitOrSingle = (baseName, fallbackFile) => {
+        const parts = metadata.splitFiles?.[baseName];
+        if (parts) {
+          return Promise.all(parts.map(f => loadJson(f))).then(chunks => chunks.flat());
+        }
+        return loadJson(fallbackFile);
+      };
+
+      // trips: プリビルド（方向情報付き）があればそちらを使用、なければ通常のtrips.json
+      const tripsFile = prebuilt?.tripsWithDirection || 'trips.json';
+
+      // 全ファイルを並列ダウンロード（HTTP/2多重化で待機時間を最小化）
       const [
         stops,
         routes,
         calendar,
-        agency
-      ] = await Promise.all([
-        loadWithTiming('stops.json'),
-        loadWithTiming('routes.json'),
-        loadWithTiming('calendar.json'),
-        loadWithTiming('agency.json')
-      ]);
-      
-      // フェーズ2: 中サイズのファイルを読み込む
-      const [
+        agency,
         trips,
-        fareAttributes
+        fareAttributes,
+        stopTimes,
+        fareRules,
+        busStopsPrebuilt,
+        faresPrebuilt,
+        fareRulesPrebuilt
       ] = await Promise.all([
-        loadWithTiming('trips.json'),
-        loadWithTiming('fare_attributes.json').catch(() => []) // オプショナル
+        loadJson('stops.json'),
+        loadJson('routes.json'),
+        loadJson('calendar.json'),
+        loadJson('agency.json'),
+        loadJson(tripsFile),
+        loadJsonOptional('fare_attributes.json'),
+        loadSplitOrSingle('stop_times', 'stop_times.json'),
+        loadSplitOrSingle('fare_rules', 'fare_rules.json').catch(() => []),
+        // プリビルドファイル（存在しない場合はnull）
+        prebuilt?.busStops ? loadJson(prebuilt.busStops) : Promise.resolve(null),
+        prebuilt?.fares ? loadJson(prebuilt.fares) : Promise.resolve(null),
+        prebuilt?.fareRules ? loadJson(prebuilt.fareRules) : Promise.resolve(null)
       ]);
-      
-      // フェーズ3: 大きなファイルを読み込む（分割されている可能性がある）
-      let stopTimes, fareRules;
-      
-      // stop_times.jsonが分割されているかチェック
-      const stopTimesParts = await this.checkSplitFiles('stop_times');
-      if (stopTimesParts) {
-        this.logDebug('stop_times.jsonは分割されています。分割ファイルを読み込みます...');
-        stopTimes = await this.loadSplitFiles('stop_times', stopTimesParts, fileTimings);
-      } else {
-        stopTimes = await loadWithTiming('stop_times.json');
-      }
-      
-      // fare_rules.jsonが分割されているかチェック
-      const fareRulesParts = await this.checkSplitFiles('fare_rules');
-      if (fareRulesParts) {
-        this.logDebug('fare_rules.jsonは分割されています。分割ファイルを読み込みます...');
-        fareRules = await this.loadSplitFiles('fare_rules', fareRulesParts, fileTimings).catch(() => []);
-      } else {
-        fareRules = await loadWithTiming('fare_rules.json').catch(() => []);
-      }
-      
+
       // feed_info.jsonからバージョン情報を読み取り（オプショナル）
-      let feedInfo = null;
       try {
-        feedInfo = await loadWithTiming('feed_info.json');
+        const feedInfo = await loadJson('feed_info.json');
+        if (feedInfo && feedInfo.length > 0) {
+          this.gtfsVersion = {
+            publisher: feedInfo[0].feed_publisher_name || '',
+            version: feedInfo[0].feed_version || '',
+            startDate: feedInfo[0].feed_start_date || '',
+            endDate: feedInfo[0].feed_end_date || ''
+          };
+        }
       } catch (e) {
         // feed_info.jsonが存在しない場合は無視
       }
-      
-      const overallEndTime = Date.now();
-      const overallDuration = overallEndTime - overallStartTime;
-      
-      // バージョン情報を保存
-      if (feedInfo && feedInfo.length > 0) {
-        this.gtfsVersion = {
-          publisher: feedInfo[0].feed_publisher_name || '',
-          version: feedInfo[0].feed_version || '',
-          startDate: feedInfo[0].feed_start_date || '',
-          endDate: feedInfo[0].feed_end_date || ''
-        };
-      }
-      
+
+      const overallDuration = Date.now() - overallStartTime;
+
       this.logDebug('事前処理済みJSONファイルの読み込み完了', {
         totalDuration: `${overallDuration}ms`,
-        fileTimings: fileTimings,
+        hasPrebuilt: !!prebuilt,
         recordCounts: {
           stops: stops.length,
           stopTimes: stopTimes.length,
@@ -1615,16 +1624,21 @@ class DataLoader {
           fareRules: fareRules.length
         }
       });
-      
+
       return {
-        stops: stops,
-        stopTimes: stopTimes,
-        routes: routes,
-        trips: trips,
-        calendar: calendar,
-        agency: agency,
-        fareAttributes: fareAttributes,
-        fareRules: fareRules
+        stops,
+        stopTimes,
+        routes,
+        trips,
+        calendar,
+        agency,
+        fareAttributes,
+        fareRules,
+        // プリビルドフィールド（利用可能な場合のみ設定）
+        busStopsPrebuilt,
+        faresPrebuilt,
+        fareRulesPrebuilt,
+        tripsHaveDirection: !!(prebuilt?.tripsWithDirection)
       };
     } catch (error) {
       console.error('事前処理済みJSONファイル読み込みエラー:', error);
@@ -1713,6 +1727,13 @@ class DataLoader {
   enrichTripsWithDirection() {
     if (!this.trips || this.trips.length === 0) {
       console.warn('DataLoader.enrichTripsWithDirection: tripsデータが空です');
+      return;
+    }
+
+    // trips_with_direction.json（プリビルドファイル）を使用している場合はスキップ
+    // direction フィールドが既に設定されているかチェック
+    if (this.trips[0].direction !== undefined) {
+      this.logDebug('方向情報はプリビルド済みのためスキップします', { tripCount: this.trips.length });
       return;
     }
 
