@@ -21,10 +21,120 @@ const fs = require('fs');
 const path = require('path');
 const { promisify } = require('util');
 const JSZip = require('jszip');
+const DirectionDetector = require('../js/direction-detector');
 
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
 const mkdir = promisify(fs.mkdir);
+
+// ===== プリビルドデータ生成関数 =====
+// ブラウザ側の変換処理をビルド時に前処理することでページ読み込みを高速化
+
+/**
+ * カレンダー情報から曜日区分を判定（DataTransformer.determineWeekdayTypeと同等）
+ */
+function determineWeekdayType(calendar) {
+  if (!calendar) return '平日';
+  const serviceId = (calendar.service_id || '').toLowerCase();
+  if (serviceId.includes('土日祝') || serviceId.includes('土曜') || serviceId.includes('日曜')) {
+    return '土日祝';
+  }
+  if (calendar.monday === '1' && calendar.friday === '1' &&
+      calendar.saturday === '0' && calendar.sunday === '0') {
+    return '平日';
+  }
+  if (calendar.saturday === '1' || calendar.sunday === '1') {
+    return '土日祝';
+  }
+  return '平日';
+}
+
+/**
+ * バス停データを変換済み形式に変換（DataTransformer.transformStopsと同等）
+ */
+function buildPrebuiltBusStops(stopsData) {
+  return stopsData
+    .filter(row => row.location_type === '0')
+    .map(row => ({
+      id: row.stop_id,
+      name: row.stop_name,
+      lat: parseFloat(row.stop_lat),
+      lng: parseFloat(row.stop_lon),
+      parentStation: row.parent_station || null
+    }));
+}
+
+/**
+ * 方向情報を付与したtripsデータを生成（DataLoader.enrichTripsWithDirectionと同等）
+ * ブラウザ側で重いstop_times走査を行う代わりに、ビルド時に計算する
+ */
+function buildEnrichedTrips(tripsData, stopTimesData) {
+  const tripsByRoute = new Map();
+  tripsData.forEach(trip => {
+    if (!tripsByRoute.has(trip.route_id)) tripsByRoute.set(trip.route_id, []);
+    tripsByRoute.get(trip.route_id).push(trip);
+  });
+
+  const enriched = tripsData.map(t => Object.assign({}, t));
+  const enrichedById = new Map();
+  enriched.forEach(t => enrichedById.set(t.trip_id, t));
+
+  tripsByRoute.forEach((trips, routeId) => {
+    const allHaveDirectionId = trips.every(t =>
+      t.direction_id !== '' && t.direction_id !== null && t.direction_id !== undefined
+    );
+
+    if (allHaveDirectionId) {
+      trips.forEach(t => { enrichedById.get(t.trip_id).direction = t.direction_id; });
+      return;
+    }
+
+    const enrichedTripsForRoute = trips.map(t => enrichedById.get(t.trip_id));
+    const directionMap = DirectionDetector.detectDirectionByStopSequence(
+      routeId, enrichedTripsForRoute, stopTimesData
+    );
+
+    trips.forEach(t => {
+      const et = enrichedById.get(t.trip_id);
+      if (t.direction_id !== '' && t.direction_id !== null && t.direction_id !== undefined) {
+        et.direction = t.direction_id;
+      } else if (directionMap.has(t.trip_id)) {
+        et.direction = directionMap.get(t.trip_id);
+      } else {
+        et.direction = 'unknown';
+      }
+    });
+  });
+
+  return enriched;
+}
+
+/**
+ * 運賃データを変換済み形式に変換（DataTransformer.transformFaresと同等）
+ */
+function buildPrebuiltFares(fareAttributesData) {
+  return fareAttributesData.map(fare => ({
+    fareId: fare.fare_id,
+    price: parseFloat(fare.price),
+    currencyType: fare.currency_type,
+    paymentMethod: parseInt(fare.payment_method),
+    transfers: parseInt(fare.transfers),
+    agencyId: fare.agency_id
+  }));
+}
+
+/**
+ * 運賃ルールを変換済み形式に変換（DataTransformer.transformFareRulesと同等）
+ */
+function buildPrebuiltFareRules(fareRulesData) {
+  return fareRulesData.map(rule => ({
+    fareId: rule.fare_id,
+    routeId: rule.route_id || null,
+    originId: rule.origin_id || null,
+    destinationId: rule.destination_id || null,
+    containsId: rule.contains_id || null
+  }));
+}
 
 // GTFSファイル名のリスト
 const GTFS_FILES = [
@@ -190,11 +300,12 @@ async function processGTFSZip(zipPath, outputDir) {
   const processedFiles = [];
   const skippedFiles = [];
   const splitFiles = {}; // 分割されたファイルの情報
+  const parsedData = {}; // プリビルド生成のために全ファイルのパース結果を保持
 
   for (const filename of GTFS_FILES) {
     try {
       const file = zip.file(filename);
-      
+
       if (!file) {
         skippedFiles.push(filename);
         continue;
@@ -203,17 +314,20 @@ async function processGTFSZip(zipPath, outputDir) {
       console.log(`\n処理中: ${filename}...`);
       const text = await file.async('text');
       const data = parseCSV(text);
-      
+
       // JSONファイル名を決定
       const jsonFilename = filename.replace('.txt', '.json');
       const baseFilename = filename.replace('.txt', '');
       const outputPath = path.join(outputDir, jsonFilename);
-      
+
+      // プリビルド生成用にパース結果を保持
+      parsedData[baseFilename] = data;
+
       // ファイルサイズをチェック（25MB制限を考慮して20MBで分割）
       const jsonString = JSON.stringify(data, null, 0);
       const fileSize = Buffer.byteLength(jsonString, 'utf8');
       const fileSizeMB = fileSize / 1024 / 1024;
-      
+
       if (fileSizeMB > 20) {
         // 大きなファイルは分割
         console.log(`  ファイルサイズが大きいため分割します (${fileSizeMB.toFixed(2)}MB)`);
@@ -233,6 +347,53 @@ async function processGTFSZip(zipPath, outputDir) {
     }
   }
 
+  // ===== プリビルドデータの生成 =====
+  // ブラウザ側の変換処理（DataTransformer / DirectionDetector）をビルド時に前処理して
+  // ページ読み込み時のCPU処理を削減する
+  const prebuilt = {};
+  const hasRequiredData = parsedData.stops && parsedData.stop_times &&
+                          parsedData.trips && parsedData.routes &&
+                          parsedData.calendar && parsedData.agency;
+
+  if (hasRequiredData) {
+    console.log('\nプリビルドデータを生成しています...');
+    try {
+      // 1. 変換済みバス停データ（transformStopsに相当）
+      const busStops = buildPrebuiltBusStops(parsedData.stops);
+      await writeFile(path.join(outputDir, 'bus_stops_prebuilt.json'), JSON.stringify(busStops), 'utf8');
+      prebuilt.busStops = 'bus_stops_prebuilt.json';
+      console.log(`  ✓ bus_stops_prebuilt.json (${busStops.length}件)`);
+
+      // 2. 方向情報付与済みtripsデータ（enrichTripsWithDirectionに相当）
+      // DirectionDetector.detectDirectionByStopSequenceのstop_times走査をビルド時に実行
+      console.log('  方向情報を検出しています...');
+      const enrichedTrips = buildEnrichedTrips(parsedData.trips, parsedData.stop_times);
+      await writeFile(path.join(outputDir, 'trips_with_direction.json'), JSON.stringify(enrichedTrips), 'utf8');
+      prebuilt.tripsWithDirection = 'trips_with_direction.json';
+      console.log(`  ✓ trips_with_direction.json (${enrichedTrips.length}件)`);
+
+      // 3. 変換済み運賃データ（transformFaresに相当）
+      if (parsedData.fare_attributes && parsedData.fare_attributes.length > 0) {
+        const fares = buildPrebuiltFares(parsedData.fare_attributes);
+        await writeFile(path.join(outputDir, 'fares_prebuilt.json'), JSON.stringify(fares), 'utf8');
+        prebuilt.fares = 'fares_prebuilt.json';
+        console.log(`  ✓ fares_prebuilt.json (${fares.length}件)`);
+      }
+
+      // 4. 変換済み運賃ルールデータ（transformFareRulesに相当）
+      if (parsedData.fare_rules && parsedData.fare_rules.length > 0) {
+        const fareRulesTransformed = buildPrebuiltFareRules(parsedData.fare_rules);
+        await writeFile(path.join(outputDir, 'fare_rules_prebuilt.json'), JSON.stringify(fareRulesTransformed), 'utf8');
+        prebuilt.fareRules = 'fare_rules_prebuilt.json';
+        console.log(`  ✓ fare_rules_prebuilt.json (${fareRulesTransformed.length}件)`);
+      }
+
+      console.log(`  ✓ プリビルドデータ生成完了`);
+    } catch (error) {
+      console.warn(`  ⚠️ プリビルドデータ生成に失敗しました（フォールバックとして通常処理を使用）: ${error.message}`);
+    }
+  }
+
   // メタデータファイルを生成
   const metadata = {
     source: path.basename(zipPath),
@@ -240,14 +401,18 @@ async function processGTFSZip(zipPath, outputDir) {
     processedFiles: processedFiles,
     skippedFiles: skippedFiles,
     splitFiles: splitFiles, // 分割されたファイルの情報
+    ...(Object.keys(prebuilt).length > 0 ? { prebuilt } : {}),
     version: '1.0.0'
   };
-  
+
   const metadataPath = path.join(outputDir, 'metadata.json');
   await writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
   console.log(`\n✓ メタデータファイルを生成: metadata.json`);
   if (Object.keys(splitFiles).length > 0) {
     console.log(`  分割されたファイル: ${Object.keys(splitFiles).join(', ')}`);
+  }
+  if (Object.keys(prebuilt).length > 0) {
+    console.log(`  プリビルドファイル: ${Object.keys(prebuilt).join(', ')}`);
   }
 
   // 統計情報を表示
