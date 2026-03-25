@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "ja-JP"
+early_access: false
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+    ignore_paths:
+      - "**/*.lock"
+      - "**/package-lock.json"
+      - "**/node_modules/**"
+      - "**/dist/**"
+
+chat:
+  auto_reply: true
+
+path_instructions:
+  - path: "**/*.ts"
+    instructions: |
+      TypeScriptコードのレビュー時は以下を確認してください：
+      - strict modeの型安全性
+      - 適切なエラーハンドリング
+      - セキュリティベストプラクティス（入力検証、SQLインジェクション防止）
+
+  - path: "**/*.js"
+    instructions: |
+      JavaScriptコードのレビュー時は以下を確認してください：
+      - 適切なエラーハンドリング
+      - セキュリティベストプラクティス
+
+  - path: "**/.github/workflows/**"
+    instructions: |
+      GitHub Actionsワークフローのレビュー時は以下を確認してください：
+      - シークレットの適切な使用
+      - セキュリティベストプラクティス
