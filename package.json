@@ -25,7 +25,7 @@
   "license": "MIT",
   "dependencies": {
     "gtfs-realtime-bindings": "^1.1.0",
-    "protobufjs": "^7.2.5"
+    "protobufjs": "^8.0.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
