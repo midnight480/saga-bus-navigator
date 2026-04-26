@@ -310,9 +310,14 @@ class TripTimetableFormatter {
     if (typeof text !== 'string') {
       return String(text);
     }
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    const htmlEntities = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    };
+    return text.replace(/[&<>"']/g, (char) => htmlEntities[char]);
   }
 
   /**
