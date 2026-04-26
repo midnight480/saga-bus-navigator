@@ -33,34 +33,52 @@ class LanguageSwitcher {
   render() {
     const currentLanguage = this.getCurrentLanguage();
     
-    this.container.innerHTML = `
-      <div class="language-switcher-dropdown" role="combobox" aria-label="言語選択" aria-expanded="false">
-        <button type="button" 
-                class="language-dropdown-button" 
-                aria-haspopup="listbox"
-                aria-label="現在の言語: ${currentLanguage.name}">
-          ${currentLanguage.flag} ${currentLanguage.name} ▼
-        </button>
-        <ul class="language-dropdown-menu" role="listbox" hidden>
-          ${this.renderDropdownOptions()}
-        </ul>
-      </div>
-    `;
+    const dropdownDiv = document.createElement('div');
+    dropdownDiv.className = 'language-switcher-dropdown';
+    dropdownDiv.setAttribute('role', 'combobox');
+    dropdownDiv.setAttribute('aria-label', '言語選択');
+    dropdownDiv.setAttribute('aria-expanded', 'false');
+    
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'language-dropdown-button';
+    button.setAttribute('aria-haspopup', 'listbox');
+    button.setAttribute('aria-label', `現在の言語: ${currentLanguage.name}`);
+    button.textContent = `${currentLanguage.flag} ${currentLanguage.name} ▼`;
+    
+    const ul = document.createElement('ul');
+    ul.className = 'language-dropdown-menu';
+    ul.setAttribute('role', 'listbox');
+    ul.hidden = true;
+    
+    const options = this.createDropdownOptionsNodes();
+    options.forEach(opt => ul.appendChild(opt));
+    
+    dropdownDiv.appendChild(button);
+    dropdownDiv.appendChild(ul);
+    
+    this.container.replaceChildren(dropdownDiv);
   }
   
   /**
-   * プルダウンオプションをレンダリング
+   * プルダウンオプションのノードを生成
    */
-  renderDropdownOptions() {
+  createDropdownOptionsNodes() {
     const currentLanguageCode = this.translationManager ? this.translationManager.getLanguage() : 'ja';
     
-    return this.supportedLanguages.map(lang => `
-      <li role="option" aria-selected="${lang.code === currentLanguageCode}">
-        <button type="button" data-locale="${lang.code}">
-          ${lang.flag} ${lang.name}
-        </button>
-      </li>
-    `).join('');
+    return this.supportedLanguages.map(lang => {
+      const li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.setAttribute('aria-selected', lang.code === currentLanguageCode ? 'true' : 'false');
+      
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.locale = lang.code;
+      btn.textContent = `${lang.flag} ${lang.name}`;
+      
+      li.appendChild(btn);
+      return li;
+    });
   }
   
   /**
@@ -220,7 +238,7 @@ class LanguageSwitcher {
     const button = this.container.querySelector('.language-dropdown-button');
     
     // ボタンのテキストと aria-label を更新
-    button.innerHTML = `${currentLanguage.flag} ${currentLanguage.name} ▼`;
+    button.textContent = `${currentLanguage.flag} ${currentLanguage.name} ▼`;
     button.setAttribute('aria-label', `現在の言語: ${currentLanguage.name}`);
     
     // プルダウンオプションの選択状態を更新
