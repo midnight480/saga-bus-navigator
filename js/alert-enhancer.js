@@ -125,16 +125,12 @@ class AlertEnhancer {
     const headerText = alertData.headerText || '';
     const descriptionText = alertData.descriptionText || '';
 
-    // URLをハイパーリンク化
-    const processedHeaderText = URLParser.parseURLs(headerText);
-    const processedDescriptionText = URLParser.parseURLs(descriptionText);
-
     return {
       id: alertData.id || this._generateAlertId(alertData),
       headerText: headerText,
       descriptionText: descriptionText,
-      processedHeaderText: processedHeaderText,
-      processedDescriptionText: processedDescriptionText,
+      processedHeaderText: headerText,
+      processedDescriptionText: descriptionText,
       translatedHeaderText: null,
       translatedDescriptionText: null,
       hasTranslation: false,
@@ -190,7 +186,7 @@ class AlertEnhancer {
         
         // 翻訳結果が元のテキストと異なる場合のみ設定
         if (translatedHeader !== enhancedAlert.headerText) {
-          enhancedAlert.translatedHeaderText = URLParser.parseURLs(translatedHeader);
+          enhancedAlert.translatedHeaderText = translatedHeader;
           enhancedAlert.hasTranslation = true;
         }
       }
@@ -205,7 +201,7 @@ class AlertEnhancer {
         
         // 翻訳結果が元のテキストと異なる場合のみ設定
         if (translatedDescription !== enhancedAlert.descriptionText) {
-          enhancedAlert.translatedDescriptionText = URLParser.parseURLs(translatedDescription);
+          enhancedAlert.translatedDescriptionText = translatedDescription;
           enhancedAlert.hasTranslation = true;
         }
       }
