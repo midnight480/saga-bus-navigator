@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "ダークモード/ライトモード切り替え機能の実装: CSSカスタムプロパティによるテーマ管理、トグルUI、localStorage永続化、OS設定によるデフォルト設定",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "css/app.css の先頭に :root でライトモード用CSS変数を定義する。主要な色として以下を変数化: --color-bg-primary (#f5f5f5), --color-bg-secondary (white), --color-text-primary (#333), --color-text-secondary (#666), --color-accent (#0066cc), --color-accent-dark (#0052a3), --color-border (#ddd), --color-border-light (#e0e0e0), --color-error (#c33), --color-success (#28a745), --color-fare (#e65100), --color-header-gradient-start (#0066cc), --color-header-gradient-end (#0052a3), --color-footer-bg (#333), --color-footer-text (white), --color-shadow (rgba(0,0,0,0.1))",
     "[data-theme='dark'] セレクタでダークモード用の変数値を定義する: --color-bg-primary (#1a1a2e), --color-bg-secondary (#16213e), --color-text-primary (#e0e0e0), --color-text-secondary (#a0a0a0), --color-accent (#4a9eff), --color-accent-dark (#3a8eef), --color-border (#3a3a5c), --color-border-light (#2a2a4c), --color-error (#ff6b6b), --color-success (#51cf66), --color-fare (#ffb347), --color-header-gradient-start (#0a3d91), --color-header-gradient-end (#072a66), --color-footer-bg (#0f1629), --color-footer-text (#e0e0e0), --color-shadow (rgba(0,0,0,0.3))",
