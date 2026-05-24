@@ -1,0 +1,26 @@
+{
+  "project_type": "佐賀県バスナビゲーションPWA (バニラJS + CSS、フレームワーク未使用)",
+  "language": "JavaScript (ES6+), HTML5, CSS3",
+  "build_system": "npm scripts + wrangler (Cloudflare Pages dev server)",
+  "test_framework": "Vitest (jsdom environment) for unit tests, Playwright for E2E",
+  "build_command": "npm install",
+  "test_command": "npx vitest run",
+  "verification_instructions": "1. npm install で依存関係をインストール 2. npx vitest run でテストを実行 3. テストが全てpassすることを確認",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "npm install",
+  "environment_constraints": "node_modules が未インストールのため npm install が必要。npm run dev は wrangler pages dev を使うが、テスト実行には不要。INTEGRATIONS_ONLY ネットワークの可能性があるため npm install が動かない場合は npx vitest run のみで検証。",
+  "contribution_requirements": "日本語コメント使用、テスト作成必須、出力は全て日本語",
+  "key_patterns": "クラスベースのバニラJS (SearchController, UIController等)、CSS直書き（CSS変数は未使用）、i18n対応済み(data-i18n属性)、prefers-color-scheme: dark は calendar-modal のみ部分的に対応済み",
+  "relevant_files": [
+    "index.html",
+    "css/app.css",
+    "css/timetable.css",
+    "css/footer-pages.css",
+    "js/app.js",
+    "js/utils.js",
+    "tests/utils.test.js",
+    "vitest.config.js",
+    "package.json"
+  ],
+  "directory_structure": "/ - index.html, css/ (app.css, timetable.css, footer-pages.css), js/ (app.js, data-loader.js, utils.js), tests/ (Vitest unit tests), e2e/ (Playwright E2E tests), data/ (GTFS data)"
+}
