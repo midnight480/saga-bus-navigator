@@ -2800,42 +2800,42 @@ body {
 
 /* ダークモード対応（data-theme属性ベース） */
 [data-theme="dark"] .calendar-modal-content {
-  background-color: #2c2c2c;
+  background-color: var(--color-bg-secondary);
 }
 
 [data-theme="dark"] .calendar-modal-header {
-  border-bottom-color: #444;
+  border-bottom-color: var(--color-border);
 }
 
 [data-theme="dark"] .calendar-modal-title {
-  color: #f5f5f5;
+  color: var(--color-text-primary);
 }
 
 [data-theme="dark"] .calendar-close-button {
-  color: #ccc;
+  color: var(--color-text-secondary);
 }
 
 [data-theme="dark"] .calendar-close-button:hover {
-  background-color: #3c3c3c;
-  color: #f5f5f5;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
 }
 
 [data-theme="dark"] .calendar-modal-description {
-  color: #ccc;
+  color: var(--color-text-secondary);
 }
 
 [data-theme="dark"] .calendar-option-button {
-  background-color: #3c3c3c;
-  border-color: #555;
+  background-color: var(--color-bg-primary);
+  border-color: var(--color-border);
 }
 
 [data-theme="dark"] .calendar-option-button:hover {
-  background-color: #1a3a5c;
-  border-color: #4a90e2;
+  background-color: var(--color-accent-light);
+  border-color: var(--color-accent);
 }
 
 [data-theme="dark"] .calendar-option-text {
-  color: #f5f5f5;
+  color: var(--color-text-primary);
 }
 
 /* ========================================

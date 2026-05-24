@@ -41,6 +41,12 @@ class ThemeManager {
    */
   applyTheme() {
     document.documentElement.setAttribute('data-theme', this.currentTheme);
+    // theme-colorメタタグを更新（ブラウザクロームの色を同期）
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      meta.setAttribute('content',
+        this.currentTheme === 'dark' ? '#0a3d91' : '#0066cc');
+    }
     this.updateToggleButton();
   }
 
