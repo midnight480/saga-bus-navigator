@@ -84,7 +84,7 @@ describe('CacheManager - プロパティベーステスト', () => {
           cache.set(coordsLonLat, geojson);
           const cached = cache.get(coordsLonLat);
 
-          expect(cached).toEqual(geojson);
+          expect(cached).toEqual(JSON.parse(JSON.stringify(geojson)));
         }
       ),
       { numRuns: 100 }
@@ -127,7 +127,7 @@ describe('CacheManager - プロパティベーステスト', () => {
           const cached = cache.get(coordsLonLat);
           const writesAfterGet = setItemSpy.mock.calls.length;
 
-          expect(cached).toEqual(geojson);
+          expect(cached).toEqual(JSON.parse(JSON.stringify(geojson)));
           expect(writesAfterGet).toBe(writesAfterSet);
         }
       ),
@@ -221,7 +221,7 @@ describe('CacheManager - プロパティベーステスト', () => {
           if (elapsedMs > ttlMs) {
             expect(cached).toBeNull();
           } else {
-            expect(cached).toEqual(geojson);
+            expect(cached).toEqual(JSON.parse(JSON.stringify(geojson)));
           }
         }
       ),

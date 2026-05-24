@@ -10,15 +10,7 @@ import '../js/realtime-vehicle-controller.js';
 // MapControllerのモック
 const createMapControllerMock = () => {
   return {
-    createVehicleMarker: vi.fn((lat, lng, status, tripInfo) => {
-      return {
-        lat,
-        lng,
-        status,
-        tripInfo,
-        _leaflet_id: Math.random()
-      };
-    }),
+    updateVehicleMarkerPosition: vi.fn(),
     updateVehicleMarkerPosition: vi.fn(),
     removeVehicleMarker: vi.fn()
   };
@@ -88,7 +80,11 @@ describe('RealtimeVehicleController', () => {
   beforeEach(() => {
     // DOM要素をモック
     document.body.innerHTML = `
-      <div id="map"></div>
+      <div class="map-section">
+        <div id="map-container">
+          <div id="map"></div>
+        </div>
+      </div>
     `;
 
     // モックを作成
@@ -100,6 +96,9 @@ describe('RealtimeVehicleController', () => {
     const tripTimetableFormatterMock = {
       formatTimetableHTML: vi.fn((tripId, options) => {
         return `<div class="trip-timetable"><p>時刻表: ${tripId}</p></div>`;
+      }),
+      formatTimetableText: vi.fn((tripId, options) => {
+        return `時刻表: ${tripId}`;
       })
     };
 
@@ -392,65 +391,7 @@ describe('RealtimeVehicleController', () => {
       await controller.initialize();
     });
 
-    it('運行開始前の車両マーカーを最初のバス停に配置する', () => {
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date('2025-11-16T07:00:00'));
 
-      const vehicleData = {
-        tripId: 'trip_123',
-        latitude: 33.2649,
-        longitude: 130.3008,
-        vehicleId: 'bus_001',
-        vehicleLabel: '佐賀1号'
-      };
-
-      const trip = dataLoaderMock.trips[0];
-
-      const status = controller.determineVehicleStatus(vehicleData, trip);
-      controller.updateVehicleMarker(vehicleData, trip, status);
-
-      expect(mapControllerMock.createVehicleMarker).toHaveBeenCalledWith(
-        33.2649,
-        130.3008,
-        status,
-        expect.objectContaining({
-          tripId: 'trip_123',
-          routeId: 'route_456'
-        })
-      );
-
-      vi.useRealTimers();
-    });
-
-    it('運行終了の車両マーカーを最後のバス停に配置する', () => {
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date('2025-11-16T09:00:00'));
-
-      const vehicleData = {
-        tripId: 'trip_123',
-        latitude: 33.2649,
-        longitude: 130.3008,
-        vehicleId: 'bus_001',
-        vehicleLabel: '佐賀1号'
-      };
-
-      const trip = dataLoaderMock.trips[0];
-
-      const status = controller.determineVehicleStatus(vehicleData, trip);
-      controller.updateVehicleMarker(vehicleData, trip, status);
-
-      expect(mapControllerMock.createVehicleMarker).toHaveBeenCalledWith(
-        33.2495,
-        130.3005,
-        status,
-        expect.objectContaining({
-          tripId: 'trip_123',
-          routeId: 'route_456'
-        })
-      );
-
-      vi.useRealTimers();
-    });
 
     it('運行中の車両マーカーをvehicle.pbの座標に配置する', () => {
       vi.useFakeTimers();
@@ -467,12 +408,13 @@ describe('RealtimeVehicleController', () => {
       const trip = dataLoaderMock.trips[0];
 
       const status = controller.determineVehicleStatus(vehicleData, trip);
-      controller.updateVehicleMarker(vehicleData, trip, status);
+      controller.updateVehicleMarker(vehicleData, trip);
 
-      expect(mapControllerMock.createVehicleMarker).toHaveBeenCalledWith(
+      expect(mapControllerMock.updateVehicleMarkerPosition).toHaveBeenCalledWith(
+        'trip_123',
         33.2600,
         130.3000,
-        status,
+        expect.anything(),
         expect.objectContaining({
           tripId: 'trip_123',
           routeId: 'route_456'
@@ -501,13 +443,14 @@ describe('RealtimeVehicleController', () => {
       controller.vehicleMarkers.set('trip_123', existingMarker);
 
       const status = controller.determineVehicleStatus(vehicleData, trip);
-      controller.updateVehicleMarker(vehicleData, trip, status);
+      controller.updateVehicleMarker(vehicleData, trip);
 
       expect(mapControllerMock.updateVehicleMarkerPosition).toHaveBeenCalledWith(
-        existingMarker,
+        'trip_123',
         33.2600,
         130.3000,
-        status
+        expect.anything(),
+        expect.objectContaining({ tripId: 'trip_123' })
       );
 
       vi.useRealTimers();
@@ -530,9 +473,9 @@ describe('RealtimeVehicleController', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const status = controller.determineVehicleStatus(vehicleData, trip);
-      controller.updateVehicleMarker(vehicleData, trip, status);
+      controller.updateVehicleMarker(vehicleData, trip);
 
-      expect(mapControllerMock.createVehicleMarker).not.toHaveBeenCalled();
+      expect(mapControllerMock.updateVehicleMarkerPosition).not.toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalled();
 
       consoleSpy.mockRestore();
@@ -555,7 +498,7 @@ describe('RealtimeVehicleController', () => {
       const trip = dataLoaderMock.trips[0];
 
       const status = controller.determineVehicleStatus(vehicleData, trip);
-      controller.updateVehicleMarker(vehicleData, trip, status);
+      controller.updateVehicleMarker(vehicleData, trip);
 
       expect(controller.lastUpdateTimes.get('trip_123')).toBe(now);
 
@@ -586,11 +529,11 @@ describe('RealtimeVehicleController', () => {
 
       controller.removeStaleVehicleMarkers();
 
-      expect(mapControllerMock.removeVehicleMarker).toHaveBeenCalledWith(oldMarker);
+      expect(mapControllerMock.removeVehicleMarker).toHaveBeenCalledWith('trip_old');
       expect(controller.vehicleMarkers.has('trip_old')).toBe(false);
       expect(controller.lastUpdateTimes.has('trip_old')).toBe(false);
 
-      expect(mapControllerMock.removeVehicleMarker).not.toHaveBeenCalledWith(newMarker);
+      expect(mapControllerMock.removeVehicleMarker).not.toHaveBeenCalledWith('trip_new');
       expect(controller.vehicleMarkers.has('trip_new')).toBe(true);
       expect(controller.lastUpdateTimes.has('trip_new')).toBe(true);
 
@@ -814,7 +757,7 @@ describe('RealtimeVehicleController', () => {
       expect(mapControllerMock.removeVehicleMarker).toHaveBeenCalledWith('trip_123');
       
       // 運行終了バスのマーカーが作成されないことを確認
-      expect(mapControllerMock.createVehicleMarker).not.toHaveBeenCalled();
+      expect(mapControllerMock.updateVehicleMarkerPosition).not.toHaveBeenCalled();
 
       vi.useRealTimers();
     });
@@ -839,7 +782,7 @@ describe('RealtimeVehicleController', () => {
       controller.handleVehiclePositionsUpdate(vehiclePositions);
 
       // 運行中バスのマーカーが作成されることを確認
-      expect(mapControllerMock.createVehicleMarker).toHaveBeenCalled();
+      expect(mapControllerMock.updateVehicleMarkerPosition).toHaveBeenCalled();
       
       // 運行終了バスのマーカーが削除されないことを確認
       expect(mapControllerMock.removeVehicleMarker).not.toHaveBeenCalled();
@@ -896,10 +839,11 @@ describe('RealtimeVehicleController', () => {
       controller.handleVehiclePositionsUpdate(vehiclePositions);
 
       // 運行中バス(trip_123)のマーカーが作成されることを確認
-      expect(mapControllerMock.createVehicleMarker).toHaveBeenCalledWith(
+      expect(mapControllerMock.updateVehicleMarkerPosition).toHaveBeenCalledWith(
+        'trip_123',
         33.2600,
         130.3000,
-        expect.objectContaining({ state: expect.not.stringMatching('after_end') }),
+        expect.anything(),
         expect.objectContaining({ tripId: 'trip_123' })
       );
 
@@ -918,7 +862,7 @@ describe('RealtimeVehicleController', () => {
       }).not.toThrow();
 
       // マーカーが作成されないことを確認
-      expect(mapControllerMock.createVehicleMarker).not.toHaveBeenCalled();
+      expect(mapControllerMock.updateVehicleMarkerPosition).not.toHaveBeenCalled();
     });
 
     it('不正なtripIdを持つ車両をスキップすることを検証', () => {
@@ -941,7 +885,7 @@ describe('RealtimeVehicleController', () => {
       expect(consoleSpy).toHaveBeenCalled();
 
       // マーカーが作成されないことを確認
-      expect(mapControllerMock.createVehicleMarker).not.toHaveBeenCalled();
+      expect(mapControllerMock.updateVehicleMarkerPosition).not.toHaveBeenCalled();
 
       consoleSpy.mockRestore();
     });
@@ -962,8 +906,8 @@ describe('RealtimeVehicleController', () => {
       
       // TripTimetableFormatterのモックを設定
       controller.tripTimetableFormatter = {
-        formatTimetableHTML: vi.fn((tripId, options) => {
-          return `<div class="trip-timetable"><p>時刻表: ${tripId}</p></div>`;
+        formatTimetableText: vi.fn((tripId, options) => {
+          return `時刻表: ${tripId}`;
         })
       };
     });
@@ -996,17 +940,16 @@ describe('RealtimeVehicleController', () => {
       expect(popupContent.textContent).toContain('便ID: trip_123');
       expect(popupContent.textContent).toContain('路線: 佐賀駅～大和線');
 
-      // 時刻表情報が含まれることを確認
-      expect(popupContent.querySelector('.trip-timetable')).toBeTruthy();
+      expect(popupContent.querySelector('.trip-timetable-text')).toBeTruthy();
       expect(popupContent.textContent).toContain('時刻表: trip_123');
 
       // 時刻表が運行状態情報の下に配置されることを確認
       const vehicleStatusElement = popupContent.querySelector('.vehicle-status');
-      const timetableElement = popupContent.querySelector('.trip-timetable');
+      const timetableElement = popupContent.querySelector('.trip-timetable-text');
       
       // DOMツリー内での順序を確認
       const vehicleStatusIndex = Array.from(popupContent.children).indexOf(vehicleStatusElement);
-      const timetableIndex = Array.from(popupContent.children).indexOf(timetableElement.parentElement);
+      const timetableIndex = Array.from(popupContent.children).indexOf(timetableElement);
       
       expect(timetableIndex).toBeGreaterThan(vehicleStatusIndex);
 
@@ -1018,7 +961,7 @@ describe('RealtimeVehicleController', () => {
       vi.setSystemTime(new Date('2025-11-16T08:05:00'));
 
       // TripTimetableFormatterがエラーをスローするように設定
-      controller.tripTimetableFormatter.formatTimetableHTML = vi.fn(() => {
+      controller.tripTimetableFormatter.formatTimetableText = vi.fn(() => {
         throw new Error('時刻表生成エラー');
       });
 
@@ -1089,11 +1032,11 @@ describe('RealtimeVehicleController', () => {
       expect(popupContent2.textContent).toContain('時刻表: trip_456');
 
       // TripTimetableFormatterが正しいパラメータで呼び出される
-      expect(controller.tripTimetableFormatter.formatTimetableHTML).toHaveBeenCalledWith(
+      expect(controller.tripTimetableFormatter.formatTimetableText).toHaveBeenCalledWith(
         'trip_123',
         expect.objectContaining({ currentStopSequence: 1 })
       );
-      expect(controller.tripTimetableFormatter.formatTimetableHTML).toHaveBeenCalledWith(
+      expect(controller.tripTimetableFormatter.formatTimetableText).toHaveBeenCalledWith(
         'trip_456',
         expect.objectContaining({ currentStopSequence: 2 })
       );

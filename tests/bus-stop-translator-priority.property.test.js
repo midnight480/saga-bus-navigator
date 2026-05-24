@@ -17,6 +17,7 @@ describe('バス停翻訳優先順位のプロパティテスト', () => {
 
   beforeEach(() => {
     translator = new BusStopTranslator();
+    translator.setCurrentLanguage('en');
   });
 
   /**

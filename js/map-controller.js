@@ -436,12 +436,21 @@ class MapController {
       const notification = L.control({ position: 'bottomleft' });
       notification.onAdd = () => {
         const div = L.DomUtil.create('div', 'tile-error-notification');
-        div.innerHTML = `
-          <div class="notification-content">
-            <span class="notification-icon">ℹ️</span>
-            <span class="notification-text">地図の読み込みに問題が発生したため、代替サーバーを使用しています</span>
-          </div>
-        `;
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'notification-content';
+        
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'notification-icon';
+        iconSpan.textContent = 'ℹ️';
+        
+        const textSpan = document.createElement('span');
+        textSpan.className = 'notification-text';
+        textSpan.textContent = '地図の読み込みに問題が発生したため、代替サーバーを使用しています';
+        
+        contentDiv.appendChild(iconSpan);
+        contentDiv.appendChild(textSpan);
+        
+        div.appendChild(contentDiv);
         
         // 5秒後に自動的に非表示
         setTimeout(() => {
@@ -463,14 +472,30 @@ class MapController {
   displayLibraryError(containerId) {
     const container = document.getElementById(containerId);
     if (container) {
-      container.innerHTML = `
-        <div class="map-error-message">
-          <div class="error-icon">⚠️</div>
-          <h3>地図ライブラリの読み込みに失敗しました</h3>
-          <p>地図を表示できません。ページを再読み込みしてください。</p>
-          <button class="retry-button" id="map-reload-button">再読み込み</button>
-        </div>
-      `;
+      const wrapper = document.createElement('div');
+      wrapper.className = 'map-error-message';
+      
+      const iconDiv = document.createElement('div');
+      iconDiv.className = 'error-icon';
+      iconDiv.textContent = '⚠️';
+      
+      const h3 = document.createElement('h3');
+      h3.textContent = '地図ライブラリの読み込みに失敗しました';
+      
+      const p = document.createElement('p');
+      p.textContent = '地図を表示できません。ページを再読み込みしてください。';
+      
+      const btn = document.createElement('button');
+      btn.className = 'retry-button';
+      btn.id = 'map-reload-button';
+      btn.textContent = '再読み込み';
+      
+      wrapper.appendChild(iconDiv);
+      wrapper.appendChild(h3);
+      wrapper.appendChild(p);
+      wrapper.appendChild(btn);
+      
+      container.replaceChildren(wrapper);
       container.style.display = 'flex';
       container.style.alignItems = 'center';
       container.style.justifyContent = 'center';
@@ -787,12 +812,21 @@ class MapController {
       const errorControl = L.control({ position: 'topright' });
       errorControl.onAdd = () => {
         const div = L.DomUtil.create('div', 'map-data-error');
-        div.innerHTML = `
-          <div class="error-notification">
-            <span class="error-icon">⚠️</span>
-            <span class="error-text">バス停データの読み込みに失敗しました</span>
-          </div>
-        `;
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'error-notification';
+        
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'error-icon';
+        iconSpan.textContent = '⚠️';
+        
+        const textSpan = document.createElement('span');
+        textSpan.className = 'error-text';
+        textSpan.textContent = 'バス停データの読み込みに失敗しました';
+        
+        contentDiv.appendChild(iconSpan);
+        contentDiv.appendChild(textSpan);
+        
+        div.appendChild(contentDiv);
         return div;
       };
       errorControl.addTo(this.map);
@@ -935,9 +969,14 @@ class MapController {
     if (typeof text !== 'string') {
       return String(text);
     }
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    const htmlEntities = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    };
+    return text.replace(/[&<>"']/g, (char) => htmlEntities[char]);
   }
   
   /**
@@ -1903,12 +1942,21 @@ class MapController {
     const notification = L.control({ position: 'topright' });
     notification.onAdd = () => {
       const div = L.DomUtil.create('div', 'location-error-notification');
-      div.innerHTML = `
-        <div class="notification-content">
-          <span class="notification-icon">⚠️</span>
-          <span class="notification-text">${this.escapeHtml(message)}</span>
-        </div>
-      `;
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'notification-content';
+      
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'notification-icon';
+      iconSpan.textContent = '⚠️';
+      
+      const textSpan = document.createElement('span');
+      textSpan.className = 'notification-text';
+      textSpan.textContent = message; // Using textContent makes it safe, no escapeHtml needed
+      
+      contentDiv.appendChild(iconSpan);
+      contentDiv.appendChild(textSpan);
+      
+      div.appendChild(contentDiv);
       
       setTimeout(() => {
         if (div.parentNode) {
@@ -2302,109 +2350,6 @@ class MapController {
     }
   }
   
-  /**
-   * 車両マーカーの吹き出しに時刻表HTMLを追加する
-   * @param {string} tripId - 便ID
-   * @param {string} timetableHTML - 時刻表HTML
-   */
-  appendTimetableToPopup(tripId, timetableHTML) {
-    try {
-      const marker = this.vehicleMarkers.get(tripId);
-      
-      if (!marker) {
-        this.logError('時刻表を追加するマーカーが見つかりません', {
-          tripId: tripId
-        });
-        return;
-      }
-      
-      // ポップアップが開いている場合は、DOMを直接更新
-      const popup = marker.getPopup();
-      if (popup && popup.isOpen()) {
-        const popupElement = popup.getElement();
-        if (popupElement) {
-          const container = popupElement.querySelector('.trip-timetable-container');
-          if (container) {
-            container.innerHTML = timetableHTML;
-            
-            // 折りたたみリンクのイベントリスナーを設定
-            this.setupTimetableToggleListeners(popupElement);
-            
-            console.log('[MapController] 時刻表を吹き出しに追加しました:', tripId);
-          }
-        }
-      }
-      
-    } catch (error) {
-      this.logError('時刻表の追加に失敗しました', {
-        message: error.message,
-        details: error.stack,
-        tripId: tripId
-      });
-    }
-  }
-  
-  /**
-   * 折りたたみリンクのイベントリスナーを設定する
-   * @param {HTMLElement} popupElement - ポップアップ要素
-   */
-  setupTimetableToggleListeners(popupElement) {
-    try {
-      const toggleLink = popupElement.querySelector('.timetable-toggle');
-      
-      if (!toggleLink) {
-        // 折りたたみリンクが存在しない場合は何もしない
-        return;
-      }
-      
-      // 既存のイベントリスナーを削除（重複防止）
-      const newToggleLink = toggleLink.cloneNode(true);
-      toggleLink.parentNode.replaceChild(newToggleLink, toggleLink);
-      
-      // クリックイベントを設定
-      newToggleLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        
-        const action = newToggleLink.getAttribute('data-action');
-        const timetableContent = popupElement.querySelector('.timetable-content');
-        const timetableStops = popupElement.querySelector('.timetable-stops');
-        
-        if (!timetableContent || !timetableStops) {
-          console.error('[MapController] 時刻表要素が見つかりません');
-          return;
-        }
-        
-        if (action === 'expand') {
-          // 展開
-          timetableContent.setAttribute('data-collapsed', 'false');
-          timetableStops.style.display = 'block';
-          newToggleLink.textContent = '時刻表を折りたたむ';
-          newToggleLink.setAttribute('data-action', 'collapse');
-          
-          console.log('[MapController] 時刻表を展開しました');
-        } else {
-          // 折りたたみ
-          timetableContent.setAttribute('data-collapsed', 'true');
-          timetableStops.style.display = 'none';
-          
-          // 停車数を取得
-          const stopCount = timetableStops.querySelectorAll('.stop-item').length;
-          newToggleLink.textContent = `時刻表を表示（全${stopCount}停車）`;
-          newToggleLink.setAttribute('data-action', 'expand');
-          
-          console.log('[MapController] 時刻表を折りたたみました');
-        }
-      });
-      
-      console.log('[MapController] 折りたたみリンクのイベントリスナーを設定しました');
-      
-    } catch (error) {
-      this.logError('折りたたみリンクのイベントリスナー設定に失敗しました', {
-        message: error.message,
-        details: error.stack
-      });
-    }
-  }
 }
 
 // MapControllerをグローバルスコープに公開

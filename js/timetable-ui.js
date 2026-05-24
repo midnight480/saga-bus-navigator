@@ -381,7 +381,7 @@ class TimetableUI {
     });
 
     // モーダルコンテンツを更新
-    this.modalBody.innerHTML = '';
+    this.modalBody.replaceChildren();
     const contentWrapper = document.createElement('div');
     contentWrapper.className = 'timetable-modal-content';
     contentWrapper.appendChild(header);
@@ -599,7 +599,7 @@ class TimetableUI {
     timetableContent.appendChild(weekendContent);
 
     // モーダルコンテンツを更新
-    this.modalBody.innerHTML = '';
+    this.modalBody.replaceChildren();
     const contentWrapper = document.createElement('div');
     contentWrapper.className = 'timetable-modal-content';
     contentWrapper.appendChild(header);
@@ -1182,7 +1182,7 @@ class TimetableUI {
   closeModal() {
     if (this.modal) {
       this.modal.setAttribute('hidden', '');
-      this.modalBody.innerHTML = '';
+      this.modalBody.replaceChildren();
       this.modal.style.display = 'none';
     }
 

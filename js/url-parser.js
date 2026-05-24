@@ -72,6 +72,40 @@ class URLParser {
   }
 
   /**
+   * テキスト内のURLを検出してハイパーリンクのDOMノードを含むFragmentを作成する
+   * @param {string} text - 処理対象のテキスト
+   * @returns {DocumentFragment} URLがaタグに変換されたFragment
+   */
+  static parseURLsToNodes(text) {
+    const fragment = document.createDocumentFragment();
+    if (!text || typeof text !== 'string') {
+      return fragment;
+    }
+
+    let lastIndex = 0;
+    const regex = new RegExp(URLParser.URL_REGEX.source, URLParser.URL_REGEX.flags);
+    let match;
+    
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
+      }
+      const a = document.createElement('a');
+      a.href = match[0];
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = match[0];
+      fragment.appendChild(a);
+      lastIndex = regex.lastIndex;
+    }
+    
+    if (lastIndex < text.length) {
+      fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+    }
+    return fragment;
+  }
+
+  /**
    * テキスト内のURL数をカウント
    * @param {string} text - 処理対象のテキスト
    * @returns {number} 検出されたURL数

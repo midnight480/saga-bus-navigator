@@ -24,6 +24,9 @@ class RealtimeVehicleController {
     // TripTimetableFormatterの初期化
     this.tripTimetableFormatter = tripTimetableFormatter || new TripTimetableFormatter(dataLoader);
     
+    // 車両マーカー管理用のMap (tripId -> Marker)
+    this.vehicleMarkers = new Map();
+    
     // 最終更新時刻の管理用のMap (tripId -> timestamp)
     this.lastUpdateTimes = new Map();
     
@@ -305,14 +308,32 @@ class RealtimeVehicleController {
       this.translationManager.translateRouteName(tripInfo.routeName) : tripInfo.routeName;
     
     // 運行状態情報
-    const statusHTML = `
-      <div class="vehicle-status">
-        <h3>${tripIdLabel}: ${tripInfo.tripId}</h3>
-        <p><strong>${routeLabel}:</strong> ${translatedRouteName}</p>
-        <p><strong>${statusLabel}:</strong> <span style="color: ${vehicleStatus.color}">${vehicleStatus.message}</span></p>
-      </div>
-    `;
-    popupDiv.innerHTML = statusHTML;
+    const statusContainer = document.createElement('div');
+    statusContainer.className = 'vehicle-status';
+    
+    const h3 = document.createElement('h3');
+    h3.textContent = `${tripIdLabel}: ${tripInfo.tripId}`;
+    statusContainer.appendChild(h3);
+    
+    const routePara = document.createElement('p');
+    const routeStrong = document.createElement('strong');
+    routeStrong.textContent = `${routeLabel}:`;
+    routePara.appendChild(routeStrong);
+    routePara.appendChild(document.createTextNode(` ${translatedRouteName}`));
+    statusContainer.appendChild(routePara);
+    
+    const statusPara = document.createElement('p');
+    const statusStrong = document.createElement('strong');
+    statusStrong.textContent = `${statusLabel}:`;
+    statusPara.appendChild(statusStrong);
+    const statusSpan = document.createElement('span');
+    statusSpan.style.color = vehicleStatus.color;
+    statusSpan.textContent = vehicleStatus.message;
+    statusPara.appendChild(document.createTextNode(' '));
+    statusPara.appendChild(statusSpan);
+    statusContainer.appendChild(statusPara);
+    
+    popupDiv.appendChild(statusContainer);
     
     // 時刻表を追加
     const currentStopSequence = vehicleData.currentStopSequence || null;
@@ -635,6 +656,7 @@ class RealtimeVehicleController {
       
       // 最終更新時刻の管理Mapから削除
       this.lastUpdateTimes.delete(tripId);
+      this.vehicleMarkers.delete(tripId);
       
       console.log('[RealtimeVehicleController] 古い車両マーカーを削除しました:', tripId);
     });
@@ -811,7 +833,7 @@ class RealtimeVehicleController {
     if (alert.headerText) {
       // AlertEnhancerが設定されている場合はURLハイパーリンク化を適用
       if (this.alertEnhancer) {
-        header.innerHTML = this._getProcessedText(alert, 'header');
+        header.replaceChildren(this._getProcessedNodes(alert, 'header'));
       } else {
         header.textContent = alert.headerText;
       }
@@ -820,7 +842,7 @@ class RealtimeVehicleController {
     } else if (alert.descriptionText) {
       // headerTextがない場合はdescriptionTextをタイトルとして使用
       if (this.alertEnhancer) {
-        header.innerHTML = this._getProcessedText(alert, 'description');
+        header.replaceChildren(this._getProcessedNodes(alert, 'description'));
       } else {
         header.textContent = alert.descriptionText;
       }
@@ -841,7 +863,7 @@ class RealtimeVehicleController {
       
       // AlertEnhancerが設定されている場合はURLハイパーリンク化を適用
       if (this.alertEnhancer) {
-        description.innerHTML = this._getProcessedText(alert, 'description');
+        description.replaceChildren(this._getProcessedNodes(alert, 'description'));
       } else {
         description.textContent = alert.descriptionText;
       }
@@ -889,27 +911,31 @@ class RealtimeVehicleController {
   }
   
   /**
-   * 処理済みテキストを取得（URLハイパーリンク化済み）
+   * 処理済みノードを取得（URLハイパーリンク化済み）
    * @private
    * @param {Object} alert - お知らせデータ
    * @param {string} field - フィールド名（'header' | 'description'）
-   * @returns {string} 処理済みテキスト（HTML）
+   * @returns {DocumentFragment|string} 処理済みノードまたはテキスト
    */
-  _getProcessedText(alert, field) {
+  _getProcessedNodes(alert, field) {
     const alertId = alert.id || this._generateAlertId(alert);
     
     // キャッシュから取得
     const cachedAlert = this.enhancedAlertsCache.get(alertId);
+    let text = '';
     if (cachedAlert) {
-      return this.alertEnhancer.getDisplayText(cachedAlert, field);
+      text = this.alertEnhancer.getDisplayText(cachedAlert, field);
+    } else {
+      text = field === 'header' ? alert.headerText : alert.descriptionText;
     }
     
-    // キャッシュにない場合はURLParserで処理
-    const text = field === 'header' ? alert.headerText : alert.descriptionText;
-    if (typeof window !== 'undefined' && window.URLParser) {
-      return window.URLParser.parseURLs(text || '');
+    if (typeof window !== 'undefined' && window.URLParser && window.URLParser.parseURLsToNodes) {
+      return window.URLParser.parseURLsToNodes(text || '');
     }
-    return text || '';
+    
+    const fragment = document.createDocumentFragment();
+    fragment.textContent = text || '';
+    return fragment;
   }
   
   /**
@@ -962,7 +988,11 @@ class RealtimeVehicleController {
       if (header) {
         const headerText = this.alertEnhancer.getDisplayText(enhancedAlert, 'header');
         if (headerText) {
-          header.innerHTML = headerText;
+          if (typeof window !== 'undefined' && window.URLParser && window.URLParser.parseURLsToNodes) {
+            header.replaceChildren(window.URLParser.parseURLsToNodes(headerText));
+          } else {
+            header.textContent = headerText;
+          }
         }
       }
       
@@ -971,7 +1001,11 @@ class RealtimeVehicleController {
       if (description) {
         const descriptionText = this.alertEnhancer.getDisplayText(enhancedAlert, 'description');
         if (descriptionText) {
-          description.innerHTML = descriptionText;
+          if (typeof window !== 'undefined' && window.URLParser && window.URLParser.parseURLsToNodes) {
+            description.replaceChildren(window.URLParser.parseURLsToNodes(descriptionText));
+          } else {
+            description.textContent = descriptionText;
+          }
         }
       }
       
@@ -1113,7 +1147,9 @@ class RealtimeVehicleController {
       if (popupElement) {
         const errorContainer = document.createElement('div');
         errorContainer.className = 'trip-timetable';
-        errorContainer.innerHTML = '<p>時刻表情報の取得に失敗しました</p>';
+        const p = document.createElement('p');
+        p.textContent = '時刻表情報の取得に失敗しました';
+        errorContainer.replaceChildren(p);
         popupElement.appendChild(errorContainer);
       }
       
