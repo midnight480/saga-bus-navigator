@@ -1,4 +1,60 @@
 /* ========================================
+   CSS Custom Properties (テーマ変数)
+   ======================================== */
+
+:root {
+  --color-bg-primary: #f5f5f5;
+  --color-bg-secondary: #ffffff;
+  --color-text-primary: #333333;
+  --color-text-secondary: #666666;
+  --color-accent: #0066cc;
+  --color-accent-dark: #0052a3;
+  --color-accent-light: #f0f7ff;
+  --color-accent-lighter: #e6f2ff;
+  --color-border: #dddddd;
+  --color-border-light: #e0e0e0;
+  --color-border-focus: #0066cc;
+  --color-error-bg: #fee;
+  --color-error-border: #fcc;
+  --color-error-text: #c33;
+  --color-success: #28a745;
+  --color-fare: #e65100;
+  --color-header-gradient-start: #0066cc;
+  --color-header-gradient-end: #0052a3;
+  --color-footer-bg: #333333;
+  --color-footer-text: #ffffff;
+  --color-shadow: rgba(0, 0, 0, 0.1);
+  --color-shadow-dark: rgba(0, 0, 0, 0.2);
+  --color-overlay: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] {
+  --color-bg-primary: #1a1a2e;
+  --color-bg-secondary: #16213e;
+  --color-text-primary: #e0e0e0;
+  --color-text-secondary: #a0a0a0;
+  --color-accent: #4a9eff;
+  --color-accent-dark: #3a8eef;
+  --color-accent-light: #1a3a5c;
+  --color-accent-lighter: #0f2a4c;
+  --color-border: #3a3a5c;
+  --color-border-light: #2a2a4c;
+  --color-border-focus: #4a9eff;
+  --color-error-bg: #3a1a1a;
+  --color-error-border: #6b3333;
+  --color-error-text: #ff6b6b;
+  --color-success: #51cf66;
+  --color-fare: #ffb347;
+  --color-header-gradient-start: #0a3d91;
+  --color-header-gradient-end: #072a66;
+  --color-footer-bg: #0f1629;
+  --color-footer-text: #e0e0e0;
+  --color-shadow: rgba(0, 0, 0, 0.3);
+  --color-shadow-dark: rgba(0, 0, 0, 0.5);
+  --color-overlay: rgba(0, 0, 0, 0.7);
+}
+
+/* ========================================
    Reset & Base Styles
    ======================================== */
 
@@ -17,8 +73,8 @@ html {
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
   line-height: 1.6;
-  color: #333;
-  background-color: #f5f5f5;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
 }
 
 /* Hidden attribute support */
@@ -84,11 +140,12 @@ body {
    ======================================== */
 
 .header {
-  background: linear-gradient(135deg, #0066cc 0%, #0052a3 100%);
+  position: relative;
+  background: linear-gradient(135deg, var(--color-header-gradient-start) 0%, var(--color-header-gradient-end) 100%);
   color: white;
   padding: 1.5rem 1rem;
   text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px var(--color-shadow);
 }
 
 .header-title {
@@ -102,25 +159,58 @@ body {
   opacity: 0.9;
 }
 
+/* テーマ切り替えボタン */
+.theme-toggle-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 44px;
+  height: 44px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.theme-toggle-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.theme-toggle-button:focus-visible {
+  outline: 3px solid white;
+  outline-offset: 2px;
+}
+
+.theme-toggle-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
 /* ========================================
    Sections
    ======================================== */
 
 .search-section,
 .results-section {
-  background: white;
+  background: var(--color-bg-secondary);
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px var(--color-shadow);
 }
 
 .section-title {
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  color: #0066cc;
-  border-bottom: 2px solid #0066cc;
+  color: var(--color-accent);
+  border-bottom: 2px solid var(--color-accent);
   padding-bottom: 0.5rem;
 }
 
@@ -143,27 +233,29 @@ body {
 .form-label {
   font-weight: 600;
   font-size: 0.9375rem;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .form-input {
   width: 100%;
   padding: 0.75rem;
   font-size: 1rem;
-  border: 2px solid #ddd;
+  border: 2px solid var(--color-border);
   border-radius: 4px;
   transition: border-color 0.2s;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #0066cc;
+  border-color: var(--color-border-focus);
   box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
 }
 
 .form-help {
   font-size: 0.8125rem;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 /* ========================================
@@ -210,11 +302,11 @@ body {
 
 .suggestion-item:hover,
 .suggestion-item:focus {
-  background-color: #f0f7ff;
+  background-color: var(--color-accent-light);
 }
 
 .suggestion-item-active {
-  background-color: #e6f2ff;
+  background-color: var(--color-accent-lighter);
 }
 
 .suggestion-item-empty {
@@ -246,7 +338,7 @@ body {
   align-items: flex-start;
   cursor: pointer;
   padding: 0.75rem;
-  border: 2px solid #ddd;
+  border: 2px solid var(--color-border);
   border-radius: 4px;
   transition: all 0.2s;
   min-height: 44px;
@@ -255,8 +347,8 @@ body {
 }
 
 .radio-label:hover {
-  border-color: #0066cc;
-  background-color: #f0f7ff;
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-light);
 }
 
 .radio-input {
@@ -275,8 +367,8 @@ body {
 }
 
 .radio-label:has(.radio-input:checked) {
-  border-color: #0066cc;
-  background-color: #e6f2ff;
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-lighter);
 }
 
 .radio-text {
@@ -296,7 +388,7 @@ body {
   display: none;
   margin-top: 1rem;
   padding: 1rem;
-  background-color: #f9f9f9;
+  background-color: var(--color-bg-primary);
   border-radius: 4px;
 }
 
@@ -331,7 +423,7 @@ body {
 .time-separator {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 /* ========================================
@@ -356,14 +448,14 @@ body {
 }
 
 .btn-primary {
-  background-color: #0066cc;
+  background-color: var(--color-accent);
   color: white;
   width: 100%;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #0052a3;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  background-color: var(--color-accent-dark);
+  box-shadow: 0 2px 4px var(--color-shadow-dark);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -371,15 +463,15 @@ body {
 }
 
 .btn-secondary {
-  background-color: white;
-  color: #0066cc;
-  border: 2px solid #0066cc;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-accent);
+  border: 2px solid var(--color-accent);
   width: 100%;
   margin-top: 1rem;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: #f0f7ff;
+  background-color: var(--color-accent-light);
 }
 
 /* ボタンコンテナ - 検索ボタンと同じ幅を保証 */
@@ -430,10 +522,10 @@ body {
 .error-message {
   display: none;
   padding: 0.875rem;
-  background-color: #fee;
-  border: 2px solid #fcc;
+  background-color: var(--color-error-bg);
+  border: 2px solid var(--color-error-border);
   border-radius: 4px;
-  color: #c33;
+  color: var(--color-error-text);
   font-weight: 600;
   margin-bottom: 1rem;
 }
@@ -1064,7 +1156,7 @@ body {
 
 .results-placeholder {
   text-align: center;
-  color: #999;
+  color: var(--color-text-secondary);
   padding: 3rem 1rem;
   font-size: 0.9375rem;
 }
@@ -1108,17 +1200,17 @@ body {
 
 .no-results-message {
   text-align: center;
-  color: #999;
+  color: var(--color-text-secondary);
   padding: 3rem 1rem;
   font-size: 0.9375rem;
 }
 
 .result-item {
   padding: 1rem;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--color-border-light);
   border-radius: 8px;
   transition: all 0.2s;
-  background-color: white;
+  background-color: var(--color-bg-secondary);
 }
 
 .result-item:hover {
@@ -1300,8 +1392,8 @@ body {
    ======================================== */
 
 .footer {
-  background-color: #333;
-  color: white;
+  background-color: var(--color-footer-bg);
+  color: var(--color-footer-text);
   padding: 1.5rem 1rem;
   text-align: center;
   margin-top: auto;
@@ -1312,7 +1404,7 @@ body {
 }
 
 .footer-link {
-  color: white;
+  color: var(--color-footer-text);
   text-decoration: none;
   margin: 0 0.5rem;
 }
@@ -2706,46 +2798,44 @@ body {
   }
 }
 
-/* ダークモード対応（オプション） */
-@media (prefers-color-scheme: dark) {
-  .calendar-modal-content {
-    background-color: #2c2c2c;
-  }
-  
-  .calendar-modal-header {
-    border-bottom-color: #444;
-  }
-  
-  .calendar-modal-title {
-    color: #f5f5f5;
-  }
-  
-  .calendar-close-button {
-    color: #ccc;
-  }
-  
-  .calendar-close-button:hover {
-    background-color: #3c3c3c;
-    color: #f5f5f5;
-  }
-  
-  .calendar-modal-description {
-    color: #ccc;
-  }
-  
-  .calendar-option-button {
-    background-color: #3c3c3c;
-    border-color: #555;
-  }
-  
-  .calendar-option-button:hover {
-    background-color: #1a3a5c;
-    border-color: #4a90e2;
-  }
-  
-  .calendar-option-text {
-    color: #f5f5f5;
-  }
+/* ダークモード対応（data-theme属性ベース） */
+[data-theme="dark"] .calendar-modal-content {
+  background-color: var(--color-bg-secondary);
+}
+
+[data-theme="dark"] .calendar-modal-header {
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .calendar-modal-title {
+  color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .calendar-close-button {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .calendar-close-button:hover {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .calendar-modal-description {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .calendar-option-button {
+  background-color: var(--color-bg-primary);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .calendar-option-button:hover {
+  background-color: var(--color-accent-light);
+  border-color: var(--color-accent);
+}
+
+[data-theme="dark"] .calendar-option-text {
+  color: var(--color-text-primary);
 }
 
 /* ========================================

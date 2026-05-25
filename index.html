@@ -27,6 +27,21 @@
   <link rel="stylesheet" href="/css/app.css">
   <link rel="stylesheet" href="/css/timetable.css">
   <link rel="stylesheet" href="/css/footer-pages.css">
+
+  <!-- テーマ初期化（FOUC防止: CSS描画前にdata-themeを設定） -->
+  <script>
+  (function() {
+    var t = localStorage.getItem('theme');
+    if (t !== 'dark' && t !== 'light') {
+      t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', t);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      meta.setAttribute('content', t === 'dark' ? '#0a3d91' : '#0066cc');
+    }
+  })();
+  </script>
 </head>
 <body>
   <!-- Loading Screen (Skeleton) -->
@@ -138,6 +153,9 @@
   <div class="container">
     <!-- Header -->
     <header class="header">
+      <button type="button" id="theme-toggle-button" class="theme-toggle-button" aria-label="ダークモードに切り替え">
+        <span class="theme-toggle-icon">🌙</span>
+      </button>
       <h1 class="header-title" data-i18n="app.title">佐賀バスナビ</h1>
       <p class="header-subtitle" data-i18n="app.subtitle">時刻表検索</p>
     </header>
@@ -1354,6 +1372,7 @@ fetch('https://saga-bus.midnight480.com/api/stops/first-last?stop=佐賀駅バ�
   <!-- Protocol Buffers Library for GTFS-Realtime -->
   <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.2.5/dist/protobuf.min.js"></script>
   
+  <script src="/js/theme.js"></script>
   <script src="/js/utils.js"></script>
   <script src="/js/safari-warning-dialog.js"></script>
   <script src="/js/direction-detector.js"></script>

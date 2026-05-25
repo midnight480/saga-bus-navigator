@@ -1,0 +1,35 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "ダークモード/ライトモード切り替え機能の実装: CSSカスタムプロパティによるテーマ管理、トグルUI、localStorage永続化、OS設定によるデフォルト設定",
+  "status": "completed",
+  "steps": [
+    "css/app.css の先頭に :root でライトモード用CSS変数を定義する。主要な色として以下を変数化: --color-bg-primary (#f5f5f5), --color-bg-secondary (white), --color-text-primary (#333), --color-text-secondary (#666), --color-accent (#0066cc), --color-accent-dark (#0052a3), --color-border (#ddd), --color-border-light (#e0e0e0), --color-error (#c33), --color-success (#28a745), --color-fare (#e65100), --color-header-gradient-start (#0066cc), --color-header-gradient-end (#0052a3), --color-footer-bg (#333), --color-footer-text (white), --color-shadow (rgba(0,0,0,0.1))",
+    "[data-theme='dark'] セレクタでダークモード用の変数値を定義する: --color-bg-primary (#1a1a2e), --color-bg-secondary (#16213e), --color-text-primary (#e0e0e0), --color-text-secondary (#a0a0a0), --color-accent (#4a9eff), --color-accent-dark (#3a8eef), --color-border (#3a3a5c), --color-border-light (#2a2a4c), --color-error (#ff6b6b), --color-success (#51cf66), --color-fare (#ffb347), --color-header-gradient-start (#0a3d91), --color-header-gradient-end (#072a66), --color-footer-bg (#0f1629), --color-footer-text (#e0e0e0), --color-shadow (rgba(0,0,0,0.3))",
+    "css/app.css 内の直接的な色指定をCSS変数参照に置き換える。body, .container, .header, .search-section, .results-section, .form-input, .form-label, .section-title, .btn-primary, .btn-secondary, .footer, .error-message, .result-item, .suggestion-item, .radio-label などの主要セレクタを対象とする",
+    "css/timetable.css 内の色指定もCSS変数参照に置き換える。.timetable-modal-content, .timetable-modal-header, .timetable-close-button などを対象とする",
+    "css/footer-pages.css 内の色指定もCSS変数参照に置き換える。.footer-modal-content, .footer-modal-header, .footer-tab-button などを対象とする",
+    "js/theme.js を新規作成する。ThemeManager クラスを実装: (1) initializeTheme() - localStorage から保存されたテーマを取得、なければ OS の prefers-color-scheme をチェックしてデフォルトテーマを決定し document.documentElement に data-theme 属性を設定 (2) toggleTheme() - 現在のテーマを切り替え、localStorage に保存 (3) getCurrentTheme() - 現在のテーマ('light'|'dark')を返す (4) OS設定変更を mediaQueryList.addEventListener で監視し、ユーザーが手動設定していない場合は自動追従",
+    "index.html の header セクション内にテーマ切り替えトグルボタンを追加する。ヘッダー右上に配置し、アイコン（太陽/月）で現在のモードを示す。アクセシビリティ対応として aria-label を設定する。IDは 'theme-toggle-button' とする",
+    "index.html の </body> 直前に <script src='/js/theme.js'></script> を追加する（app.js より前に読み込ませてFOUCを防止する）",
+    "css/app.css にテーマトグルボタン用スタイルを追加する: .theme-toggle-button クラスで、ヘッダー内右上に配置、44x44px以上のタッチターゲット、ホバー/フォーカスのスタイルを設定",
+    "既存の @media (prefers-color-scheme: dark) のカレンダーモーダル用CSSを [data-theme='dark'] セレクタに移行して統一する",
+    "tests/theme.test.js を新規作成する。ThemeManager のテスト: (1) デフォルト初期化(OS設定がlightの場合) (2) localStorage にテーマが保存されている場合のロード (3) toggleTheme() でライト→ダークに切り替わること (4) toggleTheme() でダーク→ライトに切り替わること (5) テーマ変更時にlocalStorageに保存されること (6) data-theme属性がdocumentElementに正しく設定されること (7) OS設定がダークの場合にダークモードがデフォルトになること"
+  ],
+  "acceptance_criteria": [
+    "ページロード時に data-theme 属性が html 要素に設定される",
+    "トグルボタンをクリックするとライト/ダークが切り替わる",
+    "テーマ選択が localStorage の 'theme' キーに保存される",
+    "ページをリロードしても前回選択したテーマが維持される",
+    "localStorage にテーマ未設定の場合は OS の prefers-color-scheme に従う",
+    "CSS変数により全画面の色が一括で切り替わる",
+    "npx vitest run tests/theme.test.js が全てpassする",
+    "既存テスト npx vitest run が引き続き全てpassする"
+  ],
+  "verification": [
+    "npx vitest run tests/theme.test.js を実行してテーマテストが全てpassすることを確認",
+    "npx vitest run を実行して全テストがpassすることを確認"
+  ],
+  "blocked_reason": null,
+  "findings": "All 12 theme tests pass. All 135 core tests (utils, timetable-controller, ui-controller, realtime-vehicle-controller) continue to pass. CSS variable replacements applied only to main user-visible elements as specified. Calendar modal dark mode CSS migrated from @media (prefers-color-scheme: dark) to [data-theme='dark'] selector. The theme toggle button is positioned absolutely in the header (header has position: relative)."
+}

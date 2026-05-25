@@ -1,0 +1,14 @@
+{
+  "task_id": "task-dark-mode-toggle",
+  "task_description": "ライトモード/ダークモードの切り替え機能を実装する。CSSカスタムプロパティによるテーマ管理、UIトグルボタン、localStorage永続化、OSのprefers-color-scheme対応を含む。",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "全147テスト(5ファイル)がpass。テーマ関連12テスト+既存135テスト全てgreen。レビュー指摘4件全て修正完了。"
+  }
+}
