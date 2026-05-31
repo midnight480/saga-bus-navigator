@@ -46,11 +46,9 @@ export async function onRequest(context) {
   
   // POSTリクエストのみを受け付ける
   if (request.method !== 'POST') {
-    console.error(`エラー: 不正なHTTPメソッド: ${request.method}`);
     return new Response(JSON.stringify({
       success: false,
-      error: 'Method not allowed',
-      message: 'このエンドポイントはPOSTリクエストのみを受け付けます'
+      error: 'Method not allowed'
     }), {
       status: 405,
       headers: {
@@ -58,6 +56,21 @@ export async function onRequest(context) {
         'Allow': 'POST'
       }
     });
+  }
+  
+  // 認証トークンチェック
+  const authToken = env.DEPLOY_HOOK_SECRET;
+  if (authToken) {
+    const providedToken = request.headers.get('Authorization')?.replace('Bearer ', '');
+    if (providedToken !== authToken) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Unauthorized'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
   }
   
   try {
@@ -220,9 +233,7 @@ export async function onRequest(context) {
     return new Response(JSON.stringify({
       success: false,
       error: 'Internal server error',
-      message: error.message,
       details: {
-        stack: error.stack,
         duration: {
           milliseconds: durationMs,
           seconds: parseFloat((durationMs / 1000).toFixed(2))

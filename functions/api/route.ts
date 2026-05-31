@@ -80,7 +80,7 @@ export const onRequestGet = async (ctx: any) => {
     // ネットワークエラーなど
     console.error("Error fetching route.pb:", error);
     return new Response(
-      `Proxy error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      "Proxy error",
       {
         status: 502,
         headers: {

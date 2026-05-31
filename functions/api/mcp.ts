@@ -253,7 +253,7 @@ export const onRequestPost = async (context: {
     console.error('[MCP Endpoint Error]', error);
     const errorResponse = ErrorHandler.createInternalError(
       null,
-      error instanceof Error ? error.message : 'Unknown error'
+      'Internal server error'
     );
     return new Response(JSON.stringify(errorResponse), {
       status: 500,

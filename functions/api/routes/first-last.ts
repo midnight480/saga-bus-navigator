@@ -148,10 +148,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   } catch (error) {
     console.error('[API Error]', error);
     return new Response(
-      JSON.stringify({ 
-        error: '始発・終バス検索中にエラーが発生しました',
-        details: (error as Error).message 
-      }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
