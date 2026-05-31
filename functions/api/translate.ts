@@ -94,6 +94,16 @@ export const onRequestPost = async (ctx: {
     );
   }
 
+  // テキスト長制限（DoS対策: Amazon Translateの上限は10,000バイト）
+  const MAX_TEXT_LENGTH = 5000;
+  if (body.text.length > MAX_TEXT_LENGTH) {
+    return createErrorResponse(
+      `Text exceeds maximum length of ${MAX_TEXT_LENGTH} characters`,
+      "TEXT_TOO_LONG",
+      400
+    );
+  }
+
   // 空白のみのテキストはそのまま返す
   if (body.text.trim().length === 0) {
     return createSuccessResponse({
