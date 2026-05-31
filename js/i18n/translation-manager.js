@@ -92,13 +92,9 @@ class TranslationManager {
     if (params && typeof params === 'object') {
       const beforeReplace = text;
 
-      // 通常は enumerable key を置換対象にする
-      const keys = Object.keys(params);
-
-      // "__proto__" は Object.keys に出ないことがあるため、プレースホルダーが存在する場合のみ対象に含める
-      if (!keys.includes('__proto__') && text.includes('{{__proto__}}')) {
-        keys.push('__proto__');
-      }
+      // 安全なキーのみを置換対象にする（__proto__, constructor, prototypeを除外）
+      const dangerousKeys = ['__proto__', 'constructor', 'prototype'];
+      const keys = Object.keys(params).filter(k => !dangerousKeys.includes(k));
 
       keys.forEach((param) => {
         const safeValue = this.escapeHtml(String(params[param]));
