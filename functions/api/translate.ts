@@ -209,7 +209,7 @@ export const onRequestPost = async (ctx: {
       }
 
       return createErrorResponse(
-        error.message || "Translation failed",
+        "Translation service error",
         "TRANSLATION_ERROR",
         500
       );
