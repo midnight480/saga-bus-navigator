@@ -24,8 +24,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "gtfs-realtime-bindings": "^1.1.0",
-    "protobufjs": "^8.0.1"
+    "gtfs-realtime-bindings": "^2.0.0",
+    "protobufjs": "^8.6.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
@@ -34,7 +34,7 @@
     "jsdom": "^23.0.0",
     "jszip": "^3.10.1",
     "prettier": "^3.0.0",
-    "vitest": "^4.1.1",
-    "wrangler": "^4.50.0"
+    "vitest": "^4.1.6",
+    "wrangler": "^4.102.0"
   }
 }
