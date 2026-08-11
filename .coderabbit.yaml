@@ -19,25 +19,25 @@ reviews:
       - "**/node_modules/**"
       - "**/dist/**"
 
+  path_instructions:
+    - path: "**/*.ts"
+      instructions: |
+        TypeScriptコードのレビュー時は以下を確認してください：
+        - strict modeの型安全性
+        - 適切なエラーハンドリング
+        - セキュリティベストプラクティス（入力検証、SQLインジェクション防止）
+
+    - path: "**/*.js"
+      instructions: |
+        JavaScriptコードのレビュー時は以下を確認してください：
+        - 適切なエラーハンドリング
+        - セキュリティベストプラクティス
+
+    - path: "**/.github/workflows/**"
+      instructions: |
+        GitHub Actionsワークフローのレビュー時は以下を確認してください：
+        - シークレットの適切な使用
+        - セキュリティベストプラクティス
+
 chat:
   auto_reply: true
-
-path_instructions:
-  - path: "**/*.ts"
-    instructions: |
-      TypeScriptコードのレビュー時は以下を確認してください：
-      - strict modeの型安全性
-      - 適切なエラーハンドリング
-      - セキュリティベストプラクティス（入力検証、SQLインジェクション防止）
-
-  - path: "**/*.js"
-    instructions: |
-      JavaScriptコードのレビュー時は以下を確認してください：
-      - 適切なエラーハンドリング
-      - セキュリティベストプラクティス
-
-  - path: "**/.github/workflows/**"
-    instructions: |
-      GitHub Actionsワークフローのレビュー時は以下を確認してください：
-      - シークレットの適切な使用
-      - セキュリティベストプラクティス
