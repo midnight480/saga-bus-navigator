@@ -1,0 +1,68 @@
+name: Update GTFS Data in KV
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'data/saga-current.zip'
+      - 'scripts/preprocess-gtfs.js'
+      - 'scripts/upload_to_kv.js'
+  workflow_dispatch:
+    inputs:
+      force_upload:
+        description: '強制的に全データを再アップロード'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  update-gtfs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Preprocess GTFS data
+        run: |
+          echo "GTFSデータを前処理しています..."
+          node scripts/preprocess-gtfs.js
+          echo "✓ 前処理が完了しました"
+      
+      - name: List processed files
+        run: |
+          echo "生成されたファイル:"
+          ls -lh data/processed/ | tail -n +2
+          echo ""
+          du -sh data/processed/
+      
+      - name: Upload to Cloudflare KV
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
+        run: |
+          echo "Cloudflare KVにアップロードしています..."
+          node scripts/upload_to_kv.js data/processed
+          echo "✓ アップロードが完了しました"
+      
+      - name: Verify upload
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
+        run: |
+          echo "アップロードされたバージョンを確認しています..."
+          node scripts/list_versions.js || echo "⚠ バージョン確認に失敗しましたが、アップロードは完了しています"
