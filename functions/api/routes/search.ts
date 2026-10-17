@@ -43,17 +43,17 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       context.env.GTFS_DATA.get(`gtfs:v${currentVersion}:trips`, 'json'),
     ]);
 
-    // stop_timesを全チャンク読み込み
-    const stopTimesChunks: any[] = [];
+    // stop_times_by_tripを全チャンク読み込み（インデックス化されたデータ）
+    const stopTimesByTrip: Record<string, any[]> = {};
     let chunkIndex = 0;
-    while (chunkIndex < 10) { // 最大10チャンク
-      const chunk = await context.env.GTFS_DATA.get(`gtfs:v${currentVersion}:stop_times_${chunkIndex}`, 'json');
-      if (!chunk || !Array.isArray(chunk)) break;
-      stopTimesChunks.push(...chunk);
+    while (chunkIndex < 10) {
+      const chunk = await context.env.GTFS_DATA.get(`gtfs:v${currentVersion}:stop_times_by_trip_${chunkIndex}`, 'json');
+      if (!chunk) break;
+      Object.assign(stopTimesByTrip, chunk);
       chunkIndex++;
     }
 
-    if (!Array.isArray(stops) || !Array.isArray(routes) || !Array.isArray(trips)) {
+    if (!Array.isArray(stops) || !Array.isArray(routes) || !Array.isArray(trips) || Object.keys(stopTimesByTrip).length === 0) {
       return new Response(
         JSON.stringify({ error: 'データ形式が不正です' }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -82,9 +82,12 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
     // 各tripで始点と終点を通るものを探す
     for (const trip of trips) {
-      const tripStopTimes = stopTimesChunks
-        .filter((st: any) => st.trip_id === trip.trip_id)
-        .sort((a: any, b: any) => parseInt(a.stop_sequence) - parseInt(b.stop_sequence));
+      // stopTimesByTripインデックスから該当tripのstop_timesを直接取得
+      const tripStopTimes = stopTimesByTrip[trip.trip_id];
+      
+      if (!tripStopTimes || !Array.isArray(tripStopTimes)) {
+        continue;
+      }
 
       // 始点と終点のインデックスを探す
       const fromIndex = tripStopTimes.findIndex((st: any) => fromStopIds.includes(st.stop_id));

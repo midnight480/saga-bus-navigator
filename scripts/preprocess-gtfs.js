@@ -388,6 +388,67 @@ async function processGTFSZip(zipPath, outputDir) {
         console.log(`  ✓ fare_rules_prebuilt.json (${fareRulesTransformed.length}件)`);
       }
 
+      // 5. trip_idでインデックス化されたstop_timesデータ（経路検索のパフォーマンス最適化）
+      console.log('  stop_timesをtrip_idでインデックス化しています...');
+      const stopTimesByTrip = {};
+      parsedData.stop_times.forEach(st => {
+        if (!stopTimesByTrip[st.trip_id]) {
+          stopTimesByTrip[st.trip_id] = [];
+        }
+        stopTimesByTrip[st.trip_id].push(st);
+      });
+      
+      // 各tripのstop_timesをstop_sequenceでソート
+      Object.keys(stopTimesByTrip).forEach(tripId => {
+        stopTimesByTrip[tripId].sort((a, b) => 
+          parseInt(a.stop_sequence) - parseInt(b.stop_sequence)
+        );
+      });
+      
+      // stop_times_by_tripが大きい場合は分割
+      const stopTimesByTripJson = JSON.stringify(stopTimesByTrip);
+      const stopTimesByTripSize = Buffer.byteLength(stopTimesByTripJson, 'utf8');
+      const stopTimesByTripSizeMB = stopTimesByTripSize / 1024 / 1024;
+      
+      if (stopTimesByTripSizeMB > 20) {
+        console.log(`  stop_times_by_tripが大きいため分割します (${stopTimesByTripSizeMB.toFixed(2)}MB)`);
+        
+        // trip_idの配列を取得してチャンクに分割
+        const tripIds = Object.keys(stopTimesByTrip);
+        const chunkSize = Math.ceil(tripIds.length / Math.ceil(stopTimesByTripSizeMB / 20));
+        let chunkIndex = 0;
+        const splitFileList = [];
+        
+        for (let i = 0; i < tripIds.length; i += chunkSize) {
+          const chunkTripIds = tripIds.slice(i, i + chunkSize);
+          const chunk = {};
+          chunkTripIds.forEach(tripId => {
+            chunk[tripId] = stopTimesByTrip[tripId];
+          });
+          
+          const chunkFilename = `stop_times_by_trip_${chunkIndex}.json`;
+          const chunkPath = path.join(outputDir, chunkFilename);
+          await writeFile(chunkPath, JSON.stringify(chunk), 'utf8');
+          splitFileList.push(chunkFilename);
+          
+          const chunkSize_mb = Buffer.byteLength(JSON.stringify(chunk), 'utf8') / 1024 / 1024;
+          console.log(`  ✓ ${chunkFilename} に出力 (${chunkTripIds.length}件のtrip, ${chunkSize_mb.toFixed(2)}MB)`);
+          chunkIndex++;
+        }
+        
+        splitFiles['stop_times_by_trip'] = splitFileList;
+        console.log(`  ✓ ${splitFileList.length}個のファイルに分割`);
+      } else {
+        await writeFile(
+          path.join(outputDir, 'stop_times_by_trip.json'), 
+          stopTimesByTripJson, 
+          'utf8'
+        );
+        console.log(`  ✓ stop_times_by_trip.json (${Object.keys(stopTimesByTrip).length}件のtrip, ${stopTimesByTripSizeMB.toFixed(2)}MB)`);
+      }
+      
+      prebuilt.stopTimesByTrip = splitFiles['stop_times_by_trip'] ? 'stop_times_by_trip_*' : 'stop_times_by_trip.json';
+
       console.log(`  ✓ プリビルドデータ生成完了`);
     } catch (error) {
       console.warn(`  ⚠️ プリビルドデータ生成に失敗しました（フォールバックとして通常処理を使用）: ${error.message}`);
