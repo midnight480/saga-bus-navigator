@@ -167,21 +167,42 @@ npm run dev
 
 ### データ更新手順
 
-#### Cloudflare KVを使用した更新（推奨）
+#### Cloudflare KVを使用した更新（推奨・自動化）
 
-本番環境では、Cloudflare KVを使用してGTFSデータを管理します。詳細は[KVデプロイメントガイド](docs/deployment/KV_DEPLOYMENT.md)を参照してください。
+**GitHub Actions による自動更新**（推奨）
+
+本番環境では、GitHub Actions を使用して GTFS データを自動的に Cloudflare KV に更新します。
+
+1. 最新のGTFSデータ（saga-YYYY-MM-DD.zip）をダウンロード
+2. `./data/saga-current.zip`に配置
+3. Gitにコミット＆プッシュ:
+   ```bash
+   git add data/saga-current.zip
+   git commit -m "Update GTFS data to YYYYMMDD"
+   git push origin main
+   ```
+4. **GitHub Actions が自動的に以下を実行**:
+   - GTFS データの前処理
+   - Cloudflare KV へのアップロード
+   - 古いバージョンの自動削除
+
+詳細は [GitHub Actions による GTFS データ自動更新ガイド](docs/GITHUB_ACTIONS_GTFS_UPDATE.md) を参照してください。
+
+**手動更新**（従来の方法）
+
+手動でデータを更新する場合は、[KVデプロイメントガイド](docs/deployment/KV_DEPLOYMENT.md)を参照してください。
 
 1. 最新のGTFSデータ（saga-YYYY-MM-DD.zip）をダウンロード
 2. `./data/`ディレクトリに配置
 3. GTFS前処理を実行:
    ```bash
-   node scripts/gtfs_to_json.js
+   node scripts/preprocess-gtfs.js
    ```
 4. KVにアップロード:
    ```bash
-   node scripts/upload_to_kv.js
+   node scripts/upload_to_kv.js data/processed
    ```
-5. Gitにコミット＆プッシュ（自動デプロイ）
+5. Gitにコミット＆プッシュ（オプション）
 
 #### ローカル開発環境での更新
 
@@ -416,6 +437,7 @@ saga-bus-navigator/
 
 - [APIドキュメント](docs/API.md)
 - [デプロイ手順](docs/deployment/DEPLOYMENT.md)
+- [GitHub Actions による GTFS データ自動更新](docs/GITHUB_ACTIONS_GTFS_UPDATE.md)
 - [KVデプロイメントガイド](docs/deployment/KV_DEPLOYMENT.md)
 - [KV運用手順書](docs/KV_OPERATIONS.md)
 - [KVトラブルシューティング](docs/KV_TROUBLESHOOTING.md)
